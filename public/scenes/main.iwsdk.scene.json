@@ -1,0 +1,199 @@
+{
+  "version": "iwsdk.scene.v1",
+  "units": "meters",
+  "components": {
+    "com.iwsdk.components.DomeGradient": {
+      "sky": [
+        0.05,
+        0.06,
+        0.09,
+        1
+      ],
+      "equator": [
+        0.1,
+        0.11,
+        0.15,
+        1
+      ],
+      "ground": [
+        0.04,
+        0.045,
+        0.055,
+        1
+      ],
+      "elevationDeg": 20,
+      "azimuthDeg": 0,
+      "dither": true
+    },
+    "com.iwsdk.components.IBLTexture": {
+      "src": "room",
+      "intensity": 0.8
+    }
+  },
+  "environment": {
+    "toneMapping": "aces",
+    "exposure": 1.1,
+    "shadows": false
+  },
+  "resources": {},
+  "nodes": [
+    {
+      "id": "floor",
+      "name": "Floor",
+      "framingRole": "support",
+      "content": {
+        "type": "asset",
+        "asset": "floor"
+      },
+      "components": {
+        "DomeFade": {
+          "start": 3,
+          "end": 9
+        }
+      }
+    },
+    {
+      "id": "workspace",
+      "name": "Workspace",
+      "transform": {
+        "position": [
+          0,
+          0.74,
+          -0.55
+        ]
+      },
+      "children": [
+        {
+          "id": "desk",
+          "name": "Desk",
+          "framingRole": "support",
+          "content": {
+            "type": "asset",
+            "asset": "desk"
+          }
+        },
+        {
+          "id": "inspector-panel",
+          "name": "Inspector Panel",
+          "content": {
+            "type": "asset",
+            "asset": "inspector"
+          },
+          "transform": {
+            "position": [
+              0.47,
+              0.19,
+              -0.02
+            ],
+            "rotationDeg": [
+              0,
+              -32,
+              0
+            ],
+            "scale": 0.1
+          },
+          "components": {
+            "RayInteractable": {}
+          }
+        },
+        {
+          "id": "controls-panel",
+          "name": "Controls Panel",
+          "content": {
+            "type": "asset",
+            "asset": "controls"
+          },
+          "transform": {
+            "position": [
+              0,
+              0.012,
+              0.27
+            ],
+            "rotationDeg": [
+              -62,
+              0,
+              0
+            ],
+            "scale": 0.1
+          },
+          "components": {
+            "RayInteractable": {}
+          }
+        },
+        {
+          "id": "ask-panel",
+          "name": "Ask Panel",
+          "content": {
+            "type": "asset",
+            "asset": "ask"
+          },
+          "transform": {
+            "position": [
+              -0.5,
+              0.22,
+              0
+            ],
+            "rotationDeg": [
+              0,
+              32,
+              0
+            ],
+            "scale": 0.1
+          },
+          "components": {
+            "RayInteractable": {}
+          }
+        }
+      ]
+    },
+    {
+      "id": "key-light",
+      "name": "Key Light",
+      "transform": {
+        "position": [
+          -1.5,
+          4,
+          2
+        ],
+        "rotationDeg": [
+          -60,
+          -20,
+          0
+        ]
+      },
+      "components": {
+        "DirectionalLight": {
+          "color": [
+            1,
+            0.96,
+            0.9,
+            1
+          ],
+          "intensity": 1.6,
+          "castShadow": false
+        }
+      }
+    },
+    {
+      "id": "fill-light",
+      "name": "Fill Light",
+      "components": {
+        "HemisphereLight": {
+          "skyColor": [
+            0.6,
+            0.66,
+            0.85,
+            1
+          ],
+          "groundColor": [
+            0.15,
+            0.16,
+            0.2,
+            1
+          ],
+          "intensity": 0.9
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+<!--
+  Conversation panel, shown while talking to a worker. Designed for a scene
+  scale of 0.1 (1px = 1 mm). Every question is a big button so it can be
+  asked with a pinch; the microphone button only appears where the browser
+  supports speech recognition.
+-->
+<style>
+  .root {
+    flex-direction: column;
+    width: 330px;
+  }
+
+  .content {
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .eyebrow {
+    color: #4fd1c5;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+
+  .title {
+    color: #fafaf7;
+    font-size: 20px;
+    font-weight: 700;
+    width: 298px;
+  }
+
+  .question {
+    justify-content: flex-start;
+    width: 298px;
+  }
+
+  .row {
+    flex-direction: row;
+    gap: 8px;
+  }
+</style>
+<Panel class="root">
+  <div class="content">
+    <span id="ask-eyebrow" class="eyebrow">ASK THE WORKER</span>
+    <span id="ask-title" class="title">Talking to...</span>
+    <Button id="q-0" class="question">
+      <ButtonIcon>
+        <MessageCircle></MessageCircle>
+      </ButtonIcon>
+      <ButtonLabel id="q-label-0">Question</ButtonLabel>
+    </Button>
+    <Button id="q-1" class="question">
+      <ButtonIcon>
+        <MessageCircle></MessageCircle>
+      </ButtonIcon>
+      <ButtonLabel id="q-label-1">Question</ButtonLabel>
+    </Button>
+    <Button id="q-2" class="question">
+      <ButtonIcon>
+        <MessageCircle></MessageCircle>
+      </ButtonIcon>
+      <ButtonLabel id="q-label-2">Question</ButtonLabel>
+    </Button>
+    <Button id="q-3" class="question">
+      <ButtonIcon>
+        <MessageCircle></MessageCircle>
+      </ButtonIcon>
+      <ButtonLabel id="q-label-3">Question</ButtonLabel>
+    </Button>
+    <div class="row">
+      <Button id="btn-mic">
+        <ButtonIcon>
+          <Mic></Mic>
+        </ButtonIcon>
+        <ButtonLabel id="mic-label">Ask out loud</ButtonLabel>
+      </Button>
+      <Button id="btn-done">
+        <ButtonIcon>
+          <X></X>
+        </ButtonIcon>
+        <ButtonLabel>Done</ButtonLabel>
+      </Button>
+    </div>
+  </div>
+</Panel>

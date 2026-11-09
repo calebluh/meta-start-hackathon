@@ -1,0 +1,49 @@
+<!--
+  Control strip lying along the front edge of the desk. Designed for a scene
+  scale of 0.1 (1px = 1 mm). Every control is a large Horizon button so it is
+  easy to point at and pinch with a bare hand.
+-->
+<style>
+  .bar {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .label {
+    transform-translate-y: 1px;
+  }
+</style>
+<Panel class="bar">
+  <Button id="btn-play">
+    <ButtonIcon>
+      <Play></Play>
+    </ButtonIcon>
+    <ButtonLabel id="play-label" class="label">Play flow</ButtonLabel>
+  </Button>
+  <Button id="btn-next">
+    <ButtonIcon>
+      <SkipForward></SkipForward>
+    </ButtonIcon>
+    <ButtonLabel class="label">Next step</ButtonLabel>
+  </Button>
+  <Button id="btn-flow">
+    <ButtonIcon>
+      <Layers></Layers>
+    </ButtonIcon>
+    <ButtonLabel id="flow-label" class="label">Flow</ButtonLabel>
+  </Button>
+  <Button id="btn-inside">
+    <ButtonIcon>
+      <LogIn></LogIn>
+    </ButtonIcon>
+    <ButtonLabel id="inside-label" class="label">Step inside</ButtonLabel>
+  </Button>
+  <Button id="btn-recenter">
+    <ButtonIcon>
+      <LocateFixed></LocateFixed>
+    </ButtonIcon>
+    <ButtonLabel class="label">Recenter</ButtonLabel>
+  </Button>
+</Panel>
