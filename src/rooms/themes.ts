@@ -143,19 +143,23 @@ export const THEMES: Record<Exclude<ThemeId, 'office'>, Theme> = {
 const RULES: [RegExp, Exclude<ThemeId, 'office'>][] = [
   [/payment|billing|invoice|refund|charge|stripe|paypal|wallet|bank|ledger|accounting|tax|payout/i, 'finance'],
   [/auth|login|sign.?in|session|permission|security|guard|oauth|password|identity|access/i, 'security'],
+  [/upkeep|maintenance|chore|housekeeping/i, 'utility'],
+  [/plumbing|helper|\butil|shared|common/i, 'workshop'],
+  [/intake|upload|ingest|document|pars(e|ing)/i, 'postoffice'],
   [/inventory|stock|warehouse|packing|shipping|fulfil|\border|cart|product|catalog/i, 'warehouse'],
   [/e-?mail|mail|notif|sms|newsletter|postmark|sendgrid|twilio|mailgun/i, 'postoffice'],
   [/socket|realtime|real-time|event|stream|pubsub|broadcast|\bchat\b|push/i, 'radio'],
   [/search|index|recommend|lookup|\bdocs?\b|knowledge/i, 'library'],
-  [/\bai\b|llm|gpt|claude|llama|agent|prompt|embedding|\bml\b|predict|model/i, 'thinktank'],
-  [/photo|image|media|upload|video|audio|asset|\bfiles?\b|\bcdn\b/i, 'studio'],
   [/analytic|metric|report|\bstats?\b|insight|tracking|telemetry|\blog/i, 'analytics'],
+  [/\bai\b|llm|gpt|claude|llama|agent|persona|prompt|embedding|\bml\b|predict|model/i, 'thinktank'],
+  [/photo|image|media|video|audio|asset|\bcdn\b/i, 'studio'],
   [/data|database|\bdb\b|quer|record|storage|cache|saved|persist|repositor|schema|migration|postgres|mongo|redis/i, 'archive'],
   [/endpoint|route|gateway|\bapi\b|webhook|controller|handler|server|graphql|rpc/i, 'switchboard'],
   [/test|spec|\bqa\b|e2e/i, 'lab'],
   [/deploy|infra|docker|pipeline|\bci\b|monitor|terraform|k8s|kubernetes|cloud|hosting/i, 'controlroom'],
   [/config|setting|\benv\b|flag|constant/i, 'utility'],
   [/job|cron|schedule|queue|\brun|task|batch|worker/i, 'factory'],
+  [/simulat|engine|control/i, 'controlroom'],
 ];
 
 const KIND_THEMES: Partial<Record<GraphNode['kind'], Exclude<ThemeId, 'office'>>> = {

@@ -1,5 +1,5 @@
 import { resolveRef } from './layout.js';
-import { larder } from './maps/larder.js';
+import { DEFAULT_MAP, MAPS } from './maps/index.js';
 import type { Flow, GraphData } from './maps/types.js';
 
 /**
@@ -13,8 +13,8 @@ export interface FlowStepState {
 
 export const app = {
   /** Id of the bundled map, as the agent server knows it. */
-  mapId: 'larder',
-  graph: larder as GraphData,
+  mapId: DEFAULT_MAP,
+  graph: MAPS[DEFAULT_MAP] as GraphData,
   /** `table`: the diorama on the desk. `room`: sitting inside one part. */
   mode: 'table' as 'table' | 'room',
   roomNode: null as string | null,
@@ -101,6 +101,28 @@ export function cycleFlow(): void {
   stopFlow(false);
   app.flowIndex = (app.flowIndex + 1) % Math.max(app.graph.flows.length, 1);
   emit();
+}
+
+/** Switches to another codebase: back to the table, nothing selected or playing. */
+export function setMap(id: string): void {
+  const graph = MAPS[id];
+  if (!graph || id === app.mapId) return;
+  app.mapId = id;
+  app.graph = graph;
+  app.mode = 'table';
+  app.roomNode = null;
+  app.selected = null;
+  app.flowIndex = 0;
+  app.flowSteps = [];
+  app.stepIndex = -1;
+  app.playing = false;
+  app.handoff = null;
+  emit();
+}
+
+export function cycleMap(): void {
+  const ids = Object.keys(MAPS);
+  setMap(ids[(ids.indexOf(app.mapId) + 1) % ids.length]);
 }
 
 export function enterRoom(id: string): void {

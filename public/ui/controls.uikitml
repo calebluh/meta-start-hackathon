@@ -34,6 +34,12 @@
     </ButtonIcon>
     <ButtonLabel id="flow-label" class="label">Flow</ButtonLabel>
   </Button>
+  <Button id="btn-map">
+    <ButtonIcon>
+      <Map></Map>
+    </ButtonIcon>
+    <ButtonLabel id="map-label" class="label">Codebase</ButtonLabel>
+  </Button>
   <Button id="btn-inside">
     <ButtonIcon>
       <LogIn></LogIn>

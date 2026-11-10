@@ -3,7 +3,7 @@ import projectOptions from 'virtual:iwsdk-project';
 import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
-import { app, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
+import { app, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
 import { unlock } from './audio/sound.js';
 import { WorkspaceSystem } from './workspace.js';
 
@@ -38,9 +38,10 @@ World.create(
       if (e.key === 'e') world.getSystem(RoomSystem)?.debugAsk(2);
       if (e.key === 'g') world.getSystem(RoomSystem)?.debugAskText('Can you take me to billing day?');
       // 1-9: jump straight into rooms of different kinds.
-      const rooms = ['api.payments', 'api.orders', 'api.email', 'api.data', 'tests', 'infra', 'jobs.packing', 'web.checkout', 'storage'];
+      const rooms = app.graph.nodes.filter((n) => !app.graph.nodes.some((c) => c.parent === n.id)).map((n) => n.id);
       const digit = Number(e.key);
       if (digit >= 1 && digit <= 9) enterRoom(rooms[digit - 1]);
+      if (e.key === 'm') cycleMap();
       if (e.key === 'v') world.getSystem(RoomSystem)?.debugAskText('Tell me about your stripe calls file');
     });
   }

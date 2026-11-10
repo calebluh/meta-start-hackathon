@@ -1,0 +1,2630 @@
+{
+ "schema": "floorplan/graph@1",
+ "project": {
+  "name": "MiroFish",
+  "summary": "MiroFish turns documents you upload (news, reports, stories) into a knowledge graph of people and organisations, then creates AI personas from them and lets them argue and react on simulated Twitter and Reddit. It then writes a prediction report about how things are likely to unfold, and you can question the report agent or interview any simulated person.",
+  "logo": "maps/mirofish/logo.png"
+ },
+ "source": {
+  "repo": "https://github.com/666ghj/MiroFish",
+  "commit": "7657031ac01184afe2cb220f5ee3545573b5e843",
+  "license": "AGPL-3.0"
+ },
+ "nodes": [
+  {
+   "id": "web.screens",
+   "parent": "web",
+   "label": "Screens",
+   "kind": "feature",
+   "summary": "One full-page screen per stage (home, graph build, simulation setup, live run, report, interaction), each pairing a graph view with a step panel.",
+   "stats": {
+    "files": 7,
+    "loc": 4492
+   }
+  },
+  {
+   "id": "web.wizard",
+   "parent": "web",
+   "label": "Five-step wizard",
+   "kind": "feature",
+   "summary": "The five step panels that do the real work: build the graph, set up the environment, run the simulation, read the report and interact.",
+   "stats": {
+    "files": 5,
+    "loc": 10788
+   }
+  },
+  {
+   "id": "web.panels",
+   "parent": "web",
+   "label": "Graph and history panels",
+   "kind": "feature",
+   "summary": "Shared widgets: the interactive graph drawing, the past-projects list and the language picker.",
+   "stats": {
+    "files": 3,
+    "loc": 2538
+   }
+  },
+  {
+   "id": "web.client",
+   "parent": "web",
+   "label": "Server client",
+   "kind": "library",
+   "summary": "The small HTTP layer that every screen uses to talk to the backend's graph, simulation and report endpoints.",
+   "stats": {
+    "files": 4,
+    "loc": 325
+   }
+  },
+  {
+   "id": "web",
+   "parent": null,
+   "label": "Web app",
+   "kind": "ui",
+   "summary": "The Vue web app that walks the user through five steps, from uploading documents to chatting with the results.",
+   "stats": {
+    "files": 6,
+    "loc": 169
+   }
+  },
+  {
+   "id": "api.routes",
+   "parent": "api",
+   "label": "Endpoints",
+   "kind": "feature",
+   "summary": "The HTTP endpoints for graph, simulation and report. They mostly start background threads and report progress.",
+   "stats": {
+    "files": 4,
+    "loc": 4254
+   }
+  },
+  {
+   "id": "api.intake",
+   "parent": "api",
+   "label": "Document intake",
+   "kind": "library",
+   "summary": "Reads uploaded documents, cleans the text and asks the LLM which kinds of entities and relationships to extract.",
+   "stats": {
+    "files": 4,
+    "loc": 902
+   }
+  },
+  {
+   "id": "api.graph",
+   "parent": "api",
+   "label": "Knowledge graph",
+   "kind": "data",
+   "summary": "Everything that talks to Zep Cloud: building the graph, reading entities, searching it for reports and writing simulation activity back.",
+   "stats": {
+    "files": 7,
+    "loc": 3559
+   }
+  },
+  {
+   "id": "api.personas",
+   "parent": "api",
+   "label": "Agent personas",
+   "kind": "library",
+   "summary": "Turns graph entities into social-media personas and has the LLM plan the simulation's timing, events and activity levels.",
+   "stats": {
+    "files": 2,
+    "loc": 1881
+   }
+  },
+  {
+   "id": "api.simulation",
+   "parent": "api",
+   "label": "Simulation control",
+   "kind": "worker",
+   "summary": "Creates and prepares simulations, launches the OASIS child process, monitors its logs and sends it interview commands through files.",
+   "stats": {
+    "files": 3,
+    "loc": 2541
+   }
+  },
+  {
+   "id": "api.report",
+   "parent": "api",
+   "label": "Report agent",
+   "kind": "library",
+   "summary": "The ReACT-style report agent that plans an outline, researches each section with graph tools and interviews, and answers chat questions.",
+   "stats": {
+    "files": 1,
+    "loc": 2175
+   }
+  },
+  {
+   "id": "api.core",
+   "parent": "api",
+   "label": "Shared plumbing",
+   "kind": "library",
+   "summary": "Shared foundations: project and task records, the LLM client and model compatibility, retries, logging and translations.",
+   "stats": {
+    "files": 10,
+    "loc": 1158
+   }
+  },
+  {
+   "id": "api",
+   "parent": null,
+   "label": "Backend server",
+   "kind": "service",
+   "summary": "The Flask server that loads settings, checks keys, registers endpoints and cleans up simulation processes on shutdown.",
+   "stats": {
+    "files": 3,
+    "loc": 160
+   }
+  },
+  {
+   "id": "runners",
+   "parent": null,
+   "label": "Simulation runners",
+   "kind": "worker",
+   "summary": "Standalone scripts the backend launches as separate processes to run the OASIS Twitter/Reddit simulations and log every agent action.",
+   "stats": {
+    "files": 4,
+    "loc": 2915
+   }
+  },
+  {
+   "id": "tools",
+   "parent": null,
+   "label": "Maintenance scripts",
+   "kind": "script",
+   "summary": "Manual helper scripts: a live Zep Cloud check, a persona format check, and the GitHub star-history chart tooling.",
+   "stats": {
+    "files": 2,
+    "loc": 968
+   }
+  },
+  {
+   "id": "tests",
+   "parent": null,
+   "label": "Tests",
+   "kind": "test",
+   "summary": "Automated tests, mostly for Zep Cloud safety, LLM reply handling and personas, plus unrelated tests for the README star chart.",
+   "stats": {
+    "files": 18,
+    "loc": 2773
+   }
+  },
+  {
+   "id": "upkeep",
+   "parent": null,
+   "label": "Repo upkeep",
+   "kind": "script",
+   "summary": "Scripts (and their tests) that build the star-history chart shown in the README.",
+   "stats": {
+    "files": 4,
+    "loc": 2624
+   }
+  },
+  {
+   "id": "zep",
+   "parent": null,
+   "label": "Zep Cloud",
+   "kind": "external",
+   "summary": "Zep Cloud, the hosted memory service that stores the knowledge graph and answers the report agent's searches.",
+   "stats": {
+    "files": 0,
+    "loc": 0
+   }
+  },
+  {
+   "id": "llm",
+   "parent": null,
+   "label": "LLM provider",
+   "kind": "external",
+   "summary": "The OpenAI-compatible language model that designs the ontology, writes personas and configs, drives the simulated agents and writes the report.",
+   "stats": {
+    "files": 0,
+    "loc": 0
+   }
+  },
+  {
+   "id": "oasis",
+   "parent": null,
+   "label": "OASIS simulator",
+   "kind": "external",
+   "summary": "The OASIS (camel-ai) social-media simulation library, where AI agents post, like, comment and follow on mock Twitter and Reddit.",
+   "stats": {
+    "files": 0,
+    "loc": 0
+   }
+  }
+ ],
+ "files": [
+  {
+   "p": "backend/app/__init__.py",
+   "n": "api",
+   "name": "Server setup",
+   "d": "Builds the web server, opens it to all origins, registers the graph, simulation and report endpoints, and adds a health check.",
+   "loc": 61
+  },
+  {
+   "p": "backend/app/api/__init__.py",
+   "n": "api.routes",
+   "name": "Endpoint groups",
+   "d": "Declares the three endpoint groups: graph, simulation and report.",
+   "loc": 10
+  },
+  {
+   "p": "backend/app/api/graph.py",
+   "n": "api.routes",
+   "name": "Graph endpoints",
+   "d": "Handles project upload, ontology generation, knowledge graph building, task progress, graph data and project/graph deletion.",
+   "loc": 825
+  },
+  {
+   "p": "backend/app/api/report.py",
+   "n": "api.routes",
+   "name": "Report endpoints",
+   "d": "Starts report generation, serves report sections, progress and logs, handles downloads, and runs report-agent chat.",
+   "loc": 969
+  },
+  {
+   "p": "backend/app/api/simulation.py",
+   "n": "api.routes",
+   "name": "Simulation endpoints",
+   "d": "Creates, prepares, starts and stops simulations, serves personas, posts and timelines, and relays agent interviews.",
+   "loc": 2450
+  },
+  {
+   "p": "backend/app/config.py",
+   "n": "api",
+   "name": "Settings",
+   "d": "Loads API keys, model name, upload limits, OASIS action lists and report agent settings from the .env file.",
+   "loc": 61
+  },
+  {
+   "p": "backend/app/models/__init__.py",
+   "n": "api.core",
+   "name": "Models index",
+   "d": "Exposes the project and task data models to the rest of the backend.",
+   "loc": 6
+  },
+  {
+   "p": "backend/app/models/project.py",
+   "n": "api.core",
+   "name": "Project store",
+   "d": "Saves each project's uploaded files, extracted text, ontology and graph status to disk.",
+   "loc": 256
+  },
+  {
+   "p": "backend/app/models/task.py",
+   "n": "api.core",
+   "name": "Task tracker",
+   "d": "Keeps in-memory progress records for long background jobs like graph building and simulation preparation.",
+   "loc": 160
+  },
+  {
+   "p": "backend/app/services/__init__.py",
+   "n": "api.core",
+   "name": "Services index",
+   "d": "Re-exports the main backend services such as simulation manager, runner and config generator.",
+   "loc": 70
+  },
+  {
+   "p": "backend/app/services/graph_builder.py",
+   "n": "api.graph",
+   "name": "Graph builder",
+   "d": "Creates a Zep Cloud graph, applies the ontology, uploads text chunks in batches and waits for ingestion.",
+   "loc": 772
+  },
+  {
+   "p": "backend/app/services/oasis_profile_generator.py",
+   "n": "api.personas",
+   "name": "Persona generator",
+   "d": "Turns graph entities into detailed social-media personas for Twitter and Reddit, enriched by graph search and the LLM.",
+   "loc": 1053
+  },
+  {
+   "p": "backend/app/services/ontology_generator.py",
+   "n": "api.intake",
+   "name": "Ontology designer",
+   "d": "Asks the LLM to read the documents and choose which kinds of people, groups and relationships the graph should hold.",
+   "loc": 609
+  },
+  {
+   "p": "backend/app/services/report_agent.py",
+   "n": "api.report",
+   "name": "Report agent",
+   "d": "Plans and writes the prediction report section by section using graph tools, and answers follow-up chat questions.",
+   "loc": 2175
+  },
+  {
+   "p": "backend/app/services/simulation_config_generator.py",
+   "n": "api.personas",
+   "name": "Simulation planner",
+   "d": "Uses the LLM to decide simulated time, events, posting activity per agent and platform settings.",
+   "loc": 828
+  },
+  {
+   "p": "backend/app/services/simulation_ipc.py",
+   "n": "api.simulation",
+   "name": "Simulation messenger",
+   "d": "Passes commands such as interview requests between the server and the running simulation through files on disk.",
+   "loc": 323
+  },
+  {
+   "p": "backend/app/services/simulation_manager.py",
+   "n": "api.simulation",
+   "name": "Simulation manager",
+   "d": "Creates simulations and runs preparation: reads entities, generates personas and writes the simulation config.",
+   "loc": 467
+  },
+  {
+   "p": "backend/app/services/simulation_runner.py",
+   "n": "api.simulation",
+   "name": "Simulation runner",
+   "d": "Launches the OASIS simulation as a child process, watches its action logs, tracks progress and stops it.",
+   "loc": 1751
+  },
+  {
+   "p": "backend/app/services/text_processor.py",
+   "n": "api.intake",
+   "name": "Text cleaner",
+   "d": "Cleans extracted document text and cuts it into overlapping chunks for graph ingestion.",
+   "loc": 55
+  },
+  {
+   "p": "backend/app/services/zep_entity_reader.py",
+   "n": "api.graph",
+   "name": "Entity reader",
+   "d": "Reads people and organisations out of the Zep graph, filtered by type, with their relationships.",
+   "loc": 372
+  },
+  {
+   "p": "backend/app/services/zep_graph_memory_updater.py",
+   "n": "api.graph",
+   "name": "Graph memory updater",
+   "d": "Feeds what simulated agents do back into the Zep graph as new memories during a run.",
+   "loc": 675
+  },
+  {
+   "p": "backend/app/services/zep_tools.py",
+   "n": "api.graph",
+   "name": "Report research tools",
+   "d": "Gives the report agent graph search tools (deep insight, panorama, quick search) and agent interviews.",
+   "loc": 1442
+  },
+  {
+   "p": "backend/app/utils/__init__.py",
+   "n": "api.core",
+   "name": "Utilities index",
+   "d": "Exposes the file parser, LLM client and translation helpers.",
+   "loc": 7
+  },
+  {
+   "p": "backend/app/utils/file_parser.py",
+   "n": "api.intake",
+   "name": "Document reader",
+   "d": "Extracts text from uploaded PDF, Markdown and text files, guessing the encoding when needed.",
+   "loc": 157
+  },
+  {
+   "p": "backend/app/utils/llm_client.py",
+   "n": "api.core",
+   "name": "LLM client",
+   "d": "Single wrapper for calling the OpenAI-compatible model, including reliable JSON answers and retries.",
+   "loc": 244
+  },
+  {
+   "p": "backend/app/utils/locale.py",
+   "n": "api.core",
+   "name": "Translations",
+   "d": "Looks up interface and error messages in the user's language and tells the LLM which language to use.",
+   "loc": 52
+  },
+  {
+   "p": "backend/app/utils/logger.py",
+   "n": "api.core",
+   "name": "Logging",
+   "d": "Sets up log output to console and files, with Windows-safe text encoding.",
+   "loc": 95
+  },
+  {
+   "p": "backend/app/utils/ontology.py",
+   "n": "api.intake",
+   "name": "Ontology checker",
+   "d": "Cleans and caps the LLM-designed entity and relationship types so Zep will accept them.",
+   "loc": 81
+  },
+  {
+   "p": "backend/app/utils/openai_chat_compat.py",
+   "n": "api.core",
+   "name": "Model compatibility",
+   "d": "Adjusts request settings so both GPT-5 and older chat models accept the same calls.",
+   "loc": 78
+  },
+  {
+   "p": "backend/app/utils/retry.py",
+   "n": "api.core",
+   "name": "Retry helper",
+   "d": "Retries failed external API calls with growing waits between attempts.",
+   "loc": 190
+  },
+  {
+   "p": "backend/app/utils/zep.py",
+   "n": "api.graph",
+   "name": "Zep connection",
+   "d": "Shared Zep Cloud client with timeouts, search limits and retry rules for rate limits.",
+   "loc": 128
+  },
+  {
+   "p": "backend/app/utils/zep_lifecycle.py",
+   "n": "api.graph",
+   "name": "Graph locks",
+   "d": "Stops a graph from being deleted or reset while a report or simulation is still using it.",
+   "loc": 35
+  },
+  {
+   "p": "backend/app/utils/zep_paging.py",
+   "n": "api.graph",
+   "name": "Graph paging",
+   "d": "Fetches every node and edge from a Zep graph page by page.",
+   "loc": 135
+  },
+  {
+   "p": "backend/run.py",
+   "n": "api",
+   "name": "Backend launcher",
+   "d": "Checks that the LLM and Zep keys are set, then starts the Flask server on port 5001.",
+   "loc": 38
+  },
+  {
+   "p": "backend/scripts/action_logger.py",
+   "n": "runners",
+   "name": "Action logger",
+   "d": "Writes each simulated agent action to per-platform log files the backend reads for live progress.",
+   "loc": 249
+  },
+  {
+   "p": "backend/scripts/run_parallel_simulation.py",
+   "n": "runners",
+   "name": "Dual-platform simulation",
+   "d": "Runs Twitter and Reddit OASIS simulations side by side, logs actions and answers interview commands afterwards.",
+   "loc": 1409
+  },
+  {
+   "p": "backend/scripts/run_reddit_simulation.py",
+   "n": "runners",
+   "name": "Reddit simulation",
+   "d": "Runs a Reddit-only OASIS simulation from a config file and stays available for interviews.",
+   "loc": 624
+  },
+  {
+   "p": "backend/scripts/run_twitter_simulation.py",
+   "n": "runners",
+   "name": "Twitter simulation",
+   "d": "Runs a Twitter-only OASIS simulation from a config file and stays available for interviews.",
+   "loc": 633
+  },
+  {
+   "p": "backend/scripts/test_profile_format.py",
+   "n": "tools",
+   "name": "Persona format check",
+   "d": "Manual script that checks generated personas match the CSV and JSON formats OASIS expects.",
+   "loc": 139
+  },
+  {
+   "p": "backend/scripts/validate_zep_cloud_integration.py",
+   "n": "tools",
+   "name": "Zep live check",
+   "d": "Manual end-to-end test against real Zep Cloud using a temporary graph that it cleans up afterwards.",
+   "loc": 829
+  },
+  {
+   "p": "backend/tests/test_llm_json_responses.py",
+   "n": "tests",
+   "name": "LLM JSON tests",
+   "d": "Checks that truncated, empty or noisy model replies are retried or rejected safely.",
+   "loc": 204
+  },
+  {
+   "p": "backend/tests/test_ontology_api_errors.py",
+   "n": "tests",
+   "name": "Ontology error tests",
+   "d": "Checks the upload endpoint returns safe error messages and marks the project failed.",
+   "loc": 55
+  },
+  {
+   "p": "backend/tests/test_ontology_attributes.py",
+   "n": "tests",
+   "name": "Ontology rules tests",
+   "d": "Checks ontology attributes and type pairs are cleaned and capped correctly.",
+   "loc": 207
+  },
+  {
+   "p": "backend/tests/test_ontology_generator.py",
+   "n": "tests",
+   "name": "Ontology generator tests",
+   "d": "Checks long documents are sampled sensibly before being sent to the LLM.",
+   "loc": 58
+  },
+  {
+   "p": "backend/tests/test_openai_chat_compat.py",
+   "n": "tests",
+   "name": "Model compat tests",
+   "d": "Checks GPT-5 and older models get correctly shaped requests.",
+   "loc": 99
+  },
+  {
+   "p": "backend/tests/test_platform_profiles.py",
+   "n": "tests",
+   "name": "Platform persona tests",
+   "d": "Checks the right Twitter or Reddit persona file is served for each simulation.",
+   "loc": 39
+  },
+  {
+   "p": "backend/tests/test_profile_field_normalization.py",
+   "n": "tests",
+   "name": "Persona field tests",
+   "d": "Checks messy LLM persona fields are normalised into clean text and lists.",
+   "loc": 63
+  },
+  {
+   "p": "backend/tests/test_report_tool_result_sanitizer.py",
+   "n": "tests",
+   "name": "Report sanitizer tests",
+   "d": "Checks fake tool results invented by the model are stripped from report text.",
+   "loc": 22
+  },
+  {
+   "p": "backend/tests/test_simulation_prepare_failure.py",
+   "n": "tests",
+   "name": "Preparation failure tests",
+   "d": "Checks failed simulation preparation is saved and shown to the frontend.",
+   "loc": 87
+  },
+  {
+   "p": "backend/tests/test_zep_cloud_contracts.py",
+   "n": "tests",
+   "name": "Zep contract tests",
+   "d": "Checks search limits, edge reading and error handling against the Zep Cloud SDK.",
+   "loc": 413
+  },
+  {
+   "p": "backend/tests/test_zep_cloud_validation_script.py",
+   "n": "tests",
+   "name": "Zep script tests",
+   "d": "Checks the live Zep validation script keeps the right key and cleans up graphs safely.",
+   "loc": 90
+  },
+  {
+   "p": "backend/tests/test_zep_edge_paging.py",
+   "n": "tests",
+   "name": "Graph paging tests",
+   "d": "Checks edge pagination follows cursors, respects caps and detects repeated pages.",
+   "loc": 84
+  },
+  {
+   "p": "backend/tests/test_zep_entity_reader_edges.py",
+   "n": "tests",
+   "name": "Entity edge tests",
+   "d": "Checks the entity reader uses the supported Zep method for node edges.",
+   "loc": 34
+  },
+  {
+   "p": "backend/tests/test_zep_graph_lifecycle.py",
+   "n": "tests",
+   "name": "Graph lifecycle tests",
+   "d": "Checks graph reset, delete and rebuild are blocked or reused correctly while in use.",
+   "loc": 351
+  },
+  {
+   "p": "backend/tests/test_zep_graph_memory_updater.py",
+   "n": "tests",
+   "name": "Memory updater tests",
+   "d": "Checks agent activity is written to the graph safely and failures are reported.",
+   "loc": 187
+  },
+  {
+   "p": "backend/tests/test_zep_report_barrier.py",
+   "n": "tests",
+   "name": "Report wait tests",
+   "d": "Checks reports wait for graph ingestion to finish and never use stale data.",
+   "loc": 266
+  },
+  {
+   "p": "backend/tests/test_zep_retry_and_client.py",
+   "n": "tests",
+   "name": "Zep retry tests",
+   "d": "Checks permanent Zep errors fail fast and rate limits are retried politely.",
+   "loc": 82
+  },
+  {
+   "p": "backend/tests/test_zep_simulation_barrier.py",
+   "n": "tests",
+   "name": "Simulation wait tests",
+   "d": "Checks a simulation is not marked finished until its graph memory writes complete.",
+   "loc": 432
+  },
+  {
+   "p": "frontend/src/App.vue",
+   "n": "web",
+   "name": "App shell",
+   "d": "Top-level container that shows whichever screen the current address points to.",
+   "loc": 39
+  },
+  {
+   "p": "frontend/src/api/graph.js",
+   "n": "web.client",
+   "name": "Graph API calls",
+   "d": "Frontend calls for uploading documents, building the graph, checking progress and fetching graph data.",
+   "loc": 61
+  },
+  {
+   "p": "frontend/src/api/index.js",
+   "n": "web.client",
+   "name": "API connection",
+   "d": "Shared HTTP client that sends the user's language and turns backend errors into readable messages.",
+   "loc": 52
+  },
+  {
+   "p": "frontend/src/api/report.js",
+   "n": "web.client",
+   "name": "Report API calls",
+   "d": "Frontend calls for starting reports, reading report logs and content, and chatting with the report agent.",
+   "loc": 45
+  },
+  {
+   "p": "frontend/src/api/simulation.js",
+   "n": "web.client",
+   "name": "Simulation API calls",
+   "d": "Frontend calls for creating, preparing, running and stopping simulations, reading results and interviewing agents.",
+   "loc": 167
+  },
+  {
+   "p": "frontend/src/components/GraphPanel.vue",
+   "n": "web.panels",
+   "name": "Graph viewer",
+   "d": "Draws the interactive knowledge graph of entities and relationships with D3.",
+   "loc": 1248
+  },
+  {
+   "p": "frontend/src/components/HistoryDatabase.vue",
+   "n": "web.panels",
+   "name": "Project history",
+   "d": "Lists past projects on the home page and reopens them at the graph, simulation or report stage.",
+   "loc": 1184
+  },
+  {
+   "p": "frontend/src/components/LanguageSwitcher.vue",
+   "n": "web.panels",
+   "name": "Language switcher",
+   "d": "Dropdown for changing the interface language.",
+   "loc": 106
+  },
+  {
+   "p": "frontend/src/components/Step1GraphBuild.vue",
+   "n": "web.wizard",
+   "name": "Step 1: graph build",
+   "d": "Shows ontology and graph-building progress, then creates a simulation and moves on.",
+   "loc": 613
+  },
+  {
+   "p": "frontend/src/components/Step2EnvSetup.vue",
+   "n": "web.wizard",
+   "name": "Step 2: environment setup",
+   "d": "Prepares the simulation and shows personas and the AI-generated config as they appear.",
+   "loc": 2301
+  },
+  {
+   "p": "frontend/src/components/Step3Simulation.vue",
+   "n": "web.wizard",
+   "name": "Step 3: live simulation",
+   "d": "Starts the simulation, streams agents' posts and actions per platform, then triggers the report.",
+   "loc": 1112
+  },
+  {
+   "p": "frontend/src/components/Step4Report.vue",
+   "n": "web.wizard",
+   "name": "Step 4: report",
+   "d": "Shows the report being written section by section, with the agent's tool use and logs.",
+   "loc": 4503
+  },
+  {
+   "p": "frontend/src/components/Step5Interaction.vue",
+   "n": "web.wizard",
+   "name": "Step 5: deep interaction",
+   "d": "Lets the user chat with the report agent or interview individual simulated people.",
+   "loc": 2259
+  },
+  {
+   "p": "frontend/src/i18n/index.js",
+   "n": "web",
+   "name": "Language setup",
+   "d": "Loads translation files and remembers the chosen language, defaulting to Chinese.",
+   "loc": 21
+  },
+  {
+   "p": "frontend/src/main.js",
+   "n": "web",
+   "name": "App starter",
+   "d": "Boots the Vue app with page routing and translations.",
+   "loc": 8
+  },
+  {
+   "p": "frontend/src/router/index.js",
+   "n": "web",
+   "name": "Page routes",
+   "d": "Maps addresses to screens: home, process, simulation, simulation run, report and interaction.",
+   "loc": 49
+  },
+  {
+   "p": "frontend/src/store/pendingUpload.js",
+   "n": "web",
+   "name": "Upload hand-off",
+   "d": "Temporarily holds chosen files and the prediction question while moving from home to the process screen.",
+   "loc": 28
+  },
+  {
+   "p": "frontend/src/views/Home.vue",
+   "n": "web.screens",
+   "name": "Home screen",
+   "d": "Landing page where the user uploads documents, types a prediction question and starts the engine.",
+   "loc": 823
+  },
+  {
+   "p": "frontend/src/views/InteractionView.vue",
+   "n": "web.screens",
+   "name": "Interaction screen",
+   "d": "Step 5 screen pairing the graph view with chat and agent interviews.",
+   "loc": 310
+  },
+  {
+   "p": "frontend/src/views/MainView.vue",
+   "n": "web.screens",
+   "name": "Process screen",
+   "d": "Steps 1-2 workspace: uploads documents, builds the graph and shows it beside the setup panel.",
+   "loc": 489
+  },
+  {
+   "p": "frontend/src/views/Process.vue",
+   "n": "web.screens",
+   "name": "Old process screen",
+   "d": "Older version of the graph-building screen that no route uses any more.",
+   "loc": 1788
+  },
+  {
+   "p": "frontend/src/views/ReportView.vue",
+   "n": "web.screens",
+   "name": "Report screen",
+   "d": "Step 4 screen pairing the graph view with the report being written.",
+   "loc": 308
+  },
+  {
+   "p": "frontend/src/views/SimulationRunView.vue",
+   "n": "web.screens",
+   "name": "Simulation run screen",
+   "d": "Step 3 screen pairing the graph view with the live simulation monitor.",
+   "loc": 393
+  },
+  {
+   "p": "frontend/src/views/SimulationView.vue",
+   "n": "web.screens",
+   "name": "Simulation setup screen",
+   "d": "Step 2 screen pairing the graph view with environment setup for a simulation.",
+   "loc": 381
+  },
+  {
+   "p": "frontend/vite.config.js",
+   "n": "web",
+   "name": "Frontend build config",
+   "d": "Configures the dev server on port 3000 and forwards /api calls to the backend.",
+   "loc": 24
+  },
+  {
+   "p": "scripts/fetch_star_count.py",
+   "n": "upkeep",
+   "name": "Star count fetcher",
+   "d": "Repo maintenance: fetches the GitHub star count for the README chart; not part of the product.",
+   "loc": 117
+  },
+  {
+   "p": "scripts/star_history.py",
+   "n": "upkeep",
+   "name": "Star history chart",
+   "d": "Repo maintenance: records star counts and renders the README star-history chart; not part of the product.",
+   "loc": 1335
+  },
+  {
+   "p": "tests/test_local_star_count_fetch.py",
+   "n": "upkeep",
+   "name": "Star fetch tests",
+   "d": "Tests the star count fetcher's output and error handling.",
+   "loc": 296
+  },
+  {
+   "p": "tests/test_local_star_history.py",
+   "n": "upkeep",
+   "name": "Star chart tests",
+   "d": "Tests the star-history backfill, paging and chart rendering.",
+   "loc": 876
+  }
+ ],
+ "links": [
+  {
+   "a": "f:backend/app/__init__.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/__init__.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/__init__.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/__init__.py",
+   "b": "f:backend/app/api/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/__init__.py",
+   "b": "f:backend/app/api/graph.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/__init__.py",
+   "b": "f:backend/app/api/simulation.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/__init__.py",
+   "b": "f:backend/app/api/report.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/api/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/ontology_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/graph_builder.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/text_processor.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/utils/file_parser.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/utils/zep_lifecycle.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/graph.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/api/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/services/report_agent.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/utils/zep_lifecycle.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/report.py",
+   "b": "f:backend/app/services/zep_tools.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/api/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 3
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/utils/zep_lifecycle.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/api/simulation.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/app/models/__init__.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/models/__init__.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/models/project.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/models/task.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/ontology_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/graph_builder.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/text_processor.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/simulation_config_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/__init__.py",
+   "b": "f:backend/app/services/simulation_ipc.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/utils/zep_paging.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/utils/ontology.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/services/text_processor.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/graph_builder.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "n:llm",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/utils/openai_chat_compat.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/oasis_profile_generator.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/ontology_generator.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/ontology_generator.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/ontology_generator.py",
+   "b": "f:backend/app/utils/file_parser.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/ontology_generator.py",
+   "b": "f:backend/app/utils/ontology.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/report_agent.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/report_agent.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/report_agent.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/report_agent.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/report_agent.py",
+   "b": "f:backend/app/services/zep_tools.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "n:llm",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "f:backend/app/utils/openai_chat_compat.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_config_generator.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_ipc.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/services/simulation_config_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_manager.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/services/simulation_ipc.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/text_processor.py",
+   "b": "f:backend/app/utils/file_parser.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_entity_reader.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_entity_reader.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_entity_reader.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_entity_reader.py",
+   "b": "f:backend/app/utils/zep_paging.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_entity_reader.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_graph_memory_updater.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_graph_memory_updater.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_graph_memory_updater.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_graph_memory_updater.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/utils/zep_paging.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/services/zep_tools.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/__init__.py",
+   "b": "f:backend/app/utils/file_parser.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/__init__.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/__init__.py",
+   "b": "f:backend/app/utils/locale.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/llm_client.py",
+   "b": "n:llm",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/llm_client.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/llm_client.py",
+   "b": "f:backend/app/utils/openai_chat_compat.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/retry.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/zep.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/app/utils/zep.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/zep.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/zep_paging.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/zep_paging.py",
+   "b": "f:backend/app/utils/logger.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/app/utils/zep_paging.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/run.py",
+   "b": "f:backend/app/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/run.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/scripts/run_parallel_simulation.py",
+   "b": "n:oasis",
+   "k": "import",
+   "w": 4
+  },
+  {
+   "a": "f:backend/scripts/run_reddit_simulation.py",
+   "b": "n:oasis",
+   "k": "import",
+   "w": 4
+  },
+  {
+   "a": "f:backend/scripts/run_twitter_simulation.py",
+   "b": "n:oasis",
+   "k": "import",
+   "w": 4
+  },
+  {
+   "a": "f:backend/scripts/test_profile_format.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "b": "f:backend/app/services/graph_builder.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "b": "f:backend/app/utils/zep_paging.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_llm_json_responses.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_api_errors.py",
+   "b": "f:backend/app/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_api_errors.py",
+   "b": "f:backend/app/api/graph.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_api_errors.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_api_errors.py",
+   "b": "f:backend/app/utils/llm_client.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_attributes.py",
+   "b": "f:backend/app/services/ontology_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_attributes.py",
+   "b": "f:backend/app/services/graph_builder.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_attributes.py",
+   "b": "f:backend/app/utils/ontology.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_attributes.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_ontology_generator.py",
+   "b": "f:backend/app/services/ontology_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_openai_chat_compat.py",
+   "b": "f:backend/app/utils/openai_chat_compat.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_platform_profiles.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_profile_field_normalization.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_report_tool_result_sanitizer.py",
+   "b": "f:backend/app/services/report_agent.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_simulation_prepare_failure.py",
+   "b": "f:backend/app/__init__.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_simulation_prepare_failure.py",
+   "b": "f:backend/app/config.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_simulation_prepare_failure.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_simulation_prepare_failure.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_contracts.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_contracts.py",
+   "b": "f:backend/app/services/graph_builder.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_contracts.py",
+   "b": "f:backend/app/services/oasis_profile_generator.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_contracts.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_contracts.py",
+   "b": "f:backend/app/services/zep_tools.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_cloud_validation_script.py",
+   "b": "f:backend/scripts/validate_zep_cloud_integration.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_zep_edge_paging.py",
+   "b": "f:backend/app/utils/zep_paging.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_entity_reader_edges.py",
+   "b": "f:backend/app/services/zep_entity_reader.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_entity_reader_edges.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_lifecycle.py",
+   "b": "f:backend/app/api/graph.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_lifecycle.py",
+   "b": "f:backend/app/api/simulation.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_lifecycle.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_lifecycle.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_lifecycle.py",
+   "b": "f:backend/app/models/task.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_graph_memory_updater.py",
+   "b": "f:backend/app/services/zep_graph_memory_updater.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/api/graph.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/api/report.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/api/simulation.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/models/project.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_report_barrier.py",
+   "b": "f:backend/app/utils/zep_lifecycle.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_retry_and_client.py",
+   "b": "n:zep",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_retry_and_client.py",
+   "b": "f:backend/app/utils/zep.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_simulation_barrier.py",
+   "b": "f:backend/app/api/simulation.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:backend/tests/test_zep_simulation_barrier.py",
+   "b": "f:backend/app/services/simulation_runner.py",
+   "k": "import",
+   "w": 2
+  },
+  {
+   "a": "f:backend/tests/test_zep_simulation_barrier.py",
+   "b": "f:backend/app/services/simulation_manager.py",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/api/graph.js",
+   "b": "f:frontend/src/api/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/api/index.js",
+   "b": "f:frontend/src/i18n/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/api/report.js",
+   "b": "f:frontend/src/api/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/api/simulation.js",
+   "b": "f:frontend/src/api/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/HistoryDatabase.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/LanguageSwitcher.vue",
+   "b": "f:frontend/src/i18n/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step1GraphBuild.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step2EnvSetup.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step3Simulation.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step3Simulation.vue",
+   "b": "f:frontend/src/api/report.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step4Report.vue",
+   "b": "f:frontend/src/api/report.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step5Interaction.vue",
+   "b": "f:frontend/src/api/report.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/components/Step5Interaction.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/main.js",
+   "b": "f:frontend/src/App.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/main.js",
+   "b": "f:frontend/src/router/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/main.js",
+   "b": "f:frontend/src/i18n/index.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/Home.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/MainView.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/SimulationView.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/SimulationRunView.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/ReportView.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/router/index.js",
+   "b": "f:frontend/src/views/InteractionView.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/Home.vue",
+   "b": "f:frontend/src/components/HistoryDatabase.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/Home.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/Home.vue",
+   "b": "f:frontend/src/store/pendingUpload.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/components/GraphPanel.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/components/Step5Interaction.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/api/report.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/InteractionView.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/components/GraphPanel.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/components/Step1GraphBuild.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/components/Step2EnvSetup.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/store/pendingUpload.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/MainView.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/Process.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/Process.vue",
+   "b": "f:frontend/src/store/pendingUpload.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/components/GraphPanel.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/components/Step4Report.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/api/report.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/ReportView.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationRunView.vue",
+   "b": "f:frontend/src/components/GraphPanel.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationRunView.vue",
+   "b": "f:frontend/src/components/Step3Simulation.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationRunView.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationRunView.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationRunView.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationView.vue",
+   "b": "f:frontend/src/components/GraphPanel.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationView.vue",
+   "b": "f:frontend/src/components/Step2EnvSetup.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationView.vue",
+   "b": "f:frontend/src/api/graph.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationView.vue",
+   "b": "f:frontend/src/api/simulation.js",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/views/SimulationView.vue",
+   "b": "f:frontend/src/components/LanguageSwitcher.vue",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:frontend/src/api/graph.js",
+   "b": "f:backend/app/api/graph.py",
+   "k": "http",
+   "w": 5,
+   "labels": [
+    "POST /api/graph/ontology/generate",
+    "POST /api/graph/build",
+    "GET /api/graph/task/<task_id>",
+    "GET /api/graph/data/<graph_id>",
+    "GET /api/graph/project/<project_id>"
+   ]
+  },
+  {
+   "a": "f:frontend/src/api/report.js",
+   "b": "f:backend/app/api/report.py",
+   "k": "http",
+   "w": 5,
+   "labels": [
+    "POST /api/report/generate",
+    "GET /api/report/<report_id>/agent-log",
+    "GET /api/report/<report_id>/console-log",
+    "GET /api/report/<report_id>",
+    "POST /api/report/chat"
+   ]
+  },
+  {
+   "a": "f:frontend/src/api/simulation.js",
+   "b": "f:backend/app/api/simulation.py",
+   "k": "http",
+   "w": 21,
+   "labels": [
+    "POST /api/simulation/create",
+    "POST /api/simulation/prepare",
+    "POST /api/simulation/prepare/status",
+    "GET /api/simulation/<simulation_id>",
+    "GET /api/simulation/<simulation_id>/profiles",
+    "GET /api/simulation/<simulation_id>/profiles/realtime",
+    "GET /api/simulation/<simulation_id>/config",
+    "GET /api/simulation/<simulation_id>/config/realtime",
+    "GET /api/simulation/list",
+    "POST /api/simulation/start",
+    "POST /api/simulation/stop",
+    "GET /api/simulation/<simulation_id>/run-status",
+    "GET /api/simulation/<simulation_id>/run-status/detail",
+    "GET /api/simulation/<simulation_id>/posts",
+    "GET /api/simulation/<simulation_id>/timeline",
+    "GET /api/simulation/<simulation_id>/agent-stats",
+    "GET /api/simulation/<simulation_id>/actions",
+    "POST /api/simulation/close-env",
+    "POST /api/simulation/env-status",
+    "POST /api/simulation/interview/batch",
+    "GET /api/simulation/history"
+   ]
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/scripts/run_parallel_simulation.py",
+   "k": "call",
+   "w": 1,
+   "labels": [
+    "starts simulation process"
+   ]
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/scripts/run_twitter_simulation.py",
+   "k": "call",
+   "w": 1,
+   "labels": [
+    "starts simulation process"
+   ]
+  },
+  {
+   "a": "f:backend/app/services/simulation_runner.py",
+   "b": "f:backend/scripts/run_reddit_simulation.py",
+   "k": "call",
+   "w": 1,
+   "labels": [
+    "starts simulation process"
+   ]
+  },
+  {
+   "a": "f:backend/app/services/simulation_ipc.py",
+   "b": "f:backend/scripts/run_parallel_simulation.py",
+   "k": "rpc",
+   "w": 1,
+   "labels": [
+    "commands and status"
+   ]
+  }
+ ],
+ "flows": [
+  {
+   "id": "build-knowledge-graph",
+   "title": "Documents to knowledge graph",
+   "description": "Uploaded documents are read, an ontology is designed by the LLM, and the text is loaded into a Zep Cloud graph.",
+   "steps": [
+    {
+     "ref": "f:frontend/src/views/Home.vue",
+     "note": "The user drops in their documents, types what they want to predict and clicks Start; the files are parked in the upload hand-off store."
+    },
+    {
+     "ref": "f:frontend/src/views/MainView.vue",
+     "note": "The process screen picks up the files and sends them to the backend as an ontology request."
+    },
+    {
+     "ref": "f:frontend/src/api/graph.js",
+     "note": "generateOntology posts the files to /api/graph/ontology/generate, then buildGraph posts to /api/graph/build and getTaskStatus polls progress."
+    },
+    {
+     "ref": "f:backend/app/api/graph.py",
+     "note": "The endpoint creates a project, saves each file under a random name and extracts its text."
+    },
+    {
+     "ref": "f:backend/app/utils/file_parser.py",
+     "note": "Text is pulled out of each PDF, Markdown or text file."
+    },
+    {
+     "ref": "f:backend/app/services/ontology_generator.py",
+     "note": "The LLM reads a sample of the text and proposes the types of people, groups and relationships to track."
+    },
+    {
+     "ref": "n:llm",
+     "note": "The model returns the ontology as JSON, which is cleaned and capped before saving."
+    },
+    {
+     "ref": "f:backend/app/services/graph_builder.py",
+     "note": "On build, a background thread splits the text into chunks, creates a Zep graph, applies the ontology and uploads the chunks in batches."
+    },
+    {
+     "ref": "n:zep",
+     "note": "Zep Cloud extracts entities and relationships from the chunks; when it finishes, the graph data is shown in the graph viewer."
+    }
+   ]
+  },
+  {
+   "id": "prepare-and-run-simulation",
+   "title": "Personas and simulation run",
+   "description": "Graph entities become AI personas, the LLM plans the simulation, and OASIS runs it as a separate process.",
+   "steps": [
+    {
+     "ref": "f:frontend/src/components/Step2EnvSetup.vue",
+     "note": "After the graph is built a simulation is created, and step 2 asks the backend to prepare it, showing personas as they appear."
+    },
+    {
+     "ref": "f:backend/app/api/simulation.py",
+     "note": "/api/simulation/prepare counts the entities and starts a background preparation task."
+    },
+    {
+     "ref": "f:backend/app/services/simulation_manager.py",
+     "note": "The manager reads the graph's entities, has personas generated, then has the simulation config generated."
+    },
+    {
+     "ref": "f:backend/app/services/oasis_profile_generator.py",
+     "note": "Each entity is enriched with Zep searches and turned into a detailed Twitter and Reddit persona by the LLM, several at a time."
+    },
+    {
+     "ref": "f:backend/app/services/simulation_config_generator.py",
+     "note": "The LLM decides simulated time, events and how active each agent is, in several smaller steps."
+    },
+    {
+     "ref": "f:frontend/src/components/Step3Simulation.vue",
+     "note": "The user clicks start; step 3 calls /api/simulation/start and then polls run status and actions."
+    },
+    {
+     "ref": "f:backend/app/services/simulation_runner.py",
+     "note": "The runner launches run_parallel_simulation.py as a child process, watches its action logs and, if enabled, sends activity to the graph memory updater."
+    },
+    {
+     "ref": "f:backend/scripts/run_parallel_simulation.py",
+     "note": "The script builds OASIS Twitter and Reddit environments from the personas and config and steps through the rounds."
+    },
+    {
+     "ref": "n:oasis",
+     "note": "OASIS has each LLM-driven agent post, like, comment or follow, and every action is logged for the live view."
+    }
+   ]
+  },
+  {
+   "id": "report-and-chat",
+   "title": "Prediction report and chat",
+   "description": "The report agent researches the graph and interviews agents to write the report, then answers follow-up questions.",
+   "steps": [
+    {
+     "ref": "f:frontend/src/components/Step3Simulation.vue",
+     "note": "When the simulation ends the user asks for a report; generateReport posts to /api/report/generate and the app opens the report screen."
+    },
+    {
+     "ref": "f:backend/app/api/report.py",
+     "note": "The endpoint waits for graph ingestion, then starts a background thread running the report agent and saves the report when it is done."
+    },
+    {
+     "ref": "f:backend/app/services/report_agent.py",
+     "note": "The agent plans an outline, then writes each section in think-act-reflect rounds, calling research tools as it goes."
+    },
+    {
+     "ref": "f:backend/app/services/zep_tools.py",
+     "note": "Tools such as insight_forge, panorama_search and quick_search query the graph; interview_agents asks simulated people for their views."
+    },
+    {
+     "ref": "n:zep",
+     "note": "Zep Cloud returns matching facts, entities and relationships from the graph, including memories added during the simulation."
+    },
+    {
+     "ref": "f:backend/app/services/simulation_ipc.py",
+     "note": "Interview questions are dropped as command files that the still-running simulation process picks up and answers."
+    },
+    {
+     "ref": "f:frontend/src/components/Step4Report.vue",
+     "note": "Step 4 polls the agent and console logs so the user can watch sections and tool calls appear live."
+    },
+    {
+     "ref": "f:frontend/src/components/Step5Interaction.vue",
+     "note": "In step 5 the user chats via /api/report/chat or interviews chosen agents via /api/simulation/interview/batch."
+    }
+   ]
+  }
+ ],
+ "health": {
+  "issues": [
+   {
+    "id": "no-auth-open-cors",
+    "kind": "review",
+    "severity": "high",
+    "title": "No login on any endpoint, open to every website",
+    "detail": "No endpoint checks who is calling, CORS allows any origin on /api/*, and run.py binds to 0.0.0.0 by default. Anyone who can reach port 5001 can spend the LLM and Zep credits, start processes, or delete projects and graphs.",
+    "locations": [
+     {
+      "file": "backend/app/__init__.py",
+      "line": 43
+     }
+    ]
+   },
+   {
+    "id": "traceback-leak",
+    "kind": "review",
+    "severity": "medium",
+    "title": "Error responses expose server internals",
+    "detail": "About 50 error handlers return the full Python traceback in the JSON response (30 in simulation.py, 17 in report.py, 3 in graph.py). That reveals file paths and code to any caller.",
+    "locations": [
+     {
+      "file": "backend/app/api/simulation.py",
+      "line": 119
+     }
+    ]
+   },
+   {
+    "id": "unbounded-profile-threads",
+    "kind": "review",
+    "severity": "medium",
+    "title": "Caller decides how many threads to start",
+    "detail": "parallel_profile_count is read straight from the request with no upper limit and used as the thread pool size for persona generation, so one request can start a huge number of concurrent threads and LLM calls.",
+    "locations": [
+     {
+      "file": "backend/app/api/simulation.py",
+      "line": 499
+     }
+    ]
+   },
+   {
+    "id": "default-secret-key",
+    "kind": "review",
+    "severity": "low",
+    "title": "Hard-coded fallback secret key",
+    "detail": "If SECRET_KEY is not set, Flask uses the public value 'mirofish-secret-key'. The app does not appear to use sessions yet, so the risk is low but would matter if they were added.",
+    "locations": [
+     {
+      "file": "backend/app/config.py",
+      "line": 21
+     }
+    ]
+   },
+   {
+    "id": "tasks-never-cleaned",
+    "kind": "review",
+    "severity": "low",
+    "title": "Task records and temp files pile up",
+    "detail": "TaskManager keeps every task in memory and cleanup_old_tasks is never called. Report downloads can also write temporary files with delete=False that are never removed.",
+    "locations": [
+     {
+      "file": "backend/app/models/task.py",
+      "line": 174
+     }
+    ]
+   },
+   {
+    "id": "report-status-method-mismatch",
+    "kind": "review",
+    "severity": "low",
+    "title": "Frontend report-status call uses wrong method",
+    "detail": "getReportStatus sends GET to /api/report/generate/status, but the backend only accepts POST there, so the call would fail with 405. It is currently unused.",
+    "locations": [
+     {
+      "file": "frontend/src/api/report.js",
+      "line": 16
+     }
+    ]
+   }
+  ]
+ }
+}

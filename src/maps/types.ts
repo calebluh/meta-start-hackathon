@@ -91,6 +91,8 @@ export interface GraphData {
   schema: 'floorplan/graph@1';
   /** `logo` is our extension: a URL to the project's favicon, used on uniforms and badges. */
   project: { name: string; summary: string; logo?: string };
+  /** Our extension: where the map came from, for the on-screen credit. */
+  source?: { repo: string; commit: string; license: string };
   nodes: GraphNode[];
   files: GraphFile[];
   links: GraphLink[];

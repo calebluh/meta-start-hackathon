@@ -1,4 +1,5 @@
 import {
+  AssetManager,
   BoxGeometry,
   CanvasTexture,
   Color,
@@ -31,13 +32,14 @@ import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
 import { District } from './diorama-components.js';
 import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
-import type { HealthIssue, NodeKind } from './maps/types.js';
+import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
 import { pickTheme } from './rooms/themes.js';
 import {
   app,
   currentFlow,
   currentStep,
   cycleFlow,
+  cycleMap,
   enterRoom,
   leaveRoom,
   nextStep,
@@ -169,6 +171,9 @@ export class DioramaSystem extends createSystem({
   private layout!: DioramaLayout;
   private root!: Entity;
   private sitesById = new Map<string, Site>();
+  /** Every entity the diorama created, so a map switch can remove them. */
+  private entities: Entity[] = [];
+  private builtGraph: GraphData | null = null;
   private conduits: Conduit[] = [];
   private labels: Mesh[] = [];
   private beacons: Beacon[] = [];
@@ -207,6 +212,7 @@ export class DioramaSystem extends createSystem({
 
   private buildDiorama(): void {
     const graph = app.graph;
+    this.builtGraph = graph;
     const workspace = this.world.getSceneEntity('workspace');
     this.layout = buildLayout(graph);
     const group = new Group();
@@ -244,6 +250,7 @@ export class DioramaSystem extends createSystem({
     const addSite = (id: string, mesh: Mesh, material: MeshStandardMaterial, roof: Vector3, labelHeight: number, boost = 1) => {
       const node = nodesById.get(id)!;
       const entity = this.world.createTransformEntity(mesh, { parent: this.root });
+      this.entities.push(entity);
       entity.addComponent(District, { nodeId: id });
       entity.addComponent(RayInteractable);
       const label = makeLabel(node.label, labelHeight, KIND_COLORS[node.kind]);
@@ -367,11 +374,38 @@ export class DioramaSystem extends createSystem({
       }
     }
 
+    if (graph.project.logo) this.addLogoPlaque(group, graph.project.logo);
+
     // The pulse that travels along a flow.
     this.pulse = new Mesh(new SphereGeometry(0.0055, 16, 12), new MeshBasicMaterial({ color: '#ffffff' }));
     this.pulse.visible = false;
     this.pulse.renderOrder = 12;
     group.add(this.pulse);
+  }
+
+  /** Removes the current diorama (on switching codebase). */
+  private disposeDiorama(): void {
+    for (const e of this.entities) e.dispose();
+    this.entities = [];
+    this.root?.dispose();
+    this.sitesById.clear();
+    this.conduits = [];
+    this.labels = [];
+    this.beacons = [];
+    this.shownStep = -1;
+  }
+
+  /** The project's logo on a small plaque at the front-left of the board. */
+  private addLogoPlaque(group: Group, url: string): void {
+    const plaque = new Mesh(new PlaneGeometry(0.06, 0.06), new MeshBasicMaterial({ transparent: true }));
+    plaque.rotation.x = -Math.PI / 2 + 0.5;
+    plaque.position.set(-this.layout.width / 2 + 0.04, 0.012, this.layout.depth / 2 + 0.025);
+    group.add(plaque);
+    void AssetManager.loadTexture(`${import.meta.env.BASE_URL}${url}`, `logo:${url}`).then((texture) => {
+      texture.colorSpace = SRGBColorSpace;
+      (plaque.material as MeshBasicMaterial).map = texture;
+      (plaque.material as MeshBasicMaterial).needsUpdate = true;
+    });
   }
 
   // ------------------------------------------------------------ controls
@@ -392,6 +426,7 @@ export class DioramaSystem extends createSystem({
     on('btn-play', () => (app.stepIndex >= 0 ? stopFlow() : startFlow()));
     on('btn-next', () => nextStep());
     on('btn-flow', () => cycleFlow());
+    on('btn-map', () => cycleMap());
     on('btn-inside', () => {
       if (app.mode === 'room') leaveRoom();
       else {
@@ -420,6 +455,11 @@ export class DioramaSystem extends createSystem({
 
   /** Brings the board, panels and pulse in line with the shared state. */
   private render(): void {
+    if (this.builtGraph !== app.graph) {
+      this.disposeDiorama();
+      this.buildDiorama();
+    }
+    this.setText(this.controls, 'map-label', app.graph.project.name);
     const flow = currentFlow();
     const step = currentStep();
     this.setText(this.controls, 'flow-label', flow ? flow.title : 'No flows');
@@ -460,6 +500,10 @@ export class DioramaSystem extends createSystem({
       'insp-stats',
       `${files} files · ${loc.toLocaleString('en-US')} lines · point at a building and pinch to inspect it`,
     );
+    if (graph.source) {
+      const repo = graph.source.repo.replace(/^https?:\/\/github\.com\//, '');
+      this.setText(this.inspector, 'insp-stats', `${repo} @ ${graph.source.commit.slice(0, 7)} (${graph.source.license}) · ${files} files · ${loc.toLocaleString('en-US')} lines · pinch a building to inspect it`);
+    }
     const issues = graph.health?.issues ?? [];
     this.setShown('insp-alert-box', issues.length > 0);
     this.setText(

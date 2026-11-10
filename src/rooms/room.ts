@@ -1,4 +1,5 @@
 import {
+  AssetManager,
   BackSide,
   CircleGeometry,
   Color,
@@ -12,9 +13,11 @@ import {
   type Object3D,
   QuadraticBezierCurve3,
   Quaternion,
+  PlaneGeometry,
   Pressed,
   RayInteractable,
   SphereGeometry,
+  SRGBColorSpace,
   TorusGeometry,
   type UIKit,
   type UIKitMLAsset,
@@ -243,6 +246,19 @@ export class RoomSystem extends createSystem({
     sign.mesh.position.set(0, 2.55, -(ROOM_RADIUS - 0.12));
     group.add(sign.mesh);
     this.bubbles.push(sign);
+
+    // The company's logo beside the sign: this building belongs to the project.
+    const logoUrl = app.graph.project.logo;
+    if (logoUrl) {
+      const logo = new Mesh(new PlaneGeometry(0.55, 0.55), new MeshBasicMaterial({ transparent: true }));
+      logo.position.set(-1.6, 2.55, -(ROOM_RADIUS - 0.14));
+      group.add(logo);
+      void AssetManager.loadTexture(`${import.meta.env.BASE_URL}${logoUrl}`, `logo:${logoUrl}`).then((texture) => {
+        texture.colorSpace = SRGBColorSpace;
+        (logo.material as MeshBasicMaterial).map = texture;
+        (logo.material as MeshBasicMaterial).needsUpdate = true;
+      });
+    }
 
     // Stations in an arc in front of the viewer, so nobody needs to turn round.
     const stationAngles = [-55, 0, 55].map((d) => (d * Math.PI) / 180);
