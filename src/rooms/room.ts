@@ -1107,8 +1107,11 @@ export class RoomSystem extends createSystem({
             break;
           }
           // The viewer sits at the room centre: if the straight line passes
-          // too close, walk around the centre on a ring instead.
-          if (this.passesNearViewer(pos, task.to)) {
+          // too close, walk around the centre on a ring instead. The spot
+          // where a robot stands to talk is closer than that, so it is
+          // walked to directly once nothing nearer lies on the way.
+          const keep = Math.min(SAFE_RADIUS, Math.hypot(task.to.x, task.to.z) - 0.05);
+          if (this.passesNearViewer(pos, task.to, keep)) {
             const from = Math.atan2(pos.z, pos.x);
             let diff = Math.atan2(task.to.z, task.to.x) - from;
             while (diff > Math.PI) diff -= Math.PI * 2;
@@ -1187,23 +1190,36 @@ export class RoomSystem extends createSystem({
         if (d >= minGap || d < 1e-4) continue;
         const push = minGap - d;
         const share = a === this.talking ? 0 : b === this.talking ? 1 : 0.5;
+        const ra = Math.hypot(pa.x, pa.z);
+        const rb = Math.hypot(pb.x, pb.z);
         pa.x -= (dx / d) * push * share;
         pa.z -= (dz / d) * push * share;
         pb.x += (dx / d) * push * (1 - share);
         pb.z += (dz / d) * push * (1 - share);
+        this.holdBack(pa, ra);
+        this.holdBack(pb, rb);
       }
     }
   }
 
-  /** True when the straight walk from `a` to `b` comes within SAFE_RADIUS of the viewer. */
-  private passesNearViewer(a: Vector3, b: Vector3): boolean {
+  /** A push from another worker never moves one nearer the seated viewer than the safe distance. */
+  private holdBack(p: Vector3, before: number): void {
+    const r = Math.hypot(p.x, p.z);
+    const least = Math.min(before, SAFE_RADIUS);
+    if (r >= least || r < 1e-4) return;
+    p.x *= least / r;
+    p.z *= least / r;
+  }
+
+  /** True when the straight walk from `a` to `b` comes within `radius` of the viewer. */
+  private passesNearViewer(a: Vector3, b: Vector3, radius: number): boolean {
     const dx = b.x - a.x;
     const dz = b.z - a.z;
     const len2 = dx * dx + dz * dz;
     const t = len2 > 0 ? Math.max(0, Math.min(1, -(a.x * dx + a.z * dz) / len2)) : 0;
     const cx = a.x + dx * t;
     const cz = a.z + dz * t;
-    return cx * cx + cz * cz < SAFE_RADIUS * SAFE_RADIUS;
+    return cx * cx + cz * cz < radius * radius;
   }
 
   /** Rotates toward a heading; returns true once facing it. */

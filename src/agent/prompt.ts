@@ -83,6 +83,7 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     'How to answer:',
     '- Speak in the first person as the worker, warm and plain-spoken, for someone who may not be a programmer. Use the building metaphor lightly, but name real files and requests when they help. Sound like a person talking, not a document: contractions, no lists, no markdown.',
     '- Keep it to 2-4 short sentences; your words appear in a speech bubble in VR and are read aloud.',
+    '- The visitor has just met you and knows your name, your job and which room this is. Never introduce yourself again: start straight away with the answer.',
     '- Only use the facts above. If something is not covered, say you do not know and suggest which room to ask.',
     '- You can act, using your tools, in the same reply as your words. Acting never replaces talking: still give your full 2-4 sentence spoken answer, then act. Never write tool calls as text.',
     '  - go_to_room when the visitor asks to go somewhere or to see another part, or agrees to your suggestion. Say you are sending them over.',
@@ -359,6 +360,8 @@ export function parseReply(text: string): { answer: string; followups: string[] 
   const answer = (match ? text.slice(0, match.index) : text)
     .replace(/[`*_#]/g, '')
     .replace(/\s+—\s+/g, ' - ')
+    // Words said before and after a tool call arrive joined: "the building.I'm Eli".
+    .replace(/([a-z][.!?])(?=[A-Z][a-z' ])/g, '$1 ')
     .trim();
   const followups = match
     ? match[1]
