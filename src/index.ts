@@ -12,6 +12,7 @@ import { isPaused, onPause, setPaused } from './pause.js';
 import { dive } from './transition.js';
 import { AtmosphereSystem } from './atmosphere.js';
 import { GuideSystem } from './guide-system.js';
+import { landingFailed, landingReady } from './landing.js';
 import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
@@ -54,6 +55,8 @@ World.create(
 
   // Find out now whether natural voices are available, not at the first hello.
   warmVoice();
+
+  void landingReady(world);
 
   // Development shortcuts for testing without a headset. Stripped from builds.
   if (import.meta.env.DEV) {
@@ -111,4 +114,7 @@ World.create(
       if (e.key === 'v') world.getSystem(RoomSystem)?.debugAskText('Tell me about your stripe calls file');
     });
   }
+}).catch((error) => {
+  console.error(error);
+  landingFailed();
 });
