@@ -11,8 +11,10 @@ import {
   Grabbed,
   Group,
   Hovered,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
+  Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -61,6 +63,9 @@ const DIVE_SPAN = 9;
 /** Where the building's base ends up: the floor under a seated viewer. */
 const DIVE_FLOOR_BELOW_HEAD = 1.15;
 
+/** At most this many data packets travel one conduit at a time. */
+const DOTS_PER_CONDUIT = 3;
+
 const KIND_NAMES: Record<NodeKind, string> = {
   ui: 'APP',
   service: 'SERVER',
@@ -104,6 +109,7 @@ interface Conduit {
   weight: number;
   /** Its tube, kept un-rendered; conduits draw as two merged meshes. */
   tube: Mesh;
+  curve?: QuadraticBezierCurve3;
 }
 
 interface Beacon {
@@ -188,6 +194,10 @@ export class DioramaSystem extends createSystem({
   private conduits: Conduit[] = [];
   private conduitMeshes: Mesh[] = [];
   private conduitFocus: string | null | undefined = undefined;
+  /** Data packets travelling along the conduits, all in one instanced mesh. */
+  private flowDots: InstancedMesh | null = null;
+  private dotMatrix = new Matrix4();
+  private dotScale = new Vector3();
   private labels: Mesh[] = [];
   private beacons: Beacon[] = [];
 
@@ -371,6 +381,7 @@ export class DioramaSystem extends createSystem({
       const curve = new QuadraticBezierCurve3(from.clone(), mid, to.clone());
       const radius = 0.0007 + 0.0004 * Math.log2(1 + c.weight);
       c.tube = new Mesh(new TubeGeometry(curve, 28, radius, 5, false));
+      c.curve = curve;
       this.conduits.push(c);
       this.sitesById.get(c.a)!.conduits.push(c);
       this.sitesById.get(c.b)!.conduits.push(c);
@@ -416,10 +427,26 @@ export class DioramaSystem extends createSystem({
     this.pulse.visible = false;
     this.pulse.renderOrder = 12;
     group.add(this.pulse);
+
+    // Packets of data travel each conduit, more on the busier ones.
+    if (this.conduits.length) {
+      this.flowDots = ignoreRays(
+        new InstancedMesh(
+          new SphereGeometry(0.0022, 8, 6),
+          new MeshBasicMaterial({ color: '#c8f4ff', transparent: true, opacity: 0.9, depthWrite: false }),
+          this.conduits.length * DOTS_PER_CONDUIT,
+        ),
+      );
+      this.flowDots.frustumCulled = false;
+      this.flowDots.renderOrder = 6;
+      group.add(this.flowDots);
+    }
   }
 
   /** Removes the current diorama (on switching codebase). */
   private disposeDiorama(): void {
+    this.flowDots?.geometry.dispose();
+    this.flowDots = null;
     if (this.diveDir !== 0) this.endDive();
     this.surfaceFrom = null;
     for (const e of this.entities) e.dispose();
@@ -735,6 +762,31 @@ export class DioramaSystem extends createSystem({
    * ones touching the focused part, bright, and the rest, faint when
    * something is focused. Rebuilt only when the focus changes.
    */
+  /** Moves the data packets along their conduits; with a focus, only its own conduits carry any. */
+  private updateFlowDots(time: number): void {
+    const dots = this.flowDots;
+    if (!dots) return;
+    const focus = this.conduitFocus ?? null;
+    let i = 0;
+    for (const c of this.conduits) {
+      const shown = !focus || c.a === focus || c.b === focus;
+      const speed = 0.18 + 0.06 * Math.log2(1 + c.weight);
+      for (let k = 0; k < DOTS_PER_CONDUIT; k += 1, i += 1) {
+        if (!shown || !c.curve || k >= 1 + Math.min(DOTS_PER_CONDUIT - 1, Math.floor(Math.log2(1 + c.weight)))) {
+          this.dotMatrix.makeScale(0, 0, 0);
+        } else {
+          // Each conduit runs from a to b; stagger the packets along it.
+          const t = (time * speed + k / DOTS_PER_CONDUIT + (i % 7) * 0.13) % 1;
+          c.curve.getPoint(t, this.scratch);
+          const size = focus ? 1.5 : 1;
+          this.dotMatrix.makeScale(size, size, size).setPosition(this.scratch);
+        }
+        dots.setMatrixAt(i, this.dotMatrix);
+      }
+    }
+    dots.instanceMatrix.needsUpdate = true;
+  }
+
   private redrawConduits(focus: string | null): void {
     if (focus === this.conduitFocus && this.conduitMeshes.length) return;
     this.conduitFocus = focus;
@@ -798,6 +850,8 @@ export class DioramaSystem extends createSystem({
     // Labels turn to face the viewer.
     this.world.camera.getWorldPosition(this.headWorld);
     for (const label of this.labels) label.lookAt(this.headWorld);
+
+    this.updateFlowDots(time);
 
     for (const b of this.beacons) {
       b.mesh.rotation.y = time * 2 + b.phase;

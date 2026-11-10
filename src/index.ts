@@ -6,6 +6,7 @@ import { pickTheme } from './rooms/themes.js';
 import { app, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
 import { unlock } from './audio/sound.js';
 import { dive } from './transition.js';
+import { AtmosphereSystem } from './atmosphere.js';
 import { GuideSystem } from './guide-system.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
@@ -18,6 +19,7 @@ World.create(
   world.registerSystem(DioramaSystem);
   world.registerSystem(RoomSystem);
   world.registerSystem(GuideSystem);
+  world.registerSystem(AtmosphereSystem);
 
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);
