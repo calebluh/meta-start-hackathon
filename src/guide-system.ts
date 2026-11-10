@@ -225,6 +225,11 @@ export class GuideSystem extends createSystem({
       this.shown = null;
     }
     if (!this.active) return;
+    if (app.menu) {
+      this.holder.visible = false;
+      this.arrow.visible = false;
+      return;
+    }
     if (this.graph !== app.graph) {
       this.graph = app.graph;
       this.suggested = null;

@@ -34,6 +34,7 @@ import {
 } from '@iwsdk/core';
 import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
+import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
 import { District } from './diorama-components.js';
@@ -46,11 +47,11 @@ import {
   currentFlow,
   currentStep,
   cycleFlow,
-  cycleMap,
   enterRoom,
   leaveRoom,
   nextStep,
   onChange,
+  openMenu,
   select,
   startFlow,
   stopFlow,
@@ -230,6 +231,7 @@ export class DioramaSystem extends createSystem({
   /** Room to surface from, once RoomSystem has taken its room down. */
   private surfaceFrom: string | null = null;
   private lastMode: 'table' | 'room' = 'table';
+  private menuShown: boolean | null = null;
   private lastRoom: string | null = null;
 
   init(): void {
@@ -493,7 +495,7 @@ export class DioramaSystem extends createSystem({
     on('btn-play', () => (app.stepIndex >= 0 ? stopFlow() : startFlow()));
     on('btn-next', () => nextStep());
     on('btn-flow', () => cycleFlow());
-    on('btn-map', () => cycleMap());
+    on('btn-map', () => openMenu());
     on('btn-inside', () => {
       if (app.mode === 'room') leaveRoom();
       else {
@@ -523,7 +525,13 @@ export class DioramaSystem extends createSystem({
   /** Board and desk show at the table, and through a dive either way. */
   private applyVisibility(): void {
     const onTable = (app.mode === 'table' && !this.surfaceFrom) || this.diveDir !== 0;
-    this.root.object3D!.visible = onTable;
+    this.root.object3D!.visible = onTable && !app.menu;
+    // Under the start menu only the desk shows.
+    if (app.menu !== this.menuShown) {
+      this.menuShown = app.menu;
+      setPanelShown(this.world, 'inspector-panel', !app.menu);
+      setPanelShown(this.world, 'controls-panel', !app.menu);
+    }
     // Inside a room the desk would hide the floor; the panels stay.
     const desk = this.world.getSceneObject('desk');
     // The desk drops away as a dive starts, so the city rises around the viewer.
@@ -606,7 +614,7 @@ export class DioramaSystem extends createSystem({
       this.disposeDiorama();
       this.buildDiorama();
     }
-    this.setText(this.controls, 'map-label', app.graph.project.name);
+    this.setText(this.controls, 'map-label', 'Demos');
     const flow = currentFlow();
     const step = currentStep();
     this.setText(this.controls, 'flow-label', flow ? flow.title : 'No flows');

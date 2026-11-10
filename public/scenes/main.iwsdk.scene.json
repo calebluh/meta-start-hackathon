@@ -145,6 +145,31 @@
             "RayInteractable": {},
             "PokeInteractable": {}
           }
+        },
+        {
+          "id": "menu-panel",
+          "name": "Menu Panel",
+          "content": {
+            "type": "asset",
+            "asset": "menu"
+          },
+          "transform": {
+            "position": [
+              0,
+              0.3,
+              -0.08
+            ],
+            "rotationDeg": [
+              -12,
+              0,
+              0
+            ],
+            "scale": 0.1
+          },
+          "components": {
+            "RayInteractable": {},
+            "PokeInteractable": {}
+          }
         }
       ]
     },

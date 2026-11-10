@@ -14,6 +14,8 @@ export interface FlowStepState {
 export const app = {
   /** Id of the bundled map, as the agent server knows it. */
   mapId: DEFAULT_MAP,
+  /** The start menu is up: pick a demo before anything else shows. */
+  menu: true,
   graph: MAPS[DEFAULT_MAP] as GraphData,
   /** `table`: the diorama on the desk. `room`: sitting inside one part. */
   mode: 'table' as 'table' | 'room',
@@ -48,7 +50,7 @@ export function onChange(listener: () => void): () => void {
 function emit(): void {
   // Development: a one-line state trace, for automated interaction tests.
   if (import.meta.env.DEV) {
-    console.log(`[state] map=${app.mapId} mode=${app.mode} room=${app.roomNode} selected=${app.selected} step=${app.stepIndex} flow=${app.flowIndex}`);
+    console.log(`[state] menu=${app.menu} map=${app.mapId} mode=${app.mode} room=${app.roomNode} selected=${app.selected} step=${app.stepIndex} flow=${app.flowIndex}`);
   }
   for (const l of listeners) l();
 }
@@ -129,7 +131,27 @@ export function cycleMap(): void {
   setMap(ids[(ids.indexOf(app.mapId) + 1) % ids.length]);
 }
 
+/** Back to the start menu, from the table or a room. */
+export function openMenu(): void {
+  app.menu = true;
+  app.mode = 'table';
+  app.roomNode = null;
+  app.selected = null;
+  app.stepIndex = -1;
+  app.playing = false;
+  app.handoff = null;
+  emit();
+}
+
+/** Closes the menu on the chosen demo codebase. */
+export function chooseDemo(id: string): void {
+  app.menu = false;
+  if (id !== app.mapId && MAPS[id]) setMap(id);
+  else emit();
+}
+
 export function enterRoom(id: string): void {
+  app.menu = false;
   app.mode = 'room';
   app.roomNode = id;
   emit();

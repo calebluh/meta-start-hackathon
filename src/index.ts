@@ -8,6 +8,7 @@ import { unlock } from './audio/sound.js';
 import { dive } from './transition.js';
 import { AtmosphereSystem } from './atmosphere.js';
 import { GuideSystem } from './guide-system.js';
+import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
 
@@ -20,6 +21,7 @@ World.create(
   world.registerSystem(RoomSystem);
   world.registerSystem(GuideSystem);
   world.registerSystem(AtmosphereSystem);
+  world.registerSystem(MenuSystem);
 
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);

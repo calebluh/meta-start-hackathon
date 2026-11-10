@@ -1,0 +1,170 @@
+<!--
+  Start menu: pick a demo codebase. Designed for a scene scale of 0.1
+  (1px = 1 mm), so this panel is about 76 cm wide in the headset. Each demo
+  card is one big target to point at and pinch, or touch with a fingertip.
+  Stats are filled in at runtime by MenuSystem.
+-->
+<style>
+  .root {
+    flex-direction: column;
+    width: 760px;
+  }
+
+  .content {
+    flex-direction: column;
+    gap: 16px;
+    padding: 26px;
+  }
+
+  .eyebrow {
+    color: #4fd1c5;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 1.4px;
+  }
+
+  .title {
+    color: #161b22;
+    font-size: 34px;
+    font-weight: 700;
+  }
+
+  .lead {
+    color: #3a414a;
+    font-size: 17px;
+    line-height: 1.35;
+    width: 700px;
+  }
+
+  .cards {
+    flex-direction: row;
+    gap: 14px;
+  }
+
+  .card {
+    flex-direction: column;
+    gap: 10px;
+    width: 224px;
+    padding: 16px;
+    border-radius: 16px;
+    border-width: 2px;
+    border-color: #2b3440;
+    background-color: #161b22;
+  }
+
+  .card:hover {
+    border-color: #4fd1c5;
+    background-color: #1c2630;
+  }
+
+  .info {
+    border-color: #3a2f55;
+    background-color: #17141f;
+  }
+
+  .badge {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .logo {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+  }
+
+  .name {
+    color: #fafaf7;
+    font-size: 22px;
+    font-weight: 700;
+  }
+
+  .pitch {
+    color: #c9d1d9;
+    font-size: 15px;
+    line-height: 1.3;
+    width: 190px;
+  }
+
+  .stats {
+    color: #8b949e;
+    font-size: 13px;
+    width: 190px;
+  }
+
+  .go {
+    color: #4fd1c5;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .skill {
+    color: #c4a7ff;
+    font-size: 15px;
+    font-weight: 700;
+  }
+
+  .hint-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .hint {
+    color: #59616b;
+    font-size: 15px;
+  }
+
+  .title:dark {
+    color: #fafaf7;
+  }
+
+  .lead:dark {
+    color: #c9d1d9;
+  }
+
+  .hint:dark {
+    color: #9aa3ad;
+  }
+</style>
+<Panel class="root">
+  <div class="content">
+    <span class="eyebrow">CODEBASE DIORAMA</span>
+    <span class="title">Step inside a codebase</span>
+    <span class="lead">Each demo is a real software project built as a little city. Walk into any part and talk with the robots who run it.</span>
+    <div class="cards">
+      <div id="card-mirofish" class="card">
+        <img class="logo" src="/maps/mirofish/logo.png" />
+        <span class="name">MiroFish</span>
+        <span class="pitch">Open-source AI that simulates how people react to the news, then predicts what happens next.</span>
+        <span id="stats-mirofish" class="stats">...</span>
+        <span class="go">Pinch to start</span>
+      </div>
+      <div id="card-larder" class="card">
+        <div class="badge" background-color="#3fb950">
+          <ShoppingBasket width="32" height="32" color="#0d1117"></ShoppingBasket>
+        </div>
+        <span class="name">Larder</span>
+        <span class="pitch">A small meal-kit shop: a website, billing day and a kitchen. A gentle first visit.</span>
+        <span id="stats-larder" class="stats">...</span>
+        <span class="go">Pinch to start</span>
+      </div>
+      <div class="card info">
+        <div class="badge" background-color="#8b5cf6">
+          <Sparkles width="32" height="32" color="#0d1117"></Sparkles>
+        </div>
+        <span class="name">Your code</span>
+        <span class="pitch">Install the Codebase Diorama skill for Claude Code and ask it to map your own repo.</span>
+        <span class="stats">Runs on your machine with your own Meta AI key.</span>
+        <span class="skill">/codebase-diorama</span>
+      </div>
+    </div>
+    <div class="hint-row">
+      <Hand width="20" height="20" color="#9aa3ad"></Hand>
+      <span class="hint">Point at a card and pinch your thumb and finger, or tap it with a fingertip.</span>
+    </div>
+  </div>
+</Panel>
