@@ -1,4 +1,4 @@
-import { offlineAnswer, suggestedQuestions, type AgentAction, type ChatTurn, type Persona } from './prompt.js';
+import { asksToLeave, offlineAnswer, suggestedQuestions, type AgentAction, type ChatTurn, type Persona } from './prompt.js';
 import type { GraphData } from '../maps/types.js';
 
 /**
@@ -38,6 +38,10 @@ export async function ask(
   } catch (e) {
     console.warn('[agent] falling back to offline answer:', (e as Error).message);
     const others = suggestedQuestions(graph, nodeId).filter((q) => q !== question).slice(0, 2);
+    // Leaving by voice needs no model: it works with no server at all.
+    if (asksToLeave(question)) {
+      return { answer: 'Of course. Back to the city you go. Come and see us again.', followups: [], actions: [{ type: 'back_to_city' }], offline: true };
+    }
     return { answer: offlineAnswer(graph, nodeId, question, persona), followups: others, actions: [], offline: true };
   }
 }

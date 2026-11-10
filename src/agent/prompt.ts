@@ -89,6 +89,7 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '  - play_flow when they want to watch how something happens from start to finish.',
     '  - point_to_room when you mention a neighbouring room (never your own).',
     '  - show_file when you talk about one of your files in detail.',
+    '  - back_to_city when the visitor wants to leave, step outside, or go back to the city, the table or the map. Say goodbye first.',
     '- After your answer, write exactly one more line: FOLLOWUPS: <question> | <question>',
     '  Those are two short questions (under 8 words) the visitor might ask you next.',
   ].join('\n');
@@ -128,6 +129,14 @@ export const AGENT_TOOLS = [
       parameters: { type: 'object', properties: { path: { type: 'string', description: 'File path as listed in your room facts' } }, required: ['path'] },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'back_to_city',
+      description: 'Take the visitor out of the building, back to the little city on their desk.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
 ] as const;
 
 /** An action a worker took, validated against the map. */
@@ -135,7 +144,33 @@ export type AgentAction =
   | { type: 'go_to_room'; roomId: string }
   | { type: 'play_flow'; flowId: string }
   | { type: 'point_to_room'; roomId: string }
-  | { type: 'show_file'; path: string };
+  | { type: 'show_file'; path: string }
+  | { type: 'back_to_city' };
+
+/** An action that ends the conversation because the visitor goes elsewhere. */
+export const leavesRoom = (a: AgentAction): boolean =>
+  a.type === 'go_to_room' || a.type === 'play_flow' || a.type === 'back_to_city';
+
+/**
+ * True when the visitor plainly asked to leave the building. It backs up the
+ * model, and the offline answers, so "take me back to the city" always works
+ * by voice alone.
+ */
+const LEAVE_PATTERNS = [
+  // "take me out", "get me back out"
+  /\b(take|bring|send|get|let) me (back )?out\b/i,
+  // "take me back to the table"
+  /\bme back to (the |my )?(city|table|desk|map|diorama|start)\b/i,
+  // "back to the city" in any sentence; a table or a map can be part of the code, a city cannot
+  /\bback to (the |my )?(city|desk|diorama)\b/i,
+  // "go back to the table", as a request and not in the middle of a question
+  /(^|[.,!?] ?)(please |ok(ay)?,? |thanks,? )*(go|head) back to (the |my )?(city|table|desk|map)\b/i,
+  // "I'd like to leave", "can we go back", "let's step out"
+  /\b(i'?d like to|i would like to|i want to|can i|can we|let'?s|let me|i'?ll|time to) (leave|exit|go back|head back|step out)\b/i,
+  // "leave this room", as a request
+  /(^|[.,!?] ?)(please |ok(ay)?,? |thanks,? )*(leave|exit) (this|the) (room|building)\b/i,
+];
+export const asksToLeave = (question: string): boolean => LEAVE_PATTERNS.some((p) => p.test(question));
 
 /** Keeps only tool calls that name real rooms, flows and files. */
 export function validateActions(
@@ -155,11 +190,13 @@ export function validateActions(
     } else if (name === 'show_file') {
       const file = graph.files.find((f) => f.p === args.path && f.n === nodeId);
       if (file && !actions.some((a) => a.type === 'show_file')) actions.push({ type: 'show_file', path: file.p });
+    } else if (name === 'back_to_city') {
+      actions.push({ type: 'back_to_city' });
     }
   }
   // Leaving the room or starting a flow ends the conversation; keep only the first.
-  const leave = actions.findIndex((a) => a.type === 'go_to_room' || a.type === 'play_flow');
-  return actions.filter((a, i) => (a.type === 'go_to_room' || a.type === 'play_flow' ? i === leave : true));
+  const leave = actions.findIndex(leavesRoom);
+  return actions.filter((a, i) => (leavesRoom(a) ? i === leave : true));
 }
 
 /** Starter questions for a room, before any conversation. */

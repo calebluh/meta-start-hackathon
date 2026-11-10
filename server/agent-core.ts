@@ -1,5 +1,7 @@
 import {
   AGENT_TOOLS,
+  asksToLeave,
+  leavesRoom,
   parseReply,
   systemPrompt,
   validateActions,
@@ -134,6 +136,7 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   const text = leaked.text;
   const promised = goToFallback(graph, req.nodeId, req.question, text, actions);
   if (promised) actions.push(promised);
+  else if (!actions.some(leavesRoom) && asksToLeave(req.question)) actions.push({ type: 'back_to_city' });
   if (!text.trim() && actions.length === 0) throw new AgentError(502, 'Model API returned an empty answer');
   return { ...parseReply(text), actions };
 }
@@ -150,7 +153,7 @@ function goToFallback(
   answer: string,
   actions: AgentAction[],
 ): AgentAction | null {
-  if (actions.some((a) => a.type === 'go_to_room' || a.type === 'play_flow')) return null;
+  if (actions.some(leavesRoom)) return null;
   const asked = /\b(take|send|bring|walk) me\b|\bgo to\b|\bvisit\b|\bhead (over|to)\b|\bcan i see\b/i.test(question);
   const promised = /\b(send(ing)? you|head(ing)? (you )?over|take you|walk you|over you go|let'?s go)\b/i.test(answer);
   if (!asked || !promised) return null;

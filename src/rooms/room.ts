@@ -28,14 +28,14 @@ import {
 import { ask, speak, speakingSeconds, stopSpeaking, voiceLevel } from '../agent/client.js';
 import { LiveMic } from '../agent/live-mic.js';
 import { canRecord } from '../agent/recorder.js';
-import { suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
+import { leavesRoom, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
 import { dive, DIVE_FADE_AT } from '../transition.js';
 import { guideNote } from '../guide.js';
 import { isPaused, onPause, whenResumed } from '../pause.js';
 import { placement } from '../placement.js';
-import { app, currentStep, enterRoom, type Handoff, nextStep, onChange, startFlow, stopFlow } from '../state.js';
+import { app, currentStep, enterRoom, type Handoff, leaveRoom, nextStep, onChange, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
 import { thinkingLine } from './lines.js';
@@ -737,7 +737,7 @@ export class RoomSystem extends createSystem({
     if (talk !== this.conversation) return;
 
     // Actions that leave the room happen once the worker has finished talking.
-    const leave = reply.actions.find((a) => a.type === 'go_to_room' || a.type === 'play_flow');
+    const leave = reply.actions.find(leavesRoom);
     if (leave) {
       w.rig.gesture('ThumbsUp');
       await new Promise((r) => setTimeout(r, 900));
@@ -751,6 +751,9 @@ export class RoomSystem extends createSystem({
       this.endConversation();
       app.flowIndex = Math.max(0, app.graph.flows.findIndex((f) => f.id === leave.flowId));
       startFlow();
+    } else if (leave?.type === 'back_to_city') {
+      this.endConversation();
+      leaveRoom();
     }
   }
 
