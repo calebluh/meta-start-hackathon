@@ -39,8 +39,7 @@ VIEWER_DIR="$HOME/codebase-diorama"
 if [ -d "$VIEWER_DIR/.git" ]; then git -C "$VIEWER_DIR" pull --ff-only; else git clone "$VIEWER_REPO" "$VIEWER_DIR"; fi
 cd "$VIEWER_DIR" && npm install
 # Personal edition: opens straight onto the user's own maps (no demo menu).
-grep -qs '^VITE_EDITION=' .env.local || printf 'VITE_EDITION=personal
-' >> .env.local
+grep -qs '^VITE_EDITION=' .env.local || echo 'VITE_EDITION=personal' >> .env.local
 ```
 
 The repository also contains a competition build with bundled demo maps. The
