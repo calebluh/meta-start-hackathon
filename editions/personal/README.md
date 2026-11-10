@@ -77,3 +77,19 @@ you make one, a small sample shop called Larder is shown.
   three.js examples.
 - Props: [Poly Haven](https://polyhaven.com), CC0. See
   `public/models/props/CREDITS.md`.
+
+## License
+
+Copyright (C) 2026 Caleb Luh.
+
+Codebase Diorama is free software under the
+[GNU Affero General Public License v3.0](LICENSE) or any later version. You
+can use, change and share it. If you share a changed version, or run one as a
+service other people use over a network, you must make your changed source
+available under the same license.
+
+The license covers this viewer and plugin, not the code you map with them.
+The plugin only reads your repository, and the maps it writes are kept in the
+viewer folder.
+
+Contributions are welcome: open an issue or a pull request.

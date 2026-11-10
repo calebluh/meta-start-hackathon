@@ -48,7 +48,15 @@ const EDITS = [
   ['src/assets.ts', (t) => removeLines(t, /^\s*menu: uikitml\(/, 1)],
   ['src/index.ts', (t) => removeLines(removeLines(t, /^import \{ MenuSystem \}/, 1), /registerSystem\(MenuSystem\)/, 1)],
   ['public/scenes/main.iwsdk.scene.json', (t) => `${JSON.stringify(removeNode(JSON.parse(t), 'menu-panel'), null, 2)}\n`],
-  ['package.json', (t) => replaceOnce(t, '"name": "meta-start-hackathon"', '"name": "codebase-diorama"')],
+  ['package.json', (t) =>
+    replaceOnce(
+      replaceOnce(t, '"name": "meta-start-hackathon"', '"name": "codebase-diorama"'),
+      '"private": true,',
+      '"private": true,\n  "license": "AGPL-3.0-or-later",',
+    )],
+  // The public repo is AGPL (editions/personal/LICENSE); the competition repo is not licensed.
+  ['plugins/codebase-diorama/.claude-plugin/plugin.json', (t) =>
+    replaceOnce(t, '"version": "0.1.0",', '"version": "0.1.0",\n  "license": "AGPL-3.0-or-later",')],
 ];
 
 function removeLines(text, pattern, expected) {

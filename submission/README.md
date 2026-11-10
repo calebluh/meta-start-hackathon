@@ -98,8 +98,9 @@ Two things to decide while you paste:
 - [ ] The public link opens in a private window with no login.
 - [ ] `calebluh/meta-start-hackathon` is public, or judges have access, if
       the form asks for source.
-- [ ] `calebluh/codebase-diorama` has a licence file if you want others to
-      use the plugin (MIT is the usual choice).
+- [x] `calebluh/codebase-diorama` is licensed AGPL-3.0-or-later. The
+      competition repo has no licence on purpose: visible to judges, not
+      for reuse.
 - [ ] The video is set to public and is under 3:00.
 - [ ] Track is **Productivity**, division is **New Experience**.
 - [ ] Submitted before 12:00 PM Pacific on 18 November. Do not push to
