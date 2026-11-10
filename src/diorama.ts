@@ -1,5 +1,6 @@
 import {
   AssetManager,
+  Box3,
   BoxGeometry,
   CanvasTexture,
   Color,
@@ -34,6 +35,7 @@ import { KIND_COLORS } from './colors.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
 import { District } from './diorama-components.js';
+import { dive, DIVE_SECONDS } from './transition.js';
 import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
 import { pickTheme } from './rooms/themes.js';
@@ -53,6 +55,11 @@ import {
 } from './state.js';
 
 
+
+/** A building's footprint grows to about this many metres as you dive in. */
+const DIVE_SPAN = 9;
+/** Where the building's base ends up: the floor under a seated viewer. */
+const DIVE_FLOOR_BELOW_HEAD = 1.15;
 
 const KIND_NAMES: Record<NodeKind, string> = {
   ui: 'APP',
@@ -198,6 +205,22 @@ export class DioramaSystem extends createSystem({
   private uniformScale = 1;
   private grabStartScale = 1;
   private wasGrabbed = false;
+
+  // The dive into a building (see transition.ts). The board scales up about
+  // the building's base while that base slides under the viewer.
+  /** 1 diving in, -1 surfacing back to the desk, 0 at rest. */
+  private diveDir: 0 | 1 | -1 = 0;
+  private diveFrom = new Vector3();
+  private diveFromScale = 1;
+  private divePivot = new Vector3();
+  private diveTo = new Vector3();
+  private diveGrowth = 1;
+  private diveBox = new Box3();
+  private diveCentre = new Vector3();
+  /** Room to surface from, once RoomSystem has taken its room down. */
+  private surfaceFrom: string | null = null;
+  private lastMode: 'table' | 'room' = 'table';
+  private lastRoom: string | null = null;
 
   init(): void {
     this.inspector = this.world.getSceneObject<UIKitMLAsset>('inspector-panel');
@@ -397,6 +420,8 @@ export class DioramaSystem extends createSystem({
 
   /** Removes the current diorama (on switching codebase). */
   private disposeDiorama(): void {
+    if (this.diveDir !== 0) this.endDive();
+    this.surfaceFrom = null;
     for (const e of this.entities) e.dispose();
     this.entities = [];
     this.root?.dispose();
@@ -468,6 +493,86 @@ export class DioramaSystem extends createSystem({
 
   // -------------------------------------------------------------- render
 
+  /** Board and desk show at the table, and through a dive either way. */
+  private applyVisibility(): void {
+    const onTable = (app.mode === 'table' && !this.surfaceFrom) || this.diveDir !== 0;
+    this.root.object3D!.visible = onTable;
+    // Inside a room the desk would hide the floor; the panels stay.
+    const desk = this.world.getSceneObject('desk');
+    // The desk drops away as a dive starts, so the city rises around the viewer.
+    if (desk) desk.visible = onTable && this.diveDir === 0;
+    for (const label of this.labels) label.visible = this.diveDir === 0;
+  }
+
+  /**
+   * Prepares a dive into one building: scale the board up about the centre of
+   * the building's base until its footprint spans about a room, while that
+   * point slides to the floor under the viewer's head.
+   */
+  private beginDive(id: string): boolean {
+    const site = this.sitesById.get(id);
+    const obj = this.root.object3D!;
+    const parent = obj.parent;
+    if (!site || !parent || !obj.visible) return false;
+    this.diveFrom.copy(obj.position);
+    this.diveFromScale = obj.scale.x;
+    obj.updateWorldMatrix(true, true);
+    this.diveBox.setFromObject(site.mesh);
+    this.diveBox.getCenter(this.divePivot);
+    this.divePivot.y = this.diveBox.min.y;
+    this.diveBox.getSize(this.diveCentre);
+    this.diveGrowth = DIVE_SPAN / Math.max(this.diveCentre.x, this.diveCentre.z, 1e-3);
+    this.world.camera.getWorldPosition(this.diveTo);
+    this.diveTo.y -= DIVE_FLOOR_BELOW_HEAD;
+    // Work in the workspace's space, where the board's position lives.
+    parent.worldToLocal(this.divePivot);
+    parent.worldToLocal(this.diveTo);
+    return true;
+  }
+
+  /** Poses the board `t` of the way into the dive (0 desk, 1 inside). */
+  private poseDive(t: number): void {
+    const u = t * t * (3 - 2 * t);
+    // Growth is exponential so the zoom feels steady rather than lurching.
+    const s = Math.exp(Math.log(this.diveGrowth) * t * t);
+    const obj = this.root.object3D!;
+    this.diveCentre.lerpVectors(this.divePivot, this.diveTo, u);
+    obj.position.copy(this.diveFrom).sub(this.divePivot).multiplyScalar(s).add(this.diveCentre);
+    obj.scale.setScalar(this.diveFromScale * s);
+  }
+
+  /** Puts the board back on the desk at its size from before the dive. */
+  private endDive(): void {
+    const obj = this.root.object3D!;
+    obj.position.copy(this.diveFrom);
+    obj.scale.setScalar(this.diveFromScale);
+    this.diveDir = 0;
+    dive.active = false;
+    dive.t = 0;
+    this.applyVisibility();
+  }
+
+  private updateDive(delta: number): void {
+    if (this.surfaceFrom && !dive.roomShown) {
+      // The room is gone behind the dark: start huge and shrink to the desk.
+      const from = this.surfaceFrom;
+      this.surfaceFrom = null;
+      this.root.object3D!.visible = true;
+      if (this.beginDive(from)) {
+        this.diveDir = -1;
+        dive.t = 1;
+        this.poseDive(1);
+      }
+      this.applyVisibility();
+      return;
+    }
+    if (this.diveDir === 0) return;
+    dive.t = Math.min(1, Math.max(0, dive.t + (this.diveDir * delta) / DIVE_SECONDS));
+    if (dive.holdAt !== null) dive.t = this.diveDir === 1 ? Math.min(dive.t, dive.holdAt) : Math.max(dive.t, dive.holdAt);
+    this.poseDive(dive.t);
+    if ((this.diveDir === 1 && dive.t >= 1) || (this.diveDir === -1 && dive.t <= 0)) this.endDive();
+  }
+
   /** Brings the board, panels and pulse in line with the shared state. */
   private render(): void {
     if (this.builtGraph !== app.graph) {
@@ -485,10 +590,20 @@ export class DioramaSystem extends createSystem({
       app.mode === 'room' ? 'Back to table' : step || app.selected ? 'Step inside' : 'Pick a part',
     );
 
-    this.root.object3D!.visible = app.mode === 'table';
-    // Inside a room the desk would hide the floor; the panels stay.
-    const desk = this.world.getSceneObject('desk');
-    if (desk) desk.visible = app.mode === 'table';
+    if (app.mode !== this.lastMode) {
+      if (app.mode === 'room' && app.roomNode && this.beginDive(app.roomNode)) {
+        this.diveDir = 1;
+        dive.active = true;
+        dive.t = 0;
+      } else if (app.mode === 'table') {
+        if (this.diveDir === 1) this.endDive();
+        // Surface from the room just left, once its room is gone.
+        if (this.lastRoom && this.sitesById.has(this.lastRoom)) this.surfaceFrom = this.lastRoom;
+      }
+      this.lastMode = app.mode;
+    }
+    if (app.mode === 'room') this.lastRoom = app.roomNode;
+    this.applyVisibility();
 
     if (app.stepIndex !== this.shownStep) {
       this.shownStep = app.stepIndex;
@@ -661,7 +776,8 @@ export class DioramaSystem extends createSystem({
   // --------------------------------------------------------------- frame
 
   update(delta: number, time: number): void {
-    if (app.mode !== 'table') return;
+    this.updateDive(delta);
+    if (app.mode !== 'table' || this.diveDir !== 0) return;
 
     // Two-hand resizing changes the axis between the hands; keep the city in
     // proportion by applying whichever axis changed most to all three.

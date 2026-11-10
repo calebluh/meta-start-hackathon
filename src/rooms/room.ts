@@ -31,6 +31,7 @@ import { canRecord } from '../agent/recorder.js';
 import { suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
+import { dive, DIVE_FADE_AT } from '../transition.js';
 import { app, currentStep, enterRoom, type Handoff, nextStep, onChange, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
@@ -910,6 +911,7 @@ export class RoomSystem extends createSystem({
 
   update(delta: number, time: number): void {
     this.updateFade(delta);
+    dive.roomShown = this.roomGroup !== null;
     if (!this.roomGroup) return;
 
     // Keep the room's floor on the real floor if the desk was recentred.
@@ -975,7 +977,10 @@ export class RoomSystem extends createSystem({
       } else this.fadeTarget = 0;
     }
     const step = delta / FADE_SECONDS;
-    this.fadeLevel = this.fadeTarget > this.fadeLevel ? Math.min(1, this.fadeLevel + step) : Math.max(0, this.fadeLevel - step);
+    // Diving in from the table: let the building grow around the viewer
+    // before the view darkens.
+    const holding = this.fadeTarget === 1 && dive.active && dive.t < DIVE_FADE_AT;
+    if (!holding) this.fadeLevel = this.fadeTarget > this.fadeLevel ? Math.min(1, this.fadeLevel + step) : Math.max(0, this.fadeLevel - step);
     this.fadeMaterial.opacity = this.fadeLevel;
     this.fade.visible = this.fadeLevel > 0.001;
     if (this.fade.visible) this.world.camera.getWorldPosition(this.fade.position);

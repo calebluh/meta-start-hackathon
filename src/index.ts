@@ -5,6 +5,7 @@ import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
 import { app, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
 import { unlock } from './audio/sound.js';
+import { dive } from './transition.js';
 import { WorkspaceSystem } from './workspace.js';
 
 World.create(
@@ -42,6 +43,11 @@ World.create(
       const digit = Number(e.key);
       if (digit >= 1 && digit <= 9) enterRoom(rooms[digit - 1]);
       if (e.key === 'm') cycleMap();
+      // j: freeze the next dive partway (0.35, then 0.6, then off) to inspect it.
+      if (e.key === 'j') {
+        dive.holdAt = dive.holdAt === null ? 0.35 : dive.holdAt < 0.5 ? 0.6 : null;
+        console.log(`[dive] hold=${dive.holdAt}`);
+      }
       if (e.key === 'k') {
         // Per-frame render cost, for the performance budget.
         const info = world.renderer.info;
