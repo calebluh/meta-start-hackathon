@@ -32,6 +32,7 @@ import {
 import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
 import { ignoreRays } from './rays.js';
+import { mergeGeometries } from './rooms/merge.js';
 import { District } from './diorama-components.js';
 import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
@@ -94,7 +95,8 @@ interface Conduit {
   a: string;
   b: string;
   weight: number;
-  material: MeshBasicMaterial;
+  /** Its tube, kept un-rendered; conduits draw as two merged meshes. */
+  tube: Mesh;
 }
 
 interface Beacon {
@@ -177,6 +179,8 @@ export class DioramaSystem extends createSystem({
   private entities: Entity[] = [];
   private builtGraph: GraphData | null = null;
   private conduits: Conduit[] = [];
+  private conduitMeshes: Mesh[] = [];
+  private conduitFocus: string | null | undefined = undefined;
   private labels: Mesh[] = [];
   private beacons: Beacon[] = [];
 
@@ -333,7 +337,7 @@ export class DioramaSystem extends createSystem({
         a,
         b,
         weight: l.w,
-        material: new MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity: 0.4, depthWrite: false }),
+        tube: new Mesh(),
       });
     }
     for (const c of pairs.values()) {
@@ -343,9 +347,7 @@ export class DioramaSystem extends createSystem({
       mid.y = Math.max(from.y, to.y) + 0.03 + from.distanceTo(to) * 0.35;
       const curve = new QuadraticBezierCurve3(from.clone(), mid, to.clone());
       const radius = 0.0007 + 0.0004 * Math.log2(1 + c.weight);
-      const tube = new Mesh(new TubeGeometry(curve, 28, radius, 5, false), c.material);
-      tube.renderOrder = 5;
-      group.add(tube);
+      c.tube = new Mesh(new TubeGeometry(curve, 28, radius, 5, false));
       this.conduits.push(c);
       this.sitesById.get(c.a)!.conduits.push(c);
       this.sitesById.get(c.b)!.conduits.push(c);
@@ -400,6 +402,9 @@ export class DioramaSystem extends createSystem({
     this.root?.dispose();
     this.sitesById.clear();
     this.conduits = [];
+    for (const m of this.conduitMeshes) m.geometry.dispose();
+    this.conduitMeshes = [];
+    this.conduitFocus = undefined;
     this.labels = [];
     this.beacons = [];
     this.shownStep = -1;
@@ -607,10 +612,35 @@ export class DioramaSystem extends createSystem({
       if (site.id === focus) glow = app.stepIndex >= 0 ? FLOW_GLOW : SELECT_GLOW;
       site.material.emissiveIntensity = glow * site.boost;
     }
-    for (const c of this.conduits) {
-      if (!focus) c.material.opacity = 0.4;
-      else c.material.opacity = c.a === focus || c.b === focus ? 0.95 : 0.08;
+    this.redrawConduits(focus ?? null);
+  }
+
+  /**
+   * Conduits draw as two merged meshes (40-odd tubes in two draw calls): the
+   * ones touching the focused part, bright, and the rest, faint when
+   * something is focused. Rebuilt only when the focus changes.
+   */
+  private redrawConduits(focus: string | null): void {
+    if (focus === this.conduitFocus && this.conduitMeshes.length) return;
+    this.conduitFocus = focus;
+    for (const m of this.conduitMeshes) {
+      m.geometry.dispose();
+      (m.material as MeshBasicMaterial).dispose();
+      m.removeFromParent();
     }
+    this.conduitMeshes = [];
+    const lit = this.conduits.filter((c) => focus && (c.a === focus || c.b === focus));
+    const rest = this.conduits.filter((c) => !lit.includes(c));
+    const add = (list: Conduit[], opacity: number) => {
+      const geometry = mergeGeometries(list.map((c) => c.tube));
+      if (!geometry) return;
+      const mesh = ignoreRays(new Mesh(geometry, new MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity, depthWrite: false })));
+      mesh.renderOrder = 5;
+      this.root.object3D!.add(mesh);
+      this.conduitMeshes.push(mesh);
+    };
+    add(lit, 0.95);
+    add(rest, focus ? 0.08 : 0.4);
   }
 
   private startHop(): void {

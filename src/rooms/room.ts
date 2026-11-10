@@ -36,6 +36,7 @@ import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, who
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
 import { thinkingLine } from './lines.js';
 import { ignoreRays } from '../rays.js';
+import { mergeStatic } from './merge.js';
 import { loadProps } from './props.js';
 import { makePropDecor, makePropStation, propsForTheme } from './stations.js';
 import { makeDecor, makeItem, makePalette, makeStation, pickTheme, type Theme } from './themes.js';
@@ -235,30 +236,34 @@ export class RoomSystem extends createSystem({
 
     const group = new Group();
     group.name = `room:${nodeId}`;
+    // Everything that never moves goes here and is merged once built (see merge.ts).
+    const staticGroup = new Group();
+    staticGroup.name = 'static';
+    group.add(staticGroup);
     group.position.set(0, -(this.workspace?.position.y ?? 0.74), VIEWER_OFFSET);
 
     const floor = new Mesh(new CircleGeometry(ROOM_RADIUS, 48), new MeshStandardMaterial({ color: theme.floor, roughness: 0.85 }));
     floor.rotation.x = -Math.PI / 2;
     floor.position.y = 0.002;
-    group.add(floor);
+    staticGroup.add(floor);
     const rug = new Mesh(new TorusGeometry(1.2, 0.02, 6, 64), palette.glow);
     rug.rotation.x = -Math.PI / 2;
     rug.position.y = 0.01;
-    group.add(rug);
+    staticGroup.add(rug);
 
     const wall = new Mesh(
       new CylinderGeometry(ROOM_RADIUS, ROOM_RADIUS, WALL_HEIGHT, 48, 1, true),
       new MeshStandardMaterial({ color: theme.wall, roughness: 0.9, side: BackSide }),
     );
     wall.position.y = WALL_HEIGHT / 2;
-    group.add(wall);
+    staticGroup.add(wall);
     const trim = new Mesh(new TorusGeometry(ROOM_RADIUS - 0.02, 0.025, 6, 96), palette.glow);
     trim.rotation.x = Math.PI / 2;
     trim.position.y = WALL_HEIGHT - 0.2;
-    group.add(trim);
-    addCeiling(group, theme, palette, ROOM_RADIUS, WALL_HEIGHT);
-    addPilasters(group, theme, ROOM_RADIUS, WALL_HEIGHT);
-    addFloorMarkings(group, theme, palette);
+    staticGroup.add(trim);
+    addCeiling(staticGroup, theme, palette, ROOM_RADIUS, WALL_HEIGHT);
+    addPilasters(staticGroup, theme, ROOM_RADIUS, WALL_HEIGHT);
+    addFloorMarkings(staticGroup, theme, palette);
 
     // Room sign on the far wall, straight ahead.
     const sign = new Bubble(2.2, theme.accent);
@@ -288,7 +293,7 @@ export class RoomSystem extends createSystem({
       const point = new Vector3(Math.sin(a) * STATION_RADIUS, 0, -Math.cos(a) * STATION_RADIUS);
       station.position.copy(point);
       station.rotation.y = -a;
-      group.add(station);
+      staticGroup.add(station);
       const inward = point.clone().normalize().multiplyScalar(-1);
       const across = new Vector3(inward.z, 0, -inward.x);
       const spots: Vector3[] = [];
@@ -311,7 +316,7 @@ export class RoomSystem extends createSystem({
       const r = wallHeight ? ROOM_RADIUS - 0.2 : ROOM_RADIUS - 0.7;
       prop.position.set(Math.sin(a) * r, wallHeight ?? 0, -Math.cos(a) * r);
       prop.rotation.y = -a;
-      group.add(prop);
+      staticGroup.add(prop);
     });
 
     // Tubes to every part this one talks to, plus any flow neighbours.
@@ -343,7 +348,7 @@ export class RoomSystem extends createSystem({
       );
       ring.position.copy(mouth);
       ring.rotation.y = -a;
-      group.add(ring);
+      staticGroup.add(ring);
       const hole = makeSwirl(targetTheme.accent, 0.4);
       this.swirls.push(hole);
       hole.position.copy(mouth).multiplyScalar(1.004);
@@ -358,6 +363,8 @@ export class RoomSystem extends createSystem({
       return { nodeId: id, mouth, landing };
     });
 
+    const folded = mergeStatic(staticGroup);
+    if (import.meta.env.DEV) console.log(`[perf] merged ${folded} static meshes in ${nodeId}`);
     this.roomGroup = group;
     this.roomEntity = this.world.createTransformEntity(group, workspaceEntity ? { parent: workspaceEntity } : undefined);
 

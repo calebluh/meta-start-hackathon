@@ -2,7 +2,10 @@ import {
   type AnimationAction,
   AnimationMixer,
   AssetManager,
+  type Bone,
   Box3,
+  BufferAttribute,
+  BufferGeometry,
   Color,
   Group,
   LoopOnce,
@@ -10,6 +13,8 @@ import {
   type Mesh,
   type MeshStandardMaterial,
   Object3D,
+  Skeleton,
+  SkinnedMesh,
   Vector3,
 } from '@iwsdk/core';
 
@@ -43,6 +48,95 @@ const ONE_SHOTS = ['Wave', 'Yes', 'No', 'ThumbsUp', 'Punch'];
 
 let modelScale: number | null = null;
 
+/**
+ * Merges the robot's body into one skinned mesh per material: 18 draw calls
+ * down to about 6 (the animated face stays separate). The model's rest pose
+ * becomes a fresh bind pose over all its bones. Skinned parts are baked at
+ * that pose with their weights remapped; rigid parts hanging off a bone get
+ * full weight on it. Animation drives the same bones, so it is unchanged.
+ */
+function mergeBody(model: Object3D): void {
+  model.updateWorldMatrix(true, true);
+  const bones: Bone[] = [];
+  model.traverse((o) => {
+    if ((o as Bone).isBone) bones.push(o as Bone);
+  });
+  if (bones.length === 0) return;
+  const boneIndex = new Map(bones.map((b, i) => [b, i]));
+  const skeleton = new Skeleton(bones); // inverses from the current (rest) pose
+
+  // Gather parts by material.
+  const parts = new Map<Material, Mesh[]>();
+  model.traverse((o) => {
+    const mesh = o as Mesh;
+    if (!mesh.isMesh || Array.isArray(mesh.material) || mesh.morphTargetInfluences?.length) return;
+    let bone: Object3D | null = mesh.parent;
+    while (bone && !(bone as Bone).isBone) bone = bone.parent;
+    if (!(mesh as SkinnedMesh).isSkinnedMesh && !bone) return;
+    const list = parts.get(mesh.material as Material) ?? [];
+    list.push(mesh);
+    parts.set(mesh.material as Material, list);
+  });
+
+  const v = new Vector3();
+  for (const [material, meshes] of parts) {
+    if (meshes.length < 2) continue;
+    const count = meshes.reduce((n, m) => n + m.geometry.getAttribute('position').count, 0);
+    const positions = new Float32Array(count * 3);
+    const uvs = new Float32Array(count * 2);
+    const skinIndex = new Uint16Array(count * 4);
+    const skinWeight = new Float32Array(count * 4);
+    const indices: number[] = [];
+    let base = 0;
+    for (const m of meshes) {
+      const g = m.geometry;
+      const pos = g.getAttribute('position');
+      const uv = g.getAttribute('uv');
+      const skinned = (m as SkinnedMesh).isSkinnedMesh ? (m as SkinnedMesh) : null;
+      skinned?.skeleton.update();
+      let parentBone: Object3D | null = m.parent;
+      while (parentBone && !(parentBone as Bone).isBone) parentBone = parentBone.parent;
+      const rigidIndex = parentBone ? (boneIndex.get(parentBone as Bone) ?? 0) : 0;
+      const srcIndex = g.getAttribute('skinIndex');
+      const srcWeight = g.getAttribute('skinWeight');
+      for (let i = 0; i < pos.count; i += 1) {
+        v.fromBufferAttribute(pos, i);
+        if (skinned) skinned.applyBoneTransform(i, v);
+        v.applyMatrix4(m.matrixWorld);
+        positions.set([v.x, v.y, v.z], (base + i) * 3);
+        if (uv) uvs.set([uv.getX(i), uv.getY(i)], (base + i) * 2);
+        if (skinned && srcIndex && srcWeight) {
+          for (let k = 0; k < 4; k += 1) {
+            const b = skinned.skeleton.bones[srcIndex.getComponent(i, k)];
+            skinIndex[(base + i) * 4 + k] = b ? (boneIndex.get(b) ?? 0) : 0;
+            skinWeight[(base + i) * 4 + k] = srcWeight.getComponent(i, k);
+          }
+        } else {
+          skinIndex[(base + i) * 4] = rigidIndex;
+          skinWeight[(base + i) * 4] = 1;
+        }
+      }
+      if (g.index) for (let i = 0; i < g.index.count; i += 1) indices.push(g.index.getX(i) + base);
+      else for (let i = 0; i < pos.count; i += 1) indices.push(i + base);
+      base += pos.count;
+    }
+    const geometry = new BufferGeometry();
+    geometry.setAttribute('position', new BufferAttribute(positions, 3));
+    geometry.setAttribute('uv', new BufferAttribute(uvs, 2));
+    geometry.setAttribute('skinIndex', new BufferAttribute(skinIndex, 4));
+    geometry.setAttribute('skinWeight', new BufferAttribute(skinWeight, 4));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    const mesh = new SkinnedMesh(geometry, material);
+    mesh.name = `body:${material.name}`;
+    mesh.frustumCulled = false;
+    model.add(mesh);
+    mesh.updateWorldMatrix(true, false);
+    mesh.bind(skeleton, mesh.matrixWorld.clone());
+    for (const m of meshes) m.removeFromParent();
+  }
+}
+
 export class RobotCharacter {
   /** Move and turn this; the model sits inside it, facing +Z. */
   readonly root = new Group();
@@ -65,6 +159,7 @@ export class RobotCharacter {
     if (!gltf) throw new Error(`Model "${ROBOT_ASSET}" is not loaded`);
     const model = gltf.scene;
     this.root.add(model);
+    mergeBody(model);
 
     // Each worker gets its own tint of the room colour on the robot's body.
     const tint = new Color(accent).offsetHSL(0, 0, shade);
