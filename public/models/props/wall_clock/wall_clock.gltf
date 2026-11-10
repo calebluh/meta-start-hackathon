@@ -3,9 +3,6 @@
     "generator": "Khronos glTF Blender I/O v5.1.20",
     "version": "2.0"
   },
-  "extensionsUsed": [
-    "KHR_materials_transmission"
-  ],
   "scene": 0,
   "scenes": [
     {
@@ -55,18 +52,13 @@
     {
       "alphaMode": "BLEND",
       "doubleSided": true,
-      "extensions": {
-        "KHR_materials_transmission": {
-          "transmissionFactor": 1
-        }
-      },
       "name": "wall_clock_glass",
       "pbrMetallicRoughness": {
         "baseColorFactor": [
           0.800000011920929,
           0.800000011920929,
           0.800000011920929,
-          0.4000000059604645
+          0.18
         ],
         "metallicFactor": 0,
         "metallicRoughnessTexture": {
