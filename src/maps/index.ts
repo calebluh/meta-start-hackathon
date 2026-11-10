@@ -1,5 +1,6 @@
 import { larder } from './larder.js';
 import { mirofish } from './mirofish.js';
+import { self } from './self.js';
 import { HACKATHON } from '../edition.js';
 import type { GraphData } from './types.js';
 
@@ -22,11 +23,11 @@ export const CUSTOM_MAPS: Record<string, GraphData> = Object.fromEntries(
 );
 
 /**
- * Every map, by id. The server only answers about these. MiroFish is a
- * hackathon demo only; the personal edition has the user's own maps, plus the
- * small Larder sample so it is never empty.
+ * Every map, by id. The server only answers about these. MiroFish and the
+ * map of this app itself are hackathon demos only; the personal edition has
+ * the user's own maps, plus the small Larder sample so it is never empty.
  */
-export const MAPS: Record<string, GraphData> = HACKATHON ? { mirofish, larder, ...CUSTOM_MAPS } : { ...CUSTOM_MAPS, larder };
+export const MAPS: Record<string, GraphData> = HACKATHON ? { mirofish, larder, self, ...CUSTOM_MAPS } : { ...CUSTOM_MAPS, larder };
 
 /** The map shown first: the hackathon's headline demo, or the user's own map. */
 export const DEFAULT_MAP = HACKATHON ? 'mirofish' : (Object.keys(CUSTOM_MAPS)[0] ?? 'larder');

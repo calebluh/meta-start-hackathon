@@ -704,7 +704,7 @@ export class DioramaSystem extends createSystem({
     );
     if (graph.source) {
       const repo = graph.source.repo.replace(/^https?:\/\/github\.com\//, '');
-      this.setText(this.inspector, 'insp-stats', `${repo} @ ${graph.source.commit.slice(0, 7)} (${graph.source.license}) · ${files} files · ${loc.toLocaleString('en-US')} lines · pinch a building to inspect it`);
+      this.setText(this.inspector, 'insp-stats', `${repo} @ ${graph.source.commit.slice(0, 7)}${graph.source.license ? ` (${graph.source.license})` : ''} · ${files} files · ${loc.toLocaleString('en-US')} lines · pinch a building to inspect it`);
     }
     const issues = graph.health?.issues ?? [];
     this.setShown('insp-alert-box', issues.length > 0);

@@ -14,10 +14,13 @@ export class MenuSystem extends createSystem({}) {
   init(): void {
     const panel = this.world.getSceneObject<UIKitMLAsset>('menu-panel');
     if (panel) {
-      // The "Your code" card opens the newest map the Claude skill made, if any.
+      // The third card is this app, mapped by its own Claude skill. If that
+      // skill has made a map of the user's code here, the card opens the
+      // newest of those instead.
       const custom = Object.keys(CUSTOM_MAPS);
-      const cardFor = (id: string) => panel.getElementById(`card-${CUSTOM_MAPS[id] ? 'custom' : id}`);
-      const statsFor = (id: string) => (CUSTOM_MAPS[id] ? 'custom-stats' : `stats-${id}`);
+      const third = custom[0] ?? 'self';
+      const cardFor = (id: string) => panel.getElementById(`card-${id === third ? 'custom' : id}`);
+      const statsFor = (id: string) => (id === third ? 'custom-stats' : `stats-${id}`);
       if (custom.length) {
         const graph = CUSTOM_MAPS[custom[0]];
         const text = (id: string, value: string) => panel.getElementById<UIKit.Text>(id)?.setProperties({ text: value });
@@ -26,7 +29,7 @@ export class MenuSystem extends createSystem({}) {
         text('custom-pitch', summary.length > 110 ? `${summary.slice(0, 107)}...` : summary);
         text('custom-go', custom.length > 1 ? `Pinch to start (+${custom.length - 1} more via ?map=)` : 'Pinch to start');
       }
-      for (const id of [...Object.keys(MAPS).filter((m) => !CUSTOM_MAPS[m]), ...custom.slice(0, 1)]) {
+      for (const id of [...Object.keys(MAPS).filter((m) => !CUSTOM_MAPS[m] && m !== 'self'), third]) {
         const card = cardFor(id);
         if (card) {
           const choose = () => {

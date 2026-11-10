@@ -1,0 +1,505 @@
+{
+  "projectSummary": "Codebase Diorama turns a software project into a miniature city on a desk in virtual reality, for anyone curious about how a piece of software fits together. You pinch a building to see what that part of the code does, step inside it to find a themed room staffed by robots, and ask them questions out loud. A Claude Code plugin can build the same kind of city from your own code.",
+  "nodeSummaries": {
+    "table": "The desk you stand at: the miniature city of the code, the cards and buttons around it, and the welcome that starts each visit.",
+    "table.city": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",
+    "table.desk": "The desk itself and what sits around it: the card that describes whatever you picked, the row of buttons for playing journeys and stepping inside, and the glowing floor and distant skyline that set the scene.",
+    "table.welcome": "Where a visit begins: it starts the app, shows the start menu, and walks first-time visitors through a short hands-on tour. It also quiets everything when the headset comes off.",
+    "rooms": "The rooms you step into: one for each part of the code, each dressed as a different workplace and staffed by three robots.",
+    "rooms.builder": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
+    "rooms.themes": "Decides what kind of workplace each room becomes, such as a warehouse, a post office or a lab, and keeps the catalog of furniture and photo-scanned props that fill it.",
+    "rooms.robots": "The robot crew shared by every room: how they walk, wave and move their mouths in time with their voice, plus their speech bubbles and the small things they say while thinking.",
+    "talk": "How you talk with the robots: your voice goes in, an AI works out the answer, and the robot says it back.",
+    "talk.answers": "Gets a robot's answer to your question. It writes a briefing from the map so the AI only talks about this code, sends the question to Meta's AI, and tidies the reply. If the AI cannot be reached, the robot answers from the map's own descriptions.",
+    "talk.listening": "Keeps the microphone open while you talk to a robot, streams your voice to Meta's speech service, and hands back each finished sentence as a question.",
+    "talk.voices": "Everything you hear: each robot's speaking voice, button clicks, whooshing packets and each room's background hum. The audio comes from wherever its maker is standing, so sounds have a place in the room.",
+    "talk.server": "The one door between the headset and the outside AI services. It passes on questions, voice and speech requests, keeps the secret keys out of the headset, and limits how often any one visitor may call.",
+    "maps": "Where maps come from and how the project is kept in shape: the tools that turn code into a map, the maps on offer, and a few housekeeping scripts.",
+    "maps.builder": "Turns a project's files and a set of plain-English descriptions into one finished map the headset can show, then looks it over for slips before anyone puts the headset on.",
+    "maps.collection": "The maps the app can show: the built-in sample of a made-up meal-kit shop, any maps made from your own code, and the rules for what a map must contain.",
+    "maps.upkeep": "Two chores for the people who look after the project: one prepares the public edition that the Claude Code plugin installs, the other downloads the photo-scanned furniture and writes its credits.",
+    "meta": "Meta's AI service. It writes the robots' answers and turns your spoken words into text.",
+    "openai": "An optional outside service that gives each robot a natural speaking voice. Without it, the browser's built-in voice is used.",
+    "claude-code": "The AI coding assistant the map-making plugin works inside. It reads a project and writes the descriptions that become a new city."
+  },
+  "files": {
+    "api/agent.ts": {
+      "name": "Hosted question door",
+      "d": "The online doorway for robot questions: it takes a question from the headset and hands it to the answer service, noting who asked so the usage limits can apply."
+    },
+    "api/asr.ts": {
+      "name": "Hosted live-speech door",
+      "d": "The online doorway for live speech: it opens a two-way line so your voice can flow to the speech relay while you talk."
+    },
+    "api/transcribe.ts": {
+      "name": "Hosted recording door",
+      "d": "The online doorway for recorded sentences: it turns away anything too large and passes the rest on to be turned into text."
+    },
+    "api/tts.ts": {
+      "name": "Hosted voice door",
+      "d": "The online doorway for robot voices: it says whether natural voices are switched on, and returns a spoken line as sound."
+    },
+    "server/agent-core.ts": {
+      "name": "Answer service",
+      "d": "Checks that a question is short and about a real room, writes the robot's briefing from the map, asks Meta's AI, and returns the answer with any actions such as pointing to another room."
+    },
+    "server/asr-relay.ts": {
+      "name": "Live speech relay",
+      "d": "Passes your live microphone sound to Meta's speech service and sends back the words as they are heard, adding the secret key itself and hanging up after five minutes."
+    },
+    "server/rate-limit.ts": {
+      "name": "Usage limits",
+      "d": "Counts how often each visitor calls and says no past a limit, so one busy visitor cannot use up the owner's AI credits."
+    },
+    "server/transcribe-core.ts": {
+      "name": "Recording to text",
+      "d": "Sends one recorded sentence to Meta's speech service and returns the words; this is the slower backup for when live speech is not available."
+    },
+    "server/tts-core.ts": {
+      "name": "Voice maker",
+      "d": "Turns a line of text into a natural spoken voice through OpenAI, choosing from a fixed list of voices and refusing lines that are too long."
+    },
+    "src/agent/client.ts": {
+      "name": "Question sender",
+      "d": "Sends your question to the server and waits up to 15 seconds; if no answer comes, it answers from the map's own descriptions instead."
+    },
+    "src/agent/live-mic.ts": {
+      "name": "Open microphone",
+      "d": "Keeps the microphone on during a conversation, sends your voice off to be written down as you speak, and turns each finished sentence into a question."
+    },
+    "src/agent/prompt.ts": {
+      "name": "Robot briefing",
+      "d": "Writes what a robot knows about its room, lists the actions it may take, suggests questions you could ask, and tidies up the AI's reply."
+    },
+    "src/agent/recorder.ts": {
+      "name": "Sentence recorder",
+      "d": "Checks whether a microphone can be used and sends a recorded sentence to be turned into text; it also holds an older press-to-talk recorder that is no longer used."
+    },
+    "src/agent/voice.ts": {
+      "name": "Robot voices",
+      "d": "Speaks a robot's line in its own voice from where it stands, starting with the first sentence so speech begins quickly, and falls back to the browser's voice when needed."
+    },
+    "src/assets.ts": {
+      "name": "Loading list",
+      "d": "Lists what the app loads when it starts: the floor, the desk, the four cards and menus, and the robot."
+    },
+    "src/atmosphere.ts": {
+      "name": "Floor and skyline",
+      "d": "Sets the scene around the desk: a rippling floor, a distant skyline shaped by the biggest files, drifting dust, and cards that pop open."
+    },
+    "src/colors.ts": {
+      "name": "Building colours",
+      "d": "Gives each kind of part its own colour, so different kinds of building can be told apart at a glance."
+    },
+    "src/components.ts": {
+      "name": "Tag list",
+      "d": "Registers the two tags the app puts on things in the scene: one for buildings and one for robots."
+    },
+    "src/diorama-components.ts": {
+      "name": "Building and robot tags",
+      "d": "Defines the tags that mark an object as a building standing for one part of the code, or as a robot you can talk to."
+    },
+    "src/diorama.ts": {
+      "name": "City on the desk",
+      "d": "Draws the miniature city, lets you pick, grab and resize it, plays journeys as lights between buildings, fills in the cards, and grows the city around you when you step inside."
+    },
+    "src/edition.ts": {
+      "name": "Edition switch",
+      "d": "Tells the app whether it is the competition build with a menu of demos, or the personal build that opens straight onto your own maps."
+    },
+    "src/guide-system.ts": {
+      "name": "First-visit tour",
+      "d": "Leads a new visitor through the basics with a floating card and an arrow, moving on only when they actually do each step."
+    },
+    "src/guide.ts": {
+      "name": "Tour notes",
+      "d": "Keeps note of whether you have talked to a robot and heard an answer yet, so the tour knows when to move on."
+    },
+    "src/index.ts": {
+      "name": "App start-up",
+      "d": "Starts everything: it switches on each part of the app, opens the map named in the web address, and pauses sound and speech when the headset comes off."
+    },
+    "src/layout.ts": {
+      "name": "City planner",
+      "d": "Works out where every building stands: bigger plots and taller buildings for parts with more code, and outside services as towers in a row behind the board."
+    },
+    "src/menu.ts": {
+      "name": "Start menu",
+      "d": "Shows a card for each map over the desk, one of them a map of this app itself; pinch a card to open that city."
+    },
+    "src/panels.ts": {
+      "name": "Card show and hide",
+      "d": "Shows or hides a floating card, and makes sure a hidden card cannot be pressed by accident."
+    },
+    "src/pause.ts": {
+      "name": "Pause switch",
+      "d": "Lets every part of the app know when you cannot see or hear it, such as when the headset comes off, so nothing talks or listens until you are back."
+    },
+    "src/rays.ts": {
+      "name": "Pointer pass-through",
+      "d": "Stops decorations such as thin outlines from getting in the way of your pointing hand."
+    },
+    "src/state.ts": {
+      "name": "Visit tracker",
+      "d": "Keeps track of which map is open, what you have picked, which journey is playing and whether you are at the desk or in a room, and tells every other part when that changes."
+    },
+    "src/transition.ts": {
+      "name": "Step-inside timing",
+      "d": "Keeps the city and the rooms in step during the dive: the building grows around you first, then the room fades in."
+    },
+    "src/workspace.ts": {
+      "name": "Desk placement",
+      "d": "Puts the desk in front of you at a comfortable height when you enter virtual reality, and again when you press Recenter."
+    },
+    "src/audio/sound.ts": {
+      "name": "Sound effects",
+      "d": "Makes every sound from scratch with no recordings: clicks, whooshes, an arrival chord and a background hum for each kind of room, each coming from its own place in the scene."
+    },
+    "src/rooms/character.ts": {
+      "name": "Robot body",
+      "d": "Brings the robot to life: it walks, waves, gives a thumbs up, carries things, and moves its mouth in time with its voice."
+    },
+    "src/rooms/dressing.ts": {
+      "name": "Room finishing touches",
+      "d": "Adds the details every room has: ceiling and lights, floor markings, wall columns, swirling tube mouths and the light trail behind a flying packet."
+    },
+    "src/rooms/lines.ts": {
+      "name": "Thinking lines",
+      "d": "Quick things a robot says straight away, such as \"let me check\", so the wait for the real answer feels like someone thinking."
+    },
+    "src/rooms/merge.ts": {
+      "name": "Room speed-up",
+      "d": "Fuses a room's hundreds of small pieces into a few large ones, so the headset can draw the room smoothly."
+    },
+    "src/rooms/props.ts": {
+      "name": "Furniture loader",
+      "d": "Fetches the photo-scanned furniture a room needs just before the room is built, so the headset only downloads what you actually visit."
+    },
+    "src/rooms/room.ts": {
+      "name": "Room director",
+      "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question."
+    },
+    "src/rooms/stations.ts": {
+      "name": "Furniture arranger",
+      "d": "Builds each work spot and decoration from photo-scanned furniture where a good piece exists, and otherwise leaves it to simple built-in shapes."
+    },
+    "src/rooms/themes.ts": {
+      "name": "Room themes",
+      "d": "Picks a workplace for each room from the part's name and description, such as a warehouse, a post office or a lab, and sets the robots' jobs, work spots and decorations there."
+    },
+    "src/rooms/worker.ts": {
+      "name": "Speech bubble",
+      "d": "Draws the floating bubble that shows what a robot is saying, growing taller as the text gets longer; the tour's card uses it too."
+    },
+    "src/maps/index.ts": {
+      "name": "Map shelf",
+      "d": "Gathers every map the app can open: the built-in ones plus any you have made from your own code."
+    },
+    "src/maps/larder.ts": {
+      "name": "Sample shop map",
+      "d": "A hand-made map of Larder, a made-up meal-kit shop, so there is always a city to explore."
+    },
+    "src/maps/types.ts": {
+      "name": "Map rulebook",
+      "d": "Spells out what a map must contain: parts, files, connections, journeys and warnings."
+    },
+    "src/scene-assets/desk.scene-asset.ts": {
+      "name": "The desk",
+      "d": "Builds the desk the city sits on, with legs long enough to reach the floor whether you sit or stand."
+    },
+    "scripts/build-map.mjs": {
+      "name": "Map maker",
+      "d": "Reads a project's files, counts their lines, works out which files rely on which, and joins that with the written descriptions into one map file."
+    },
+    "scripts/export-personal.mjs": {
+      "name": "Public edition maker",
+      "d": "Copies the app into the public edition that people install, leaving out everything made only for the competition and checking that none of it slips through."
+    },
+    "scripts/fetch-props.mjs": {
+      "name": "Furniture downloader",
+      "d": "Downloads the free photo-scanned furniture from Poly Haven in a light size for the headset, and writes the credits list."
+    },
+    "vite.config.ts": {
+      "name": "Local server",
+      "d": "Runs the app on your own computer and answers the headset's requests for answers, voices and speech, reading the secret keys from a private file that never reaches the headset."
+    },
+    "public/ui/ask.uikitml": {
+      "name": "Question card",
+      "d": "The card that appears when you talk to a robot: four suggested questions, a microphone button and Done."
+    },
+    "public/ui/controls.uikitml": {
+      "name": "Button row",
+      "d": "The row of buttons at the desk: play a journey, next step, change journey, change map, step inside and recenter."
+    },
+    "public/ui/inspector.uikitml": {
+      "name": "Fact card",
+      "d": "The card beside the desk that describes whatever you picked: what it is, what it does, how big it is, any warnings and its main files."
+    },
+    "public/ui/menu.uikitml": {
+      "name": "Start menu layout",
+      "d": "The layout of the start menu: one card for each map you can open, including your own."
+    },
+    "plugins/codebase-diorama/skills/map/scripts/check-map.mjs": {
+      "name": "Map checker",
+      "d": "Looks over a finished map for slips the headset would hide, such as a part with no description or a journey that points at a missing file."
+    },
+    "src/landing.ts": {
+      "name": "Front page",
+      "d": "The flat web page you see before putting the headset to work: a title while things load, then a large Enter VR button and a prompt to allow the microphone."
+    },
+    "index.html": {
+      "name": "Web page shell",
+      "d": "The page the browser opens first. It shows the title straight away and holds the 3D view once the app has loaded."
+    }
+  },
+  "flows": [
+    {
+      "id": "ask-a-robot",
+      "title": "Asking a robot a question",
+      "description": "From pinching a robot to hearing its answer in its own voice.",
+      "steps": [
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "You pinch a robot and ask a question. It says \"let me check\" while the real answer is fetched."
+        },
+        {
+          "ref": "f:src/agent/client.ts",
+          "note": "Your question, this room and the robot's name set off for the server."
+        },
+        {
+          "ref": "f:vite.config.ts",
+          "note": "The server takes the question in. The secret key lives here, never in the headset."
+        },
+        {
+          "ref": "f:server/agent-core.ts",
+          "note": "The question is checked, and a briefing about this room is written from the map."
+        },
+        {
+          "ref": "n:meta",
+          "note": "Meta's AI writes the answer, and may choose an action such as pointing next door."
+        },
+        {
+          "ref": "f:src/agent/prompt.ts",
+          "note": "The reply is tidied, and any action naming a room or file that does not exist is thrown away."
+        },
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "Back in the room, the robot points, holds up a file card and begins to answer."
+        },
+        {
+          "ref": "f:src/agent/voice.ts",
+          "note": "The answer is spoken a sentence at a time, so the robot starts talking right away."
+        }
+      ]
+    },
+    {
+      "id": "step-inside",
+      "title": "Stepping inside a building",
+      "description": "From pinching a building on the desk to standing in its room.",
+      "steps": [
+        {
+          "ref": "f:src/diorama.ts",
+          "note": "You point at a building and pinch. It lights up, and its card says what it does."
+        },
+        {
+          "ref": "f:public/ui/controls.uikitml",
+          "note": "You pinch Step inside on the row of buttons."
+        },
+        {
+          "ref": "f:src/state.ts",
+          "note": "The app notes which room you are heading for and tells every other part."
+        },
+        {
+          "ref": "f:src/diorama.ts",
+          "note": "The city swells until the building rises around you, in a little over a second."
+        },
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "About two thirds of the way in, the view dims so the room can be put together out of sight."
+        },
+        {
+          "ref": "f:src/rooms/themes.ts",
+          "note": "The room picks its look, a workshop or a post office, from the part's name and description."
+        },
+        {
+          "ref": "f:src/rooms/props.ts",
+          "note": "Its furniture arrives while the view is dark, so nothing pops in later."
+        },
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "Walls, a sign, three robots and tubes to the neighbours appear, and the view clears with a chord."
+        }
+      ]
+    },
+    {
+      "id": "speak-a-question",
+      "title": "Speaking a question aloud",
+      "description": "From saying a question out loud to the robot hearing it as words.",
+      "steps": [
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "A robot comes over and the microphone opens by itself. You just talk."
+        },
+        {
+          "ref": "f:src/agent/live-mic.ts",
+          "note": "Your voice is cut into slices shorter than a tenth of a second and sent off as you speak."
+        },
+        {
+          "ref": "f:vite.config.ts",
+          "note": "The server opens a live line for your voice."
+        },
+        {
+          "ref": "f:server/asr-relay.ts",
+          "note": "The relay adds the secret key and passes your voice on to Meta."
+        },
+        {
+          "ref": "n:meta",
+          "note": "Meta sends back the words as it hears them, and says when your sentence has ended."
+        },
+        {
+          "ref": "f:src/agent/live-mic.ts",
+          "note": "The finished sentence is handed on as your question."
+        },
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "Your words appear in a bubble, and the microphone is muted while the robot talks."
+        },
+        {
+          "ref": "f:src/agent/client.ts",
+          "note": "From here your spoken question travels the same road as a pinched one."
+        }
+      ]
+    },
+    {
+      "id": "map-your-code",
+      "title": "Mapping your own code",
+      "description": "From asking Claude Code for a map to seeing your own project as a city.",
+      "steps": [
+        {
+          "ref": "n:claude-code",
+          "note": "Claude Code reads your project without running it, and describes every part in plain English."
+        },
+        {
+          "ref": "f:scripts/build-map.mjs",
+          "note": "The map maker lists the files, counts their lines and works out which rely on which."
+        },
+        {
+          "ref": "f:plugins/codebase-diorama/skills/map/scripts/check-map.mjs",
+          "note": "A checker looks for slips the headset would hide, such as a part with no description."
+        },
+        {
+          "ref": "f:src/maps/index.ts",
+          "note": "The finished map joins the collection, beside the sample meal-kit shop."
+        },
+        {
+          "ref": "f:src/index.ts",
+          "note": "The app opens the map named in the web address, or offers it on the menu as Your code."
+        },
+        {
+          "ref": "f:src/state.ts",
+          "note": "The app switches to your map and clears anything picked or playing."
+        },
+        {
+          "ref": "f:src/diorama.ts",
+          "note": "The city is rebuilt: more code means a bigger plot and a taller building."
+        }
+      ]
+    }
+  ],
+  "health": [
+    {
+      "id": "hosted-robots-custom-maps",
+      "severity": "medium",
+      "kind": "reliability",
+      "title": "Online robots cannot answer about your own maps",
+      "detail": "Maps made from your own code are only loaded on your own computer. When the app is hosted online, the answer service does not know them and turns the question away, so the robots there can only read out the map's descriptions.",
+      "file": "server/agent-core.ts",
+      "line": 73
+    },
+    {
+      "id": "limits-forget-on-restart",
+      "severity": "medium",
+      "kind": "reliability",
+      "title": "Usage limits forget everything on a restart",
+      "detail": "The counts of how often each visitor has called are kept only in the server's memory. A restart, or a second copy of the server, starts counting from zero again, so the daily cap on AI spending is softer than it looks.",
+      "file": "server/rate-limit.ts",
+      "line": 18
+    },
+    {
+      "id": "unused-recorder",
+      "severity": "low",
+      "kind": "dead-code",
+      "title": "Leftover press-to-talk recorder",
+      "detail": "The press-to-talk recorder in this file was replaced by the always-open microphone. Only two small helpers beside it are still used; the recorder itself can be removed.",
+      "file": "src/agent/recorder.ts",
+      "line": 12
+    },
+    {
+      "id": "shortcuts-assume-sample",
+      "severity": "low",
+      "kind": "review",
+      "title": "Test shortcuts only fit the sample shop",
+      "detail": "The keyboard shortcuts used for testing without a headset jump to rooms by the sample shop's names, so on any other map those keys do nothing useful.",
+      "file": "src/index.ts",
+      "line": 68
+    }
+  ],
+  "routes": [
+    {
+      "method": "POST",
+      "path": "/api/agent",
+      "file": "vite.config.ts",
+      "line": 31
+    },
+    {
+      "method": "POST",
+      "path": "/api/agent",
+      "file": "api/agent.ts",
+      "line": 8
+    },
+    {
+      "method": "POST",
+      "path": "/api/tts",
+      "file": "vite.config.ts",
+      "line": 53
+    },
+    {
+      "method": "POST",
+      "path": "/api/tts",
+      "file": "api/tts.ts",
+      "line": 10
+    },
+    {
+      "method": "GET",
+      "path": "/api/tts",
+      "file": "vite.config.ts",
+      "line": 53
+    },
+    {
+      "method": "GET",
+      "path": "/api/tts",
+      "file": "api/tts.ts",
+      "line": 5
+    }
+  ],
+  "frontendCalls": [
+    {
+      "method": "POST",
+      "path": "/api/agent",
+      "file": "src/agent/client.ts",
+      "line": 28
+    },
+    {
+      "method": "POST",
+      "path": "/api/tts",
+      "file": "src/agent/voice.ts",
+      "line": 131
+    },
+    {
+      "method": "GET",
+      "path": "/api/tts",
+      "file": "src/agent/voice.ts",
+      "line": 33
+    }
+  ]
+}
