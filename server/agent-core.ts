@@ -8,6 +8,7 @@ import {
   type Persona,
 } from '../src/agent/prompt.js';
 import { MAPS } from '../src/maps/index.js';
+import { createLimiter } from './rate-limit.js';
 
 /**
  * Answers one question to a room's worker through Meta's Model API
@@ -21,6 +22,7 @@ import { MAPS } from '../src/maps/index.js';
 
 export const MODEL_API_BASE = 'https://api.meta.ai/v1';
 const DEFAULT_MODEL = 'muse-spark-1.3';
+const UPSTREAM_TIMEOUT_MS = 14_000;
 
 export interface AgentRequest {
   mapId: string;
@@ -52,6 +54,17 @@ const str = (v: unknown, max: number, field: string): string => {
   return v.trim();
 };
 
+/**
+ * A worker's name, job and workplace are short plain phrases ("Bolt", "line
+ * cook", "kitchen"). Anything else is refused, so these fields cannot carry
+ * instructions into the prompt.
+ */
+const phrase = (v: unknown, max: number, field: string): string => {
+  const text = str(v, max, field);
+  if (!/^[\p{L}\p{N} .,'&()\/-]+$/u.test(text)) throw new AgentError(400, `${field} may only contain letters, numbers and simple punctuation`);
+  return text;
+};
+
 export function validate(body: unknown): AgentRequest {
   if (!body || typeof body !== 'object') throw new AgentError(400, 'Expected a JSON body');
   const b = body as Record<string, unknown>;
@@ -61,7 +74,7 @@ export function validate(body: unknown): AgentRequest {
   const nodeId = str(b.nodeId, 120, 'nodeId');
   if (!graph.nodes.some((n) => n.id === nodeId)) throw new AgentError(404, `Unknown room "${nodeId}"`);
   const p = (b.persona ?? {}) as Record<string, unknown>;
-  const persona = { name: str(p.name, 30, 'persona.name'), role: str(p.role, 40, 'persona.role'), place: str(p.place, 40, 'persona.place') };
+  const persona = { name: phrase(p.name, 30, 'persona.name'), role: phrase(p.role, 40, 'persona.role'), place: phrase(p.place, 40, 'persona.place') };
   const history: ChatTurn[] = [];
   if (Array.isArray(b.history)) {
     for (const t of b.history.slice(-6)) {
@@ -84,6 +97,8 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   ];
   const response = await fetch(`${MODEL_API_BASE}/chat/completions`, {
     method: 'POST',
+    // The headset stops waiting after 15 seconds; do not keep paying after that.
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     // Muse models reason by default; minimal keeps replies to a few seconds.
     // Reasoning tokens count against max_tokens, and a reply that runs out
@@ -178,14 +193,29 @@ export function extractLeakedCalls(content: string): { text: string; calls: { na
   return { text, calls };
 }
 
-/** Request handler shared by both hosts: JSON in, JSON out. */
-export async function handleAgent(body: unknown, apiKey: string | undefined, model?: string): Promise<{ status: number; json: unknown }> {
+/** A conversation is a question every few seconds; nobody needs more than this. */
+const perMinute = createLimiter(20, 60_000);
+const perHour = createLimiter(240, 60 * 60_000);
+/** Across all visitors, so one busy day cannot empty the owner's credits. */
+const everyone = createLimiter(4000, 24 * 60 * 60_000);
+
+/** Request handler shared by both hosts: JSON in, JSON out. `address` is who is asking, for the rate limit. */
+export async function handleAgent(
+  body: unknown,
+  apiKey: string | undefined,
+  model?: string,
+  address = 'local',
+): Promise<{ status: number; json: unknown }> {
   try {
     const req = validate(body);
+    if (apiKey && !(perMinute.allow(address) && perHour.allow(address) && everyone.allow('all'))) {
+      throw new AgentError(429, 'Too many questions; try again in a minute');
+    }
     const reply = await askAgent(req, apiKey, model || undefined);
     return { status: 200, json: reply };
   } catch (e) {
     if (e instanceof AgentError) return { status: e.status, json: { error: e.message } };
+    if ((e as Error)?.name === 'TimeoutError') return { status: 504, json: { error: 'The model took too long to answer' } };
     return { status: 500, json: { error: 'Unexpected server error' } };
   }
 }

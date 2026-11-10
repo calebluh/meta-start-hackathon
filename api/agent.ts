@@ -1,4 +1,5 @@
 import { handleAgent } from '../server/agent-core.js';
+import { callerAddress } from '../server/rate-limit.js';
 
 /**
  * Vercel Function: POST /api/agent. Set MODEL_API_KEY (and optionally
@@ -11,6 +12,11 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     return Response.json({ error: 'Expected a JSON body' }, { status: 400 });
   }
-  const { status, json } = await handleAgent(body, process.env.MODEL_API_KEY ?? process.env.LLAMA_API_KEY, process.env.MODEL_NAME);
-  return Response.json(json, { status });
+  const { status, json } = await handleAgent(
+    body,
+    process.env.MODEL_API_KEY ?? process.env.LLAMA_API_KEY,
+    process.env.MODEL_NAME,
+    callerAddress(request.headers.get('x-forwarded-for')),
+  );
+  return Response.json(json, { status, headers: { 'Cache-Control': 'no-store' } });
 }

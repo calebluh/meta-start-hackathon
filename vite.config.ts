@@ -25,7 +25,7 @@ function agentApi(): Plugin {
         if (!req.url?.startsWith('/api/asr')) return; // leave Vite's own HMR socket alone
         asrSockets.handleUpgrade(req, socket, head, async (client) => {
           const { relayAsr } = (await server.ssrLoadModule('/server/asr-relay.ts')) as typeof import('./server/asr-relay');
-          relayAsr(client, env.MODEL_API_KEY ?? env.LLAMA_API_KEY);
+          relayAsr(client, env.MODEL_API_KEY ?? env.LLAMA_API_KEY, req.socket.remoteAddress ?? 'local');
         });
       });
       server.middlewares.use('/api/agent', (req, res) => {
@@ -44,7 +44,7 @@ function agentApi(): Plugin {
           } catch {
             // handleAgent reports the bad body
           }
-          const { status, json } = await handleAgent(body, env.MODEL_API_KEY ?? env.LLAMA_API_KEY, env.MODEL_NAME);
+          const { status, json } = await handleAgent(body, env.MODEL_API_KEY ?? env.LLAMA_API_KEY, env.MODEL_NAME, req.socket.remoteAddress ?? 'local');
           res.statusCode = status;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(json));
@@ -94,7 +94,7 @@ function agentApi(): Plugin {
         req.on('data', (chunk: Buffer) => chunks.push(chunk));
         req.on('end', async () => {
           const { handleTranscribe } = (await server.ssrLoadModule('/server/transcribe-core.ts')) as typeof import('./server/transcribe-core');
-          const { status, json } = await handleTranscribe(new Uint8Array(Buffer.concat(chunks)), env.MODEL_API_KEY ?? env.LLAMA_API_KEY);
+          const { status, json } = await handleTranscribe(new Uint8Array(Buffer.concat(chunks)), env.MODEL_API_KEY ?? env.LLAMA_API_KEY, req.socket.remoteAddress ?? 'local');
           res.statusCode = status;
           res.setHeader('Content-Type', 'application/json');
           res.end(JSON.stringify(json));

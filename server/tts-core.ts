@@ -9,6 +9,8 @@
  * own instructions), and a per-address rate limit.
  */
 
+import { createLimiter } from './rate-limit.js';
+
 export const TTS_VOICES = ['ash', 'ballad', 'coral', 'echo', 'fable', 'onyx', 'sage', 'shimmer', 'verse', 'alloy', 'nova'] as const;
 const MAX_CHARS = 420;
 const PER_MINUTE = 40;
@@ -18,17 +20,9 @@ const STYLE =
   'Speak warmly and clearly with a lively, upbeat pace and a hint of playful curiosity, like a proud coworker giving a quick tour. ' +
   'Keep it natural and conversational, never robotic or monotone.';
 
-const recent = new Map<string, number[]>();
-
-function allowed(address: string): boolean {
-  const now = Date.now();
-  const times = (recent.get(address) ?? []).filter((t) => now - t < 60_000);
-  if (times.length >= PER_MINUTE) return false;
-  times.push(now);
-  recent.set(address, times);
-  if (recent.size > 5000) recent.clear(); // never grow without bound
-  return true;
-}
+const perAddress = createLimiter(PER_MINUTE, 60_000);
+/** Across all visitors, so one busy day cannot empty the owner's credits. */
+const everyone = createLimiter(6000, 24 * 60 * 60_000);
 
 export interface TtsResult {
   status: number;
@@ -47,16 +41,21 @@ export async function handleTts(body: unknown, apiKey: string | undefined, addre
   const text = typeof b?.text === 'string' ? b.text.trim() : '';
   const voice = typeof b?.voice === 'string' && (TTS_VOICES as readonly string[]).includes(b.voice) ? b.voice : 'coral';
   if (!text || text.length > MAX_CHARS) return { status: 400, json: { error: `text must be 1-${MAX_CHARS} characters` } };
-  if (!allowed(address)) return { status: 429, json: { error: 'Too many requests' } };
+  if (!(perAddress.allow(address) && everyone.allow('all'))) return { status: 429, json: { error: 'Too many requests' } };
 
-  const response = await fetch('https://api.openai.com/v1/audio/speech', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice, input: text, instructions: STYLE, response_format: 'mp3' }),
-  });
-  if (!response.ok) {
-    const detail = (await response.text()).slice(0, 200);
-    return { status: 502, json: { error: `Voice service error ${response.status}`, detail } };
+  try {
+    const response = await fetch('https://api.openai.com/v1/audio/speech', {
+      method: 'POST',
+      signal: AbortSignal.timeout(12_000),
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-4o-mini-tts', voice, input: text, instructions: STYLE, response_format: 'mp3' }),
+    });
+    if (!response.ok) {
+      const detail = (await response.text()).slice(0, 200);
+      return { status: 502, json: { error: `Voice service error ${response.status}`, detail } };
+    }
+    return { status: 200, audio: new Uint8Array(await response.arrayBuffer()) };
+  } catch {
+    return { status: 504, json: { error: 'Voice service did not answer in time' } };
   }
-  return { status: 200, audio: new Uint8Array(await response.arrayBuffer()) };
 }

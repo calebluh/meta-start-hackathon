@@ -1,5 +1,5 @@
 import type { GraphData } from './types.js';
-import data from './mirofish.json';
+import data from './mirofish.json' with { type: 'json' };
 
 /**
  * MiroFish (github.com/666ghj/MiroFish, AGPL-3.0), mapped at commit 7657031

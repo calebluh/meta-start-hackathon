@@ -1,4 +1,5 @@
 import { MODEL_API_BASE } from './agent-core.js';
+import { createLimiter } from './rate-limit.js';
 
 /**
  * Turns a short spoken question (16-bit WAV from the headset) into text with
@@ -7,10 +8,13 @@ import { MODEL_API_BASE } from './agent-core.js';
  * general transcription service.
  */
 const MAX_BYTES = 2 * 1024 * 1024;
+const perMinute = createLimiter(20, 60_000);
+const everyone = createLimiter(4000, 24 * 60 * 60_000);
 
 export async function handleTranscribe(
   wav: Uint8Array,
   apiKey: string | undefined,
+  address = 'local',
 ): Promise<{ status: number; json: unknown }> {
   if (!apiKey) return { status: 503, json: { error: 'MODEL_API_KEY is not set on the server' } };
   const header = new TextDecoder().decode(wav.subarray(0, 12));
@@ -18,6 +22,7 @@ export async function handleTranscribe(
     return { status: 400, json: { error: 'Expected a WAV recording' } };
   }
   if (wav.length > MAX_BYTES) return { status: 413, json: { error: 'Recording is too long' } };
+  if (!(perMinute.allow(address) && everyone.allow('all'))) return { status: 429, json: { error: 'Too many requests' } };
 
   const form = new FormData();
   form.append(
@@ -30,6 +35,7 @@ export async function handleTranscribe(
   try {
     const response = await fetch(`${MODEL_API_BASE}/asr/transcribe`, {
       method: 'POST',
+      signal: AbortSignal.timeout(12_000),
       headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
       body: form,
     });

@@ -1,3 +1,4 @@
+import { callerAddress } from '../server/rate-limit.js';
 import { handleTts, ttsStatus } from '../server/tts-core.js';
 
 /** Vercel Function: GET /api/tts reports whether a voice is set up; POST {text, voice} returns MP3. */
@@ -13,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
   } catch {
     // handleTts reports the bad body
   }
-  const address = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
+  const address = callerAddress(request.headers.get('x-forwarded-for'));
   const result = await handleTts(body, process.env.OPENAI_API_KEY, address);
   if (result.audio) {
     return new Response(result.audio.buffer as ArrayBuffer, { status: 200, headers: { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'no-store' } });

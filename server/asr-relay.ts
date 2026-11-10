@@ -1,4 +1,5 @@
 import { MODEL_API_BASE } from './agent-core.js';
+import { createLimiter } from './rate-limit.js';
 
 /**
  * Relays live speech recognition between the headset and Meta's realtime
@@ -31,12 +32,25 @@ const MAX_SESSION_MS = 5 * 60 * 1000;
 /** Real-time 16 kHz 16-bit audio is 32 kB/s; allow headroom, drop anything far beyond. */
 const MAX_BYTES_PER_SECOND = 64 * 1024;
 
-export function relayAsr(client: SocketLike, apiKey: string | undefined): void {
-  if (!apiKey) {
-    client.send(JSON.stringify({ type: 'error', message: 'MODEL_API_KEY is not set on the server' }));
-    client.close(1011, 'no key');
-    return;
-  }
+/** Opening the microphone happens once per conversation, not many times a minute. */
+const opensPerMinute = createLimiter(12, 60_000);
+const opensPerDay = createLimiter(1500, 24 * 60 * 60_000);
+/** Live sessions per address, and in this server process. */
+const MAX_PER_ADDRESS = 3;
+const MAX_SESSIONS = 40;
+const live = new Map<string, number>();
+let liveTotal = 0;
+
+export function relayAsr(client: SocketLike, apiKey: string | undefined, address = 'local'): void {
+  const refuse = (message: string, reason: string) => {
+    client.send(JSON.stringify({ type: 'error', message }));
+    client.close(1011, reason);
+  };
+  if (!apiKey) return refuse('MODEL_API_KEY is not set on the server', 'no key');
+  if ((live.get(address) ?? 0) >= MAX_PER_ADDRESS || liveTotal >= MAX_SESSIONS) return refuse('Too many open microphones', 'busy');
+  if (!(opensPerMinute.allow(address) && opensPerDay.allow('all'))) return refuse('Too many requests', 'rate limit');
+  live.set(address, (live.get(address) ?? 0) + 1);
+  liveTotal += 1;
 
   let upstream: WebSocket | null = null;
   let upstreamReady = false;
@@ -49,6 +63,10 @@ export function relayAsr(client: SocketLike, apiKey: string | undefined): void {
     if (closed) return;
     closed = true;
     clearTimeout(limit);
+    liveTotal -= 1;
+    const mine = (live.get(address) ?? 1) - 1;
+    if (mine > 0) live.set(address, mine);
+    else live.delete(address);
     try {
       if (upstream?.readyState === OPEN) upstream.send(JSON.stringify({ type: 'endStream' }));
       upstream?.close();
