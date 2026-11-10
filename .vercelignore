@@ -1,0 +1,12 @@
+# Never upload local secrets or build leftovers with `vercel deploy`.
+.env
+.env.*
+node_modules/
+dist/
+.iwsdk/
+.vercel/
+artifacts/
+maps-src/
+src/maps/custom/*.json
+submission/
+editions/

@@ -51,3 +51,6 @@ maps-src/
 
 # Vercel
 .vercel/
+
+.vercel
+.env*
