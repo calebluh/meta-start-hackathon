@@ -1,8 +1,9 @@
 import {
   AGENT_TOOLS,
-  asksToLeave,
   leavesRoom,
   parseReply,
+  plainRequest,
+  spokenRoom,
   systemPrompt,
   validateActions,
   type AgentAction,
@@ -134,36 +135,20 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   const leaked = extractLeakedCalls(message?.content ?? '');
   const actions = validateActions(graph, req.nodeId, [...calls, ...leaked.calls]);
   const text = leaked.text;
-  const promised = goToFallback(graph, req.nodeId, req.question, text, actions);
-  if (promised) actions.push(promised);
-  else if (!actions.some(leavesRoom) && asksToLeave(req.question)) actions.push({ type: 'back_to_city' });
+  // The model sometimes says "I'm sending you over" and then calls no tool.
+  // When the visitor's words are plain, keep the promise for it.
+  if (!actions.some(leavesRoom)) {
+    const kept = plainRequest(graph, req.nodeId, req.question, text);
+    if (kept) actions.push(kept);
+  }
+  // And sometimes it names one room aloud and calls the tool with another.
+  for (const action of actions) {
+    if (action.type !== 'go_to_room') continue;
+    const said = spokenRoom(graph, req.nodeId, text, action.roomId);
+    if (said) action.roomId = said;
+  }
   if (!text.trim() && actions.length === 0) throw new AgentError(502, 'Model API returned an empty answer');
   return { ...parseReply(text), actions };
-}
-
-/**
- * The model sometimes promises to send the visitor somewhere ("I'm sending you
- * over") without calling go_to_room. When the visitor asked to go, the reply
- * promises it, and exactly one other room is named, keep the promise.
- */
-function goToFallback(
-  graph: (typeof MAPS)[string],
-  nodeId: string,
-  question: string,
-  answer: string,
-  actions: AgentAction[],
-): AgentAction | null {
-  if (actions.some(leavesRoom)) return null;
-  const asked = /\b(take|send|bring|walk) me\b|\bgo to\b|\bvisit\b|\bhead (over|to)\b|\bcan i see\b/i.test(question);
-  const promised = /\b(send(ing)? you|head(ing)? (you )?over|take you|walk you|over you go|let'?s go)\b/i.test(answer);
-  if (!asked || !promised) return null;
-  const haystack = ` ${question.toLowerCase()} `;
-  const named = graph.nodes
-    .filter((n) => n.id !== nodeId)
-    .map((n) => ({ id: n.id, label: n.label.toLowerCase(), singular: n.label.toLowerCase().replace(/s$/, '') }))
-    .filter((n) => haystack.includes(n.label) || new RegExp(`\\b${n.singular}\\b`).test(haystack))
-    .sort((a, b) => b.label.length - a.label.length);
-  return named.length > 0 ? { type: 'go_to_room', roomId: named[0].id } : null;
 }
 
 const TOOL_NAMES = AGENT_TOOLS.map((t) => t.function.name);

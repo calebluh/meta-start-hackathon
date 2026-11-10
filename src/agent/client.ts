@@ -1,4 +1,4 @@
-import { asksToLeave, offlineAnswer, suggestedQuestions, type AgentAction, type ChatTurn, type Persona } from './prompt.js';
+import { offlineAnswer, plainRequest, suggestedQuestions, type AgentAction, type ChatTurn, type Persona } from './prompt.js';
 import type { GraphData } from '../maps/types.js';
 
 /**
@@ -38,9 +38,16 @@ export async function ask(
   } catch (e) {
     console.warn('[agent] falling back to offline answer:', (e as Error).message);
     const others = suggestedQuestions(graph, nodeId).filter((q) => q !== question).slice(0, 2);
-    // Leaving by voice needs no model: it works with no server at all.
-    if (asksToLeave(question)) {
-      return { answer: 'Of course. Back to the city you go. Come and see us again.', followups: [], actions: [{ type: 'back_to_city' }], offline: true };
+    // Moving by voice needs no model: it works with no server at all.
+    const act = plainRequest(graph, nodeId, question);
+    if (act) {
+      let answer = 'Of course. Back to the city you go. Come and see us again.';
+      if (act.type === 'go_to_room') {
+        answer = `Sure. ${graph.nodes.find((n) => n.id === act.roomId)?.label ?? 'That room'} is just through here. I'll send you over.`;
+      } else if (act.type === 'play_flow') {
+        answer = `Watch closely. Here is ${graph.flows.find((f) => f.id === act.flowId)?.title ?? 'the flow'}, from start to finish.`;
+      }
+      return { answer, followups: [], actions: [act], offline: true };
     }
     return { answer: offlineAnswer(graph, nodeId, question, persona), followups: others, actions: [], offline: true };
   }

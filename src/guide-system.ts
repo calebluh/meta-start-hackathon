@@ -93,7 +93,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Back to the city',
-    text: () => 'Pinch Back to table when you are ready. A robot can also walk you to another room.',
+    text: () => 'Pinch Back to table, or just ask a robot to take you back to the city.',
     done: () => app.mode === 'table',
     target: null,
     pinch: true,
