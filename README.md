@@ -40,7 +40,7 @@ describes every file, traces the main flows and notes real issues. Then it
 builds the map and starts this viewer with your own key.
 
 ```sh
-claude plugin marketplace add OWNER/codebase-diorama
+claude plugin marketplace add calebluh/codebase-diorama
 claude plugin install codebase-diorama@codebase-diorama
 ```
 
@@ -50,16 +50,19 @@ Then, inside the repository you want to see, ask Claude Code:
 /codebase-diorama:map
 ```
 
-You can also get the plugin as a zip from `public/downloads/codebase-diorama-plugin.zip`.
-Its source is in [`plugins/codebase-diorama`](plugins/codebase-diorama).
+## Two repositories
 
-The plugin sets the viewer up as the **personal edition** (`VITE_EDITION=personal`
-in `.env.local`). It opens straight onto your own maps, with no demo menu and
-no MiroFish. Maps of your own code are written to `src/maps/custom/<id>.json`,
-which git ignores. Open one at `/?map=<id>`, or use Next map on the desk.
+- **This one, [meta-start-hackathon](https://github.com/calebluh/meta-start-hackathon),**
+  is the competition build. It opens on a start menu of demo codebases:
+  MiroFish, Larder, and your own maps on the "Your code" card.
+- **[codebase-diorama](https://github.com/calebluh/codebase-diorama)** is the
+  public viewer and the Claude Code plugin, and it is what the plugin installs.
+  It has no demo menu and no MiroFish. It opens straight onto your own maps.
 
-Without that line you get the **hackathon edition**: a start menu with the
-MiroFish and Larder demos, plus your own maps on the "Your code" card.
+All work happens here. `node scripts/export-personal.mjs <folder>` writes the
+public repository into a checkout of it. It leaves out the hackathon-only
+files and applies the replacements in `editions/personal/`. To preview the
+public edition without exporting, add `VITE_EDITION=personal` to `.env.local`.
 
 ## How it is built
 

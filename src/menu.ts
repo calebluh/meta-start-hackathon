@@ -22,7 +22,7 @@ export class MenuSystem extends createSystem({}) {
         const graph = CUSTOM_MAPS[custom[0]];
         const text = (id: string, value: string) => panel.getElementById<UIKit.Text>(id)?.setProperties({ text: value });
         text('custom-name', graph.project.name.slice(0, 22));
-        const summary = graph.project.summary.split(/(?<=[.!?])s/)[0] ?? '';
+        const summary = graph.project.summary.split(/(?<=[.!?])\s/)[0] ?? '';
         text('custom-pitch', summary.length > 110 ? `${summary.slice(0, 107)}...` : summary);
         text('custom-go', custom.length > 1 ? `Pinch to start (+${custom.length - 1} more via ?map=)` : 'Pinch to start');
       }

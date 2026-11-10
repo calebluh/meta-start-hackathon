@@ -34,18 +34,11 @@ The viewer is an open-source WebXR app (Meta IWSDK). Keep one copy in the
 user's home directory and reuse it:
 
 ```bash
-VIEWER_REPO=https://github.com/OWNER/codebase-diorama   # set by the plugin author
+VIEWER_REPO=https://github.com/calebluh/codebase-diorama
 VIEWER_DIR="$HOME/codebase-diorama"
 if [ -d "$VIEWER_DIR/.git" ]; then git -C "$VIEWER_DIR" pull --ff-only; else git clone "$VIEWER_REPO" "$VIEWER_DIR"; fi
 cd "$VIEWER_DIR" && npm install
-# Personal edition: opens straight onto the user's own maps (no demo menu).
-grep -qs '^VITE_EDITION=' .env.local || echo 'VITE_EDITION=personal' >> .env.local
 ```
-
-The repository also contains a competition build with bundled demo maps. The
-`VITE_EDITION=personal` line switches those off, so the viewer only shows maps
-you make. It is not a secret, so you may write it; never write the user's
-keys.
 
 Requires Node 20+ and git. If either is missing, tell the user what to install
 and stop.
@@ -120,8 +113,7 @@ Logo (optional): if the repo has a square PNG logo or favicon, copy it to
 ## 6. Keys
 
 The robots answer using the Meta Model API. Ask the user to create a key at
-https://dev.meta.ai and add this line to `$VIEWER_DIR/.env.local` themselves
-(below the `VITE_EDITION` line):
+https://dev.meta.ai and add this line to `$VIEWER_DIR/.env.local` themselves:
 
 ```
 MODEL_API_KEY=LLM_...
