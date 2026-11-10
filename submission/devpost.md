@@ -97,9 +97,13 @@ so it runs from a link in the Quest Browser with nothing to install.
   the world. Speech recognition streams through Meta's realtime
   transcription, so your words appear as you say them and a turn ends half a
   second after you stop. API keys stay on the server.
+- **Robots that keep their word.** A fast model sometimes says "I'll send
+  you over" and then does nothing. The server reads the visitor's words and
+  the robot's spoken answer, and when the request is plain it carries out
+  the action itself, so "take me to the kitchen" always takes you there.
 - **Without the AI.** If the model cannot be reached, the robots answer from
-  the map instead, and asking to leave still works. The experience never
-  stops on a network error.
+  the map instead, and asking to change room, watch a flow or leave still
+  works. The experience never stops on a network error.
 - **Hosting.** A static site plus four small server functions on Vercel,
   each rate limited.
 
@@ -142,6 +146,10 @@ Development was done with Claude Code as a pair programmer.
 - **Keeping an open microphone honest.** The robot's own voice must never be
   heard as your next question, so the microphone sends silence while a robot
   is speaking.
+- **A robot that says one thing and does another.** With quick reasoning
+  the model would promise to walk you somewhere and call no tool, or name
+  one room aloud and pick a different one. A small resolver now checks what
+  was asked against what was said, and makes the action match the words.
 - **A public link that spends real credits.** The page never sends a prompt.
   It names a room, the server builds the prompt, and every input is capped,
   so the link cannot be used as a free chatbot.

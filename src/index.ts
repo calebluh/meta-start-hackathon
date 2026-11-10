@@ -113,6 +113,7 @@ World.create(
       }
       if (e.key === 'v') world.getSystem(RoomSystem)?.debugAskText('Tell me about your stripe calls file');
       if (e.key === 'b') world.getSystem(RoomSystem)?.debugAskText('Thanks, can you take me back to the city?');
+      if (e.key === 'y') world.getSystem(RoomSystem)?.debugAskText('Show me what happens on billing day.');
     });
   }
 }).catch((error) => {

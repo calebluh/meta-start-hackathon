@@ -8,8 +8,22 @@ robot and ask it a question, out loud or with a pinch, and it answers about
 the actual code.
 
 Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start
-Developer Competition. Everything works with bare hands on a Meta Quest:
-point and pinch, or poke the panels with a fingertip.
+Developer Competition. Everything works with bare hands on a Meta Quest,
+sitting down: point and pinch, or poke the panels with a fingertip. On Meta
+VR Glasses the desk moves to fit the narrower view, and a look and a pinch
+do the same job.
+
+## Things to say to a robot
+
+The robots act on what you ask, so most of a visit can be done by voice:
+
+- "What happens in this room?"
+- "Take me to the kitchen." (any room, by name or by what it is)
+- "Where does the money go next? Take me there."
+- "Show me what happens on billing day." (plays that flow)
+- "Take me back to the city."
+
+Moving, playing a flow and leaving also work with no AI key at all.
 
 ## Try it
 
@@ -53,8 +67,10 @@ Then, inside the repository you want to see, ask Claude Code:
 ## Two repositories
 
 - **This one, [meta-start-hackathon](https://github.com/calebluh/meta-start-hackathon),**
-  is the competition build. It opens on a start menu of demo codebases:
-  MiroFish, Larder, and your own maps on the "Your code" card.
+  is the competition build. It opens on a start menu of three demo
+  codebases: MiroFish, Larder, and "This app", the diorama's own source
+  mapped by its own plugin. The Devpost text, video script and a submission
+  checklist are in [submission/](submission/).
 - **[codebase-diorama](https://github.com/calebluh/codebase-diorama)** is the
   public viewer and the Claude Code plugin, and it is what the plugin installs.
   It has no demo menu and no MiroFish. It opens straight onto your own maps.

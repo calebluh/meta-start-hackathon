@@ -29,6 +29,7 @@ const OVERLAY = 'editions/personal';
 /** Hackathon-only files and folders (relative paths, '/' separated). */
 const DROP = [
   'editions/',
+  'submission/',
   'scripts/export-personal.mjs',
   'scripts/maps/mirofish.mjs',
   'src/maps/mirofish.ts',
