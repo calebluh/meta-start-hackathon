@@ -34,6 +34,7 @@ import { resolveRef } from '../layout.js';
 import { dive, DIVE_FADE_AT } from '../transition.js';
 import { guideNote } from '../guide.js';
 import { isPaused, onPause, whenResumed } from '../pause.js';
+import { placement } from '../placement.js';
 import { app, currentStep, enterRoom, type Handoff, nextStep, onChange, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
@@ -54,8 +55,6 @@ const WALK_SPEED = 0.8;
 /** Workers keep at least this far from the seated viewer. */
 const SAFE_RADIUS = 2.3;
 const FADE_SECONDS = 0.35;
-/** The viewer sits this far behind the desk centre (see WorkspaceSystem). */
-const VIEWER_OFFSET = 0.5;
 const NAMES = ['Ada', 'Bo', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal', 'Ivy'];
 
 type Task =
@@ -301,7 +300,7 @@ export class RoomSystem extends createSystem({
     const staticGroup = new Group();
     staticGroup.name = 'static';
     group.add(staticGroup);
-    group.position.set(0, -(this.workspace?.position.y ?? 0.74), VIEWER_OFFSET);
+    group.position.set(0, -(this.workspace?.position.y ?? 0.74), placement.reach);
 
     const floor = new Mesh(new CircleGeometry(ROOM_RADIUS, 48), new MeshStandardMaterial({ color: theme.floor, roughness: 0.85 }));
     floor.rotation.x = -Math.PI / 2;

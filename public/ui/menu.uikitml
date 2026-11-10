@@ -164,7 +164,7 @@
     </div>
     <div class="hint-row">
       <Hand width="20" height="20" color="#9aa3ad"></Hand>
-      <span class="hint">Point at a card and pinch your thumb and finger, or tap it with a fingertip.</span>
+      <span id="menu-hint" class="hint">Point at a card and pinch your thumb and finger, or tap it with a fingertip.</span>
     </div>
   </div>
 </Panel>

@@ -1,4 +1,4 @@
-import { createSystem, type UIKit, type UIKitMLAsset } from '@iwsdk/core';
+import { createSystem, type UIKit, type UIKitMLAsset, VisibilityState } from '@iwsdk/core';
 import { click } from './audio/sound.js';
 import { CUSTOM_MAPS, MAPS } from './maps/index.js';
 import { setPanelShown } from './panels.js';
@@ -41,11 +41,26 @@ export class MenuSystem extends createSystem({}) {
         }
         const graph = MAPS[id];
         const lines = graph.files.reduce((n, f) => n + f.loc, 0);
-        const parts = graph.nodes.filter((n) => !graph.nodes.some((c) => c.parent === n.id)).length;
+        const parts = graph.nodes.filter((n) => n.kind !== 'external' && !graph.nodes.some((c) => c.parent === n.id)).length;
         panel
           .getElementById<UIKit.Text>(statsFor(id))
           ?.setProperties({ text: `${parts} rooms | ${graph.files.length} files | ${lines.toLocaleString('en-US')} lines` });
       }
+    }
+    // Meta VR Glasses are aimed with the eyes (gaze), not a pointing hand.
+    const hint = panel?.getElementById<UIKit.Text>('menu-hint');
+    if (hint) {
+      this.cleanupFuncs.push(
+        this.world.visibilityState.subscribe((state) => {
+          if (state === VisibilityState.NonImmersive) return;
+          const gaze = this.world.session?.enabledFeatures?.includes('gaze-tracking') ?? false;
+          hint.setProperties({
+            text: gaze
+              ? 'Look at a card, then tap your thumb and finger together.'
+              : 'Point at a card and pinch your thumb and finger, or tap it with a fingertip.',
+          });
+        }),
+      );
     }
     this.cleanupFuncs.push(onChange(() => this.apply()));
     this.apply();

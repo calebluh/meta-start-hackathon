@@ -23,6 +23,7 @@ import { Bubble } from './rooms/worker.js';
 import { app } from './state.js';
 import { HACKATHON } from './edition.js';
 import { isPaused } from './pause.js';
+import { aimWord, placement } from './placement.js';
 import { dive } from './transition.js';
 
 /**
@@ -62,7 +63,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Point and pinch',
-    text: () => 'Point at the building with the arrow, then tap your thumb and finger together.',
+    text: () => `${aimWord()} the building with the arrow, then tap your thumb and finger together.`,
     done: () => app.selected !== null || app.mode === 'room' || guideProgress.talked,
     target: 'building',
     pinch: true,
@@ -76,7 +77,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Meet the team',
-    text: () => 'The robots here run this part of the code. Point at one and pinch to talk.',
+    text: () => `The robots here run this part of the code. ${aimWord()} one and pinch to talk.`,
     done: () => guideProgress.talked,
     target: 'worker',
     pinch: true,
@@ -99,7 +100,10 @@ const STEPS: Step[] = [
   },
   {
     title: 'Make it yours',
-    text: () => 'Pinch the board with both hands, then pull apart to resize it or twist to turn it.',
+    text: () =>
+      placement.gaze
+        ? 'Every building, button and robot works the same way: look at it and pinch.'
+        : 'Pinch the board with both hands, then pull apart to resize it or twist to turn it.',
     done: (clock, grabbed) => grabbed || clock > 15,
     target: null,
     pinch: true,
