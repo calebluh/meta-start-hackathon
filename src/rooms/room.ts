@@ -90,6 +90,7 @@ interface WorkerState {
 
 /** How far to either side of straight ahead a robot may stand to talk, in radians. */
 const TALK_ARC = 0.25;
+const TALK_ARC_NARROW = 0.06;
 /** Typing speed of speech bubbles, matched to talking pace. */
 const CHARS_PER_SECOND = 16;
 /** A ready answer waits at most this long for the "let me check" line to finish. */
@@ -658,7 +659,10 @@ export class RoomSystem extends createSystem({
     // inside the gap between the two side panels, which would hide a robot
     // standing farther round.
     const p = w.rig.root.position;
-    const angle = Math.max(-TALK_ARC, Math.min(TALK_ARC, Math.atan2(p.x, -p.z)));
+    // A narrow view (glasses) cannot hold a robot off to one side and its
+    // speech bubble at once, so there it stands almost straight ahead.
+    const arc = placement.gaze ? TALK_ARC_NARROW : TALK_ARC;
+    const angle = Math.max(-arc, Math.min(arc, Math.atan2(p.x, -p.z)));
     const spot = new Vector3(Math.sin(angle) * 2.0, 0, -Math.cos(angle) * 2.0);
     w.scripted = true;
     w.item.visible = false;

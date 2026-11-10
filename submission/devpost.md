@@ -150,6 +150,8 @@ Development was done with Claude Code as a pair programmer.
   the model would promise to walk you somewhere and call no tool, or name
   one room aloud and pick a different one. A small resolver now checks what
   was asked against what was said, and makes the action match the words.
+  It would also say one line, use a tool and stop mid-thought, so the server
+  now gives it one more turn to finish the answer.
 - **A public link that spends real credits.** The page never sends a prompt.
   It names a room, the server builds the prompt, and every input is capped,
   so the link cannot be used as a free chatbot.
