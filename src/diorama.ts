@@ -683,7 +683,8 @@ export class DioramaSystem extends createSystem({
       else this.pulse.visible = false;
     }
 
-    if (step) this.showStep();
+    if (app.quiz && app.mode === 'room' && app.roomNode) this.showQuizCard(app.roomNode);
+    else if (step) this.showStep();
     else if (app.mode === 'room' && app.roomNode) this.showNode(app.roomNode);
     else if (app.selected) this.showNode(app.selected);
     else this.showOverview();
@@ -753,6 +754,19 @@ export class DioramaSystem extends createSystem({
       this.setText(this.inspector, `file-${i}`, f ? `${f.name}  —  ${f.d}` : '…');
       this.inspector?.getElementById(`file-${i}`)?.setProperties({ display: f ? 'flex' : 'none' });
     }
+  }
+
+  /** During a quiz the card would give the answers away, so it only says so. */
+  private showQuizCard(id: string): void {
+    const node = app.graph.nodes.find((n) => n.id === id);
+    if (!node) return;
+    this.setText(this.inspector, 'insp-kind', 'QUIZ IN PROGRESS');
+    this.setText(this.inspector, 'insp-title', node.label);
+    this.setText(this.inspector, 'insp-summary', 'The notes on this room are put away while you are quizzed.');
+    this.setText(this.inspector, 'insp-stats', 'They come back when the quiz ends.');
+    this.setShown('insp-alert-box', false);
+    this.setShown('insp-recent-box', false);
+    this.setShown('insp-files', false);
   }
 
   private showStep(): void {

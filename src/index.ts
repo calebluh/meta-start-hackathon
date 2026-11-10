@@ -72,6 +72,7 @@ World.create(
       if (e.key === 'o') select('api.orders');
       if (e.key === 'f') select('api.payments');
       if (e.key === 'h') select('shared');
+      if (e.key === 'a') select('admin');
       if (e.key === 'w') world.getSystem(RoomSystem)?.debugTalk();
       if (e.key === 'q') world.getSystem(RoomSystem)?.debugAsk(0);
       if (e.key === 'e') world.getSystem(RoomSystem)?.debugAsk(2);
@@ -114,6 +115,13 @@ World.create(
       if (e.key === 'v') world.getSystem(RoomSystem)?.debugAskText('Tell me about your stripe calls file');
       if (e.key === 'b') world.getSystem(RoomSystem)?.debugAskText('Thanks, can you take me back to the city?');
       if (e.key === 'y') world.getSystem(RoomSystem)?.debugAskText('Show me what happens on billing day.');
+      // Quiz: l starts or stops it, r pinches the right answer, x a wrong one,
+      // c and d answer out loud (a paraphrase for the model to mark, and "quiz me").
+      if (e.key === 'l') world.getSystem(RoomSystem)?.debugQuiz();
+      if (e.key === 'r') world.getSystem(RoomSystem)?.debugQuizAnswer(true);
+      if (e.key === 'x') world.getSystem(RoomSystem)?.debugQuizAnswer(false);
+      if (e.key === 'c') world.getSystem(RoomSystem)?.debugHear('I think it takes the card payments and gives refunds');
+      if (e.key === 'd') world.getSystem(RoomSystem)?.debugHear('ok quiz me');
     });
   }
 }).catch((error) => {

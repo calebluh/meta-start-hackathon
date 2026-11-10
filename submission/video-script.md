@@ -1,6 +1,6 @@
 # Demo video: script and shot list
 
-Target length 2:40. The limit is 3:00, so do not go past 2:50. The rules ask
+Target length 2:45. The limit is 3:00, so do not go past 2:50. The rules ask
 for real footage from a Meta Quest device or an emulator, a story first, and
 no AI-generated video.
 
@@ -27,11 +27,12 @@ no AI-generated video.
 | 0:45 to 1:00 | Pinch Play flow. A packet travels between buildings. | "Play a flow, and you watch a real request travel through the code, step by step." |
 | 1:00 to 1:15 | Pinch Step inside. The building grows around you. Look across the room at the robots working. | "Then step inside. Each room is the real-world place that does the same job. Payments is a cashier's office." |
 | 1:15 to 1:40 | Pinch a robot. It walks over and greets you. Ask out loud: "What happens in this room?" Your words appear as you speak; the robot answers aloud. | (No voice-over. Let the conversation play.) |
-| 1:40 to 2:00 | Say: "Take me to the kitchen." The robot says goodbye, the view cuts to the kitchen and its robot greets you. | "The robots don't just answer. They act. Ask where the order goes next, and you're taken there." |
-| 2:00 to 2:12 | Say: "Take me back to the city." The room shrinks back onto the desk. | "No controllers anywhere. Hands and voice, sitting down." |
-| 2:12 to 2:27 | Menu: the "This app" card, then its city. Optionally a 3 second screen recording of `/codebase-diorama:map` running in a terminal. | "And it works on your code. A Claude Code plugin maps any repository into a city. This one is the diorama's own source." |
-| 2:27 to 2:35 | Glasses emulator clip: the narrower view, a look and a pinch selecting a building. On-screen label: "Meta VR Glasses emulator". | "On Meta VR Glasses, the desk moves to fit the narrower view, and everything works with a look and a pinch." |
-| 2:35 to 2:40 | Title card: "Codebase Diorama" and the public link. | "Codebase Diorama. Step inside your code." |
+| 1:40 to 1:55 | Say: "Take me to the kitchen." The robot says goodbye, the view cuts to the kitchen and its robot greets you. | "The robots don't just answer. They act. Ask where the order goes next, and you're taken there." |
+| 1:55 to 2:10 | Pinch Quiz me. The robot asks its first question; the side card now reads "Quiz in progress". Pinch a wrong answer on purpose: the panel turns amber and leaves the right answer standing while the robot corrects you. Answer the next one out loud. | "And when you think you've got it, the robot tests you. Get one wrong, and it puts you right." |
+| 2:10 to 2:18 | Say: "Take me back to the city." The room shrinks back onto the desk. | "No controllers anywhere. Hands and voice, sitting down." |
+| 2:18 to 2:30 | Menu: the "This app" card, then its city. Optionally a 3 second screen recording of `/codebase-diorama:map` running in a terminal. | "And it works on your code. A Claude Code plugin maps any repository into a city. This one is the diorama's own source." |
+| 2:30 to 2:37 | Glasses emulator clip: the narrower view, a look and a pinch selecting a building. On-screen label: "Meta VR Glasses emulator". | "On Meta VR Glasses, the desk moves to fit the narrower view, and everything works with a look and a pinch." |
+| 2:37 to 2:42 | Title card: "Codebase Diorama" and the public link. | "Codebase Diorama. Step inside your code." |
 
 ## If a shot will not behave
 

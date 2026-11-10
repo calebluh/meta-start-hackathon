@@ -10,6 +10,7 @@ import {
   type ChatTurn,
   type Persona,
 } from '../src/agent/prompt.js';
+import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
 import { createLimiter } from './rate-limit.js';
 
@@ -30,6 +31,8 @@ const UPSTREAM_TIMEOUT_MS = 14_000;
 const THIN_ANSWER = 90;
 /** Do not start a second request with less time than this left. */
 const MIN_SECOND_TRY_MS = 3_500;
+/** Marking a quiz answer is one short reply; the visitor is waiting for a yes or no. */
+const MARK_TIMEOUT_MS = 9_000;
 
 export interface AgentRequest {
   mapId: string;
@@ -37,12 +40,20 @@ export interface AgentRequest {
   question: string;
   persona: Persona;
   history?: ChatTurn[];
+  /**
+   * Set when `question` is the visitor's spoken answer to one of the room's
+   * quiz questions: the id of that question. The question, its right answer
+   * and the marking instructions all come from the map, never the client.
+   */
+  quiz?: string;
 }
 
 export interface AgentReply {
   answer: string;
   followups: string[];
   actions: AgentAction[];
+  /** Only when marking a quiz answer: whether the visitor had it right. */
+  right?: boolean;
 }
 
 export class AgentError extends Error {
@@ -91,7 +102,36 @@ export function validate(body: unknown): AgentRequest {
       }
     }
   }
-  return { mapId, nodeId, question: str(b.question, 300, 'question'), persona, history };
+  let quiz: string | undefined;
+  if (b.quiz !== undefined) {
+    quiz = str(b.quiz, 80, 'quiz');
+    if (!quizFor(graph, nodeId).some((q) => q.id === quiz)) throw new AgentError(404, `Unknown quiz question "${quiz}"`);
+  }
+  return { mapId, nodeId, question: str(b.question, 300, 'question'), persona, history, quiz };
+}
+
+/** Marks an answer the visitor gave to a quiz question in their own words. */
+export async function markAnswer(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
+  if (!apiKey) throw new AgentError(503, 'MODEL_API_KEY is not set on the server');
+  const graph = MAPS[req.mapId];
+  const question = quizFor(graph, req.nodeId).find((q) => q.id === req.quiz);
+  if (!question) throw new AgentError(404, 'Unknown quiz question');
+  const room = graph.nodes.find((n) => n.id === req.nodeId)?.label ?? req.nodeId;
+  const reply = await complete(
+    [
+      { role: 'system', content: gradingPrompt(question, req.persona, room) },
+      { role: 'user', content: req.question },
+    ],
+    apiKey,
+    model,
+    MARK_TIMEOUT_MS,
+    false,
+  );
+  const verdict = parseVerdict(reply.text);
+  if (!verdict) throw new AgentError(502, 'Model API returned no verdict');
+  // The fact is always said, even if the model only wrote the verdict.
+  const say = verdict.say || (verdict.right ? "That's right." : `Not quite. ${question.explain}`);
+  return { answer: say, followups: [], actions: [], right: verdict.right };
 }
 
 export async function askAgent(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
@@ -191,6 +231,7 @@ async function complete(
   apiKey: string,
   model: string,
   timeoutMs: number,
+  withTools = true,
 ): Promise<{ text: string; calls: { name: string; args: Record<string, unknown> }[]; raw: RawMessage }> {
   const response = await fetch(`${MODEL_API_BASE}/chat/completions`, {
     method: 'POST',
@@ -205,8 +246,7 @@ async function complete(
       messages,
       max_tokens: 1400,
       reasoning_effort: 'minimal',
-      tools: AGENT_TOOLS,
-      tool_choice: 'auto',
+      ...(withTools ? { tools: AGENT_TOOLS, tool_choice: 'auto' } : {}),
     }),
   });
   if (!response.ok) {
@@ -276,7 +316,7 @@ export async function handleAgent(
     if (apiKey && !(perMinute.allow(address) && perHour.allow(address) && everyone.allow('all'))) {
       throw new AgentError(429, 'Too many questions; try again in a minute');
     }
-    const reply = await askAgent(req, apiKey, model || undefined);
+    const reply = await (req.quiz ? markAnswer(req, apiKey, model || undefined) : askAgent(req, apiKey, model || undefined));
     return { status: 200, json: reply };
   } catch (e) {
     if (e instanceof AgentError) return { status: e.status, json: { error: e.message } };

@@ -34,7 +34,10 @@ Paste each part into the matching Devpost field. Everything marked
    - "Take me to the kitchen."
    - "Show me what happens on billing day."
    - "Take me back to the city."
-7. If the desk is ever in the wrong place, pinch **Recenter**.
+7. Pinch **Quiz me** on the question panel, or say "quiz me". The robot asks
+   four questions about its room. Pinch an answer or say it in your own
+   words; a wrong answer is corrected on the spot.
+8. If the desk is ever in the wrong place, pinch **Recenter**.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
 On a computer, the same link shows a flat preview you can click through.
@@ -72,6 +75,12 @@ desk.
   code in its room, in its own voice, and it acts on what you ask: it walks
   you to another room, plays a flow, points at the pipe that leads next
   door, hands you a card about a file, or takes you back to the city.
+- **The quiz.** Pinch **Quiz me** and the robot turns the tables: it tests
+  you on its own room. What is this room's job, where does the work go next,
+  which file lives here, what is the warning about. The room's notes are put
+  away while it runs. Pinch one of three answers, or say it in your own
+  words. A wrong answer is corrected straight away, with the right one left
+  standing on the panel, and you get a score at the end.
 - **Your own code.** A Claude Code plugin maps any repository into a city.
   The third demo, **This app**, is the diorama's own source code, mapped by
   that plugin.
@@ -103,7 +112,9 @@ so it runs from a link in the Quest Browser with nothing to install.
   the action itself, so "take me to the kitchen" always takes you there.
 - **Without the AI.** If the model cannot be reached, the robots answer from
   the map instead, and asking to change room, watch a flow or leave still
-  works. The experience never stops on a network error.
+  works. The quiz is written from the map too: its questions and pinched
+  answers need no model at all, which only marks an answer spoken in your
+  own words. The experience never stops on a network error.
 - **Hosting.** A static site plus four small server functions on Vercel,
   each rate limited.
 

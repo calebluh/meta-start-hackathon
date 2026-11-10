@@ -31,6 +31,8 @@ export const app = {
   follow: true,
   /** Set when a worker sends the visitor to another room, so its worker can pick up the thread. */
   handoff: null as Handoff | null,
+  /** A worker is quizzing the visitor: the room's notes are put away until it ends. */
+  quiz: false,
 };
 
 export interface Handoff {
@@ -158,7 +160,15 @@ export function enterRoom(id: string): void {
   emit();
 }
 
+/** Puts the room's notes away for a quiz, or brings them back. */
+export function setQuiz(on: boolean): void {
+  if (app.quiz === on) return;
+  app.quiz = on;
+  emit();
+}
+
 export function leaveRoom(): void {
+  app.quiz = false;
   app.mode = 'table';
   app.roomNode = null;
   app.handoff = null;

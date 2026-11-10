@@ -2,7 +2,8 @@
   Conversation panel, shown while talking to a worker. Designed for a scene
   scale of 0.1 (1px = 1 mm). Every question is a big button so it can be
   asked with a pinch; the microphone button only appears where the browser
-  supports speech recognition.
+  supports speech recognition. During a quiz the same buttons hold the three
+  answers and the title holds the worker's question.
 -->
 <style>
   .root {
@@ -33,6 +34,10 @@
   .question {
     justify-content: flex-start;
     width: 298px;
+    height: auto;
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
   }
 
   .row {
@@ -67,6 +72,12 @@
         <MessageCircle></MessageCircle>
       </ButtonIcon>
       <ButtonLabel id="q-label-3">Question</ButtonLabel>
+    </Button>
+    <Button id="btn-quiz" class="question">
+      <ButtonIcon>
+        <GraduationCap></GraduationCap>
+      </ButtonIcon>
+      <ButtonLabel id="quiz-label">Quiz me</ButtonLabel>
     </Button>
     <div class="row">
       <Button id="btn-mic">

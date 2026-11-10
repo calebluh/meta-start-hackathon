@@ -5,7 +5,8 @@ your desk in VR: every part of the code is a building, and you can walk into
 any of them. Inside, robot workers run that part of the code. Packets of data
 travel from room to room along the code's real flows. You can point at any
 robot and ask it a question, out loud or with a pinch, and it answers about
-the actual code.
+the actual code. When you think you know a room, pinch **Quiz me**: the
+robot tests you on it and corrects what you get wrong.
 
 Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start
 Developer Competition. Everything works with bare hands on a Meta Quest,
@@ -22,8 +23,10 @@ The robots act on what you ask, so most of a visit can be done by voice:
 - "Where does the money go next? Take me there."
 - "Show me what happens on billing day." (plays that flow)
 - "Take me back to the city."
+- "Quiz me." (four questions about the room; pinch an answer or say it)
 
-Moving, playing a flow and leaving also work with no AI key at all.
+Moving, playing a flow, leaving and the quiz also work with no AI key at
+all; the key is only needed to mark a quiz answer said in your own words.
 
 ## Try it
 

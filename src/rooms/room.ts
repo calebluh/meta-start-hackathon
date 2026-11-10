@@ -25,17 +25,18 @@ import {
   type UIKitMLAsset,
   Vector3,
 } from '@iwsdk/core';
-import { ask, speak, speakingSeconds, stopSpeaking, voiceLevel } from '../agent/client.js';
+import { ask, markSpoken, speak, speakingSeconds, stopSpeaking, voiceLevel } from '../agent/client.js';
 import { LiveMic } from '../agent/live-mic.js';
 import { canRecord } from '../agent/recorder.js';
-import { leavesRoom, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
+import { leavesRoom, plainRequest, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
+import { answerOrder, asksForQuiz, asksToStopQuiz, heardAnswer, quizRound, type QuizQuestion } from '../agent/quiz.js';
 import { Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
 import { dive, DIVE_FADE_AT } from '../transition.js';
 import { guideNote } from '../guide.js';
 import { isPaused, onPause, whenResumed } from '../pause.js';
 import { placement } from '../placement.js';
-import { app, currentStep, enterRoom, type Handoff, leaveRoom, nextStep, onChange, startFlow, stopFlow } from '../state.js';
+import { app, currentStep, enterRoom, type Handoff, leaveRoom, nextStep, onChange, setQuiz, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
 import { thinkingLine } from './lines.js';
@@ -136,6 +137,31 @@ interface Packet {
   onArrive: (() => void) | null;
 }
 
+/** A quiz the visitor is taking from the worker they are talking to. */
+interface Quiz {
+  questions: QuizQuestion[];
+  index: number;
+  score: number;
+  /** The questions answered wrong, to talk over afterwards. */
+  missed: string[];
+  /** Which answer each of the three buttons holds, for the question now on the panel. */
+  order: number[];
+  /** From an answer until the next question is up: further answers are ignored. */
+  marking: boolean;
+  round: number;
+}
+
+const QUIZ_RIGHT_COLOR = '#7ee787';
+const QUIZ_WRONG_COLOR = '#ffb454';
+const ASK_EYEBROW_COLOR = '#4fd1c5';
+/** A breath between the verdict and the next question. */
+const QUIZ_PAUSE_MS = 700;
+/** Reading time for a verdict when it is not spoken aloud. */
+const QUIZ_READ_MS_PER_CHAR = 45;
+const QUIZ_READ_MAX_MS = 7000;
+const RIGHT_LINES = ['That is right.', 'Yes, exactly.', 'Correct. You have been paying attention.', 'Spot on.'];
+const WRONG_LINES = ['Not quite.', 'Not that one.', 'Close, but no.', 'Afraid not.'];
+
 /**
  * The inside view. When the app is in `room` mode, builds a life-size room for
  * that part of the codebase around the seated viewer, staffs it with workers
@@ -156,6 +182,8 @@ export class RoomSystem extends createSystem({
   private portals: Portal[] = [];
   private workers: WorkerState[] = [];
   private bubbles: Bubble[] = [];
+  /** The sign on the far wall, and what it says outside a quiz. */
+  private sign: { bubble: Bubble; text: string; title: string } | null = null;
   private packet: Packet | null = null;
   private handledStep = -1;
   private offRoomClock = 0;
@@ -168,6 +196,9 @@ export class RoomSystem extends createSystem({
   private waiting = false;
   /** Bumped whenever a conversation starts or ends, so a late answer knows it is stale. */
   private conversation = 0;
+  private quiz: Quiz | null = null;
+  /** Quizzes started in this room, so a second one asks different questions. */
+  private quizRounds = 0;
   private mic!: LiveMic;
   /** The visitor turned the mic off for this conversation. */
   private micOff = false;
@@ -331,6 +362,7 @@ export class RoomSystem extends createSystem({
     // Room sign on the far wall, straight ahead.
     const sign = new Bubble(2.2, theme.accent);
     sign.setText(node.summary, `${node.label} · ${theme.place}`);
+    this.sign = { bubble: sign, text: node.summary, title: `${node.label} · ${theme.place}` };
     sign.mesh.position.set(0, 2.55, -(ROOM_RADIUS - 0.12));
     group.add(sign.mesh);
     this.bubbles.push(sign);
@@ -538,6 +570,7 @@ export class RoomSystem extends createSystem({
     this.roomEntity = null;
     this.roomGroup = null;
     this.packet = null;
+    this.sign = null;
     this.builtNode = null;
     this.stations = [];
     this.portals = [];
@@ -566,7 +599,13 @@ export class RoomSystem extends createSystem({
     };
     for (let i = 0; i < 4; i += 1) on(`q-${i}`, () => {
       click();
-      void this.askQuestion(this.questions[i]);
+      if (this.quiz) this.answerQuiz(i);
+      else void this.askQuestion(this.questions[i]);
+    });
+    on('btn-quiz', () => {
+      click();
+      if (this.quiz) this.stopQuiz();
+      else this.startQuiz();
     });
     on('btn-done', () => this.endConversation());
     on('btn-mic', () => this.toggleMic());
@@ -583,7 +622,7 @@ export class RoomSystem extends createSystem({
         const w = this.talking;
         if (w && !this.waiting) w.bubble.setText(text, 'YOU');
       },
-      onTurn: (text) => void this.askQuestion(text),
+      onTurn: (text) => this.heard(text),
       onMode: () => this.updateMicLabel(),
     });
   }
@@ -683,11 +722,210 @@ export class RoomSystem extends createSystem({
     }
     void this.say(w, greeting, this.titleFor(w));
 
-    this.setAskText('ask-eyebrow', `ASK ${w.name.toUpperCase()}`);
-    this.setAskText('ask-title', `${w.name}, ${this.theme.role} in ${node.label}`);
+    this.showAskHeader(w);
     this.showQuestions();
     this.showAskPanel(true);
     void this.openMic();
+  }
+
+  /** The panel heading outside a quiz: who is being asked. */
+  private showAskHeader(w: WorkerState): void {
+    const node = app.graph.nodes.find((n) => n.id === this.builtNode);
+    this.setAskText('ask-eyebrow', `ASK ${w.name.toUpperCase()}`);
+    this.askPanel?.getElementById('ask-eyebrow')?.setProperties({ color: ASK_EYEBROW_COLOR });
+    this.setAskText('ask-title', `${w.name}, ${this.theme?.role ?? 'worker'} in ${node?.label ?? 'this room'}`);
+    this.setAskText('quiz-label', 'Quiz me');
+  }
+
+  // --------------------------------------------------------------- quiz
+
+  /** Words from the open microphone: a request for the quiz, an answer to it, or a question. */
+  private heard(text: string): void {
+    const quiz = this.quiz;
+    if (!quiz) {
+      if (asksForQuiz(text)) this.startQuiz();
+      else void this.askQuestion(text);
+      return;
+    }
+    if (quiz.marking || this.waiting || !this.builtNode) return;
+    if (asksToStopQuiz(text)) {
+      this.stopQuiz();
+      return;
+    }
+    // Asking to go somewhere ends the quiz and is carried out as usual.
+    if (plainRequest(app.graph, this.builtNode, text)) {
+      this.closeQuiz();
+      void this.askQuestion(text);
+      return;
+    }
+    const question = quiz.questions[quiz.index];
+    const picked = heardAnswer(quiz.order.map((i) => question.answers[i]), text);
+    if (picked !== null) this.answerQuiz(picked);
+    else void this.markSpokenAnswer(text);
+  }
+
+  /** The worker tests the visitor on its own room: a few questions, three answers each. */
+  private startQuiz(): void {
+    const w = this.talking;
+    if (!w || !this.builtNode || this.quiz) return;
+    // An answer still on its way belongs to the talk before the quiz.
+    this.conversation += 1;
+    this.waiting = false;
+    this.hideFileCard();
+    const questions = quizRound(app.graph, this.builtNode, this.quizRounds);
+    if (questions.length === 0) {
+      void this.say(w, 'I do not know this room well enough to quiz you on it yet. Ask me something instead.', this.titleFor(w));
+      return;
+    }
+    this.quizRounds += 1;
+    this.quiz = { questions, index: 0, score: 0, missed: [], order: [0, 1, 2], marking: false, round: this.quizRounds };
+    this.setAskText('quiz-label', 'Stop the quiz');
+    // Closed book: the wall sign and the info card would give the answers away.
+    this.sign?.bubble.setText('Quiz in progress.', this.sign.title);
+    setQuiz(true);
+    const count = questions.length === 1 ? 'One question' : `${questions.length} questions`;
+    this.askQuizQuestion(`Quiz time. ${count} about this room. Pinch an answer, or say it. `);
+  }
+
+  /** Puts the current question on the panel and has the worker ask it. */
+  private askQuizQuestion(lead = ''): void {
+    const quiz = this.quiz;
+    const w = this.talking;
+    if (!quiz || !w) return;
+    const question = quiz.questions[quiz.index];
+    quiz.order = answerOrder(question, quiz.round);
+    quiz.marking = false;
+    this.setAskText('ask-eyebrow', `QUIZ - ${quiz.index + 1} OF ${quiz.questions.length}`);
+    this.askPanel?.getElementById('ask-eyebrow')?.setProperties({ color: ASK_EYEBROW_COLOR });
+    this.setAskText('ask-title', question.prompt);
+    for (let i = 0; i < 4; i += 1) {
+      this.askPanel?.getElementById(`q-${i}`)?.setProperties({ display: i < 3 ? 'flex' : 'none' });
+      if (i < 3) this.setAskText(`q-label-${i}`, question.answers[quiz.order[i]]);
+    }
+    void this.say(w, lead + question.prompt, this.titleFor(w, ' | quiz'));
+  }
+
+  /** The visitor picked one of the three answers on the panel, by pinch or by voice. */
+  private answerQuiz(shown: number): void {
+    const quiz = this.quiz;
+    if (!quiz || quiz.marking || this.waiting || shown < 0 || shown > 2) return;
+    const question = quiz.questions[quiz.index];
+    const right = quiz.order[shown] === 0;
+    const line = right ? RIGHT_LINES[quiz.index % RIGHT_LINES.length] : `${WRONG_LINES[quiz.index % WRONG_LINES.length]} ${question.explain}`;
+    void this.markQuiz(right, line);
+  }
+
+  /**
+   * An answer given in the visitor's own words that matches none of the
+   * three: the model marks it. Without the model, the worker asks for a
+   * pinch or "first, second or third" instead.
+   */
+  private async markSpokenAnswer(said: string): Promise<void> {
+    const quiz = this.quiz;
+    const w = this.talking;
+    if (!quiz || !w || !this.builtNode || !this.theme) return;
+    const index = quiz.index;
+    this.waiting = true;
+    w.mood = 'thinking';
+    const persona = { name: w.name, role: this.theme.role, place: this.theme.place };
+    const mark = await markSpoken(app.mapId, this.builtNode, persona, quiz.questions[index].id, said);
+    // Stopped, or answered by a pinch, in the meantime.
+    if (this.quiz !== quiz || quiz.index !== index || quiz.marking) return;
+    this.waiting = false;
+    if (mark) void this.markQuiz(mark.right, mark.say);
+    else void this.say(w, 'I could not tell which answer you meant. Pinch one, or say first, second or third.', this.titleFor(w, ' | quiz'));
+  }
+
+  /** The worker says whether the answer was right, corrects it if not, and moves on. */
+  private async markQuiz(right: boolean, line: string): Promise<void> {
+    const quiz = this.quiz;
+    const w = this.talking;
+    if (!quiz || !w) return;
+    const question = quiz.questions[quiz.index];
+    quiz.marking = true;
+    if (right) quiz.score += 1;
+    else quiz.missed.push(question.prompt);
+
+    // The panel gives the verdict and leaves only the right answer standing.
+    this.setAskText('ask-eyebrow', right ? 'CORRECT' : 'NOT QUITE - THE ANSWER IS');
+    this.askPanel?.getElementById('ask-eyebrow')?.setProperties({ color: right ? QUIZ_RIGHT_COLOR : QUIZ_WRONG_COLOR });
+    for (let i = 0; i < 3; i += 1) {
+      this.askPanel?.getElementById(`q-${i}`)?.setProperties({ display: quiz.order[i] === 0 ? 'flex' : 'none' });
+    }
+    const portal = right ? undefined : this.portals.find((p) => p.nodeId === question.pointRoom);
+    if (right) {
+      arrive();
+      w.rig.gesture('ThumbsUp');
+    } else if (portal) {
+      // Show where the right answer is: turn to its tube, point, turn back.
+      w.queue.push(
+        { kind: 'face', at: portal.mouth },
+        { kind: 'call', fn: () => w.rig.gesture('Point') },
+        { kind: 'wait', seconds: 1.6 },
+        { kind: 'face', at: new Vector3(0, 0, 0) },
+      );
+    } else w.rig.gesture('No');
+
+    const shownAt = performance.now();
+    await this.say(w, line, this.titleFor(w, ' | quiz'));
+    if (this.quiz !== quiz) return;
+    // With no voice the line is over at once: still leave time to read it.
+    const toRead = Math.min(QUIZ_READ_MAX_MS, 1200 + line.length * QUIZ_READ_MS_PER_CHAR) - (performance.now() - shownAt);
+    await new Promise((r) => setTimeout(r, Math.max(QUIZ_PAUSE_MS, toRead)));
+    if (this.quiz !== quiz) return;
+    quiz.index += 1;
+    if (quiz.index < quiz.questions.length) this.askQuizQuestion();
+    else this.finishQuiz();
+  }
+
+  /** The score, and back to ordinary questions. */
+  private finishQuiz(): void {
+    const quiz = this.quiz;
+    const w = this.talking;
+    if (!quiz || !w) return;
+    const total = quiz.questions.length;
+    const room = app.graph.nodes.find((n) => n.id === this.builtNode)?.label ?? 'this room';
+    const line =
+      quiz.score === total
+        ? `That is the quiz: ${total} out of ${total}. You know ${room} as well as I do.`
+        : `That is the quiz: ${quiz.score} out of ${total}. Ask me about anything you missed, or pinch Quiz me for another go.`;
+    this.rememberQuiz(quiz, total, line);
+    this.closeQuiz();
+    w.rig.gesture(quiz.score === total ? 'ThumbsUp' : 'Wave');
+    void this.say(w, line, this.titleFor(w));
+  }
+
+  /** The visitor ended the quiz early. */
+  private stopQuiz(): void {
+    const quiz = this.quiz;
+    const w = this.talking;
+    if (!quiz) return;
+    const done = quiz.index + (quiz.marking ? 1 : 0);
+    const line = done > 0 ? `No problem. You got ${quiz.score} of ${done} right. Ask me anything.` : 'No problem. Ask me anything.';
+    if (done > 0) this.rememberQuiz(quiz, done, line);
+    this.closeQuiz();
+    if (w) void this.say(w, line, this.titleFor(w));
+  }
+
+  /** Tells the worker how the quiz went, so "why was I wrong?" makes sense to it afterwards. */
+  private rememberQuiz(quiz: Quiz, answered: number, line: string): void {
+    const missed = quiz.missed.length ? ` I got these wrong: ${quiz.missed.join(' ')}` : '';
+    this.history.push(
+      { role: 'user', content: `(I took your quiz about this room and got ${quiz.score} of ${answered} right.${missed})` },
+      { role: 'assistant', content: line },
+    );
+  }
+
+  /** Ends the quiz without a word and gives the panel back to ordinary questions. */
+  private closeQuiz(): void {
+    if (!this.quiz) return;
+    this.quiz = null;
+    this.waiting = false;
+    this.sign?.bubble.setText(this.sign.text, this.sign.title);
+    setQuiz(false);
+    if (!this.talking) return;
+    this.showAskHeader(this.talking);
+    this.showQuestions();
   }
 
   private async askQuestion(question: string | undefined): Promise<void> {
@@ -841,7 +1079,24 @@ export class RoomSystem extends createSystem({
     void this.askQuestion(question);
   }
 
+  /** Starts the quiz, or stops one that is running. */
+  debugQuiz(): void {
+    if (this.quiz) this.stopQuiz();
+    else this.startQuiz();
+  }
+
+  /** Pinches the right answer, or a wrong one. */
+  debugQuizAnswer(right: boolean): void {
+    if (this.quiz) this.answerQuiz(this.quiz.order.findIndex((i) => (i === 0) === right));
+  }
+
+  /** As if the microphone had heard these words. */
+  debugHear(text: string): void {
+    this.heard(text);
+  }
+
   private endConversation(): void {
+    this.closeQuiz();
     stopSpeaking();
     this.hideFileCard();
     this.mic?.stop();

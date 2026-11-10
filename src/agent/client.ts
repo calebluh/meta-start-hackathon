@@ -53,5 +53,36 @@ export async function ask(
   }
 }
 
+/**
+ * Asks the server to mark an answer the visitor gave to a quiz question in
+ * their own words. Null when it cannot be marked (no server, no key, too
+ * slow): the caller then asks the visitor to pick one of the three answers.
+ */
+export async function markSpoken(
+  mapId: string,
+  nodeId: string,
+  persona: Persona,
+  questionId: string,
+  said: string,
+): Promise<{ right: boolean; say: string } | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 10000);
+    const response = await fetch('/api/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapId, nodeId, persona, question: said.slice(0, 300), quiz: questionId }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+    const json = (await response.json()) as { answer?: string; right?: boolean; error?: string };
+    if (!response.ok || typeof json.right !== 'boolean' || !json.answer) throw new Error(json.error ?? `HTTP ${response.status}`);
+    return { right: json.right, say: json.answer };
+  } catch (e) {
+    console.warn('[agent] could not mark a spoken answer:', (e as Error).message);
+    return null;
+  }
+}
+
 // Speech lives in voice.ts.
 export { speak, speakingSeconds, stopSpeaking, voiceLevel } from './voice.js';
