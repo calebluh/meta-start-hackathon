@@ -25,7 +25,7 @@ import {
   type UIKitMLAsset,
   Vector3,
 } from '@iwsdk/core';
-import { ask, speak, stopSpeaking } from '../agent/client.js';
+import { ask, speak, stopSpeaking, voiceLevel } from '../agent/client.js';
 import { LiveMic } from '../agent/live-mic.js';
 import { canRecord } from '../agent/recorder.js';
 import { suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
@@ -564,10 +564,11 @@ export class RoomSystem extends createSystem({
    */
   private say(w: WorkerState, text: string, title: string): Promise<void> {
     w.speech = { text, title, start: performance.now() / 1000 };
-    blip(w.rig.root.getWorldPosition(new Vector3()).setY(1.1));
+    const mouth = w.rig.root.getWorldPosition(new Vector3()).setY(1.1);
+    blip(mouth);
     w.mood = 'talking';
     const token = ++w.speechToken;
-    return speak(text).then(() => {
+    return speak(text, this.hash(w.name), mouth).then(() => {
       if (w.speechToken !== token) return;
       w.mood = 'idle';
       // Leave the whole line up after speaking.
@@ -1071,6 +1072,7 @@ export class RoomSystem extends createSystem({
   /** Drives the character's animation from what the worker is doing. */
   private applyPose(w: WorkerState, walking: boolean, delta: number): void {
     const carrying = w.item.visible || (this.packet?.held === true && this.packet.group.parent === w.rig.hands);
+    w.rig.mouthLevel = w === this.talking && w.mood === 'talking' ? voiceLevel() : -1;
     w.rig.update(delta, walking, WALK_SPEED, w.mood, carrying);
   }
 

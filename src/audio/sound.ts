@@ -49,7 +49,16 @@ export function setListener(position: Vector3, forward: Vector3, up: Vector3): v
   }
 }
 
+/** The running audio context, or null before the first gesture. */
+export function audioContext(): AudioContext | null {
+  return ctx && ctx.state === 'running' ? ctx : null;
+}
+
 /** An output for one sound: panned at a world position, or straight to the ears. */
+export function audioOutput(at?: Vector3, volume = 1): GainNode | null {
+  return output(at, volume);
+}
+
 function output(at?: Vector3, volume = 1): GainNode | null {
   const c = ctx;
   if (!c || !master || c.state !== 'running') return null;

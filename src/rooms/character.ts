@@ -153,6 +153,8 @@ export class RobotCharacter {
   private browIndex = -1;
   private materials: Material[] = [];
   private clock = Math.random() * 10;
+  /** Loudness of the voice, 0-1, to open the mouth by; negative to animate it alone. */
+  mouthLevel = -1;
 
   constructor(accent: string, shade = 0) {
     const gltf = AssetManager.getGLTF(ROBOT_ASSET);
@@ -265,7 +267,8 @@ export class RobotCharacter {
       if (mood === 'listening') this.head.rotation.z -= 0.18;
     }
     if (this.face?.morphTargetInfluences) {
-      const mouth = mood === 'talking' ? 0.15 + 0.35 * Math.abs(Math.sin(t * 13)) : 0;
+      const mouth =
+        mood !== 'talking' ? 0 : this.mouthLevel >= 0 ? Math.min(0.75, this.mouthLevel) : 0.15 + 0.35 * Math.abs(Math.sin(t * 13));
       if (this.mouthIndex >= 0) this.face.morphTargetInfluences[this.mouthIndex] = mouth;
       if (this.browIndex >= 0) this.face.morphTargetInfluences[this.browIndex] = mood === 'thinking' ? 0.35 : 0;
     }

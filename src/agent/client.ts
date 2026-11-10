@@ -42,35 +42,5 @@ export async function ask(
   }
 }
 
-// ---------------------------------------------------------------- speech
-
-/** Roughly how long a line takes to say, for pacing when there is no voice. */
-export const speakingSeconds = (text: string): number => Math.max(1.2, text.length / 15);
-
-/**
- * Says a line out loud if the browser can, and resolves when it is finished
- * (or after an estimated duration when there is no speech synthesis).
- */
-export function speak(text: string, pitch = 1): Promise<void> {
-  const estimate = speakingSeconds(text) * 1000;
-  if (!('speechSynthesis' in window)) return new Promise((r) => setTimeout(r, estimate));
-  window.speechSynthesis.cancel();
-  return new Promise((resolve) => {
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.rate = 1.03;
-    utterance.pitch = pitch;
-    // Some engines never fire onend; never wait much longer than the estimate.
-    const fallback = setTimeout(resolve, estimate + 2500);
-    const done = () => {
-      clearTimeout(fallback);
-      resolve();
-    };
-    utterance.onend = done;
-    utterance.onerror = done;
-    window.speechSynthesis.speak(utterance);
-  });
-}
-
-export function stopSpeaking(): void {
-  if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-}
+// Speech lives in voice.ts.
+export { speak, speakingSeconds, stopSpeaking, voiceLevel } from './voice.js';

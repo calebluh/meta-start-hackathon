@@ -50,6 +50,40 @@ function agentApi(): Plugin {
           res.end(JSON.stringify(json));
         });
       });
+      server.middlewares.use('/api/tts', (req, res) => {
+        const send = async (result: { status: number; audio?: Uint8Array; json?: unknown }) => {
+          res.statusCode = result.status;
+          if (result.audio) {
+            res.setHeader('Content-Type', 'audio/mpeg');
+            res.end(Buffer.from(result.audio));
+          } else {
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify(result.json));
+          }
+        };
+        const load = async () => (await server.ssrLoadModule('/server/tts-core.ts')) as typeof import('./server/tts-core');
+        if (req.method === 'GET') {
+          void load().then((m) => send(m.ttsStatus(env.OPENAI_API_KEY)));
+          return;
+        }
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let raw = '';
+        req.on('data', (chunk) => (raw += chunk));
+        req.on('end', async () => {
+          let body: unknown = null;
+          try {
+            body = JSON.parse(raw);
+          } catch {
+            // handleTts reports the bad body
+          }
+          const m = await load();
+          await send(await m.handleTts(body, env.OPENAI_API_KEY, req.socket.remoteAddress ?? 'local'));
+        });
+      });
       server.middlewares.use('/api/transcribe', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;
