@@ -32,6 +32,7 @@ import { suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
 import { dive, DIVE_FADE_AT } from '../transition.js';
+import { guideNote } from '../guide.js';
 import { app, currentStep, enterRoom, type Handoff, nextStep, onChange, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
@@ -583,6 +584,7 @@ export class RoomSystem extends createSystem({
   private startConversation(w: WorkerState, handoff?: Handoff): void {
     if (!this.builtNode || !this.theme) return;
     this.endConversation();
+    guideNote('talked');
     if (app.stepIndex >= 0 && w === this.workers[0]) stopFlow();
     const node = app.graph.nodes.find((n) => n.id === this.builtNode)!;
     this.talking = w;
@@ -636,6 +638,7 @@ export class RoomSystem extends createSystem({
     await ack;
     this.waiting = false;
     if (this.talking !== w || this.builtNode !== nodeId) return; // left while waiting
+    guideNote('asked');
 
     this.history.push({ role: 'user', content: question }, { role: 'assistant', content: reply.answer });
     const asked = new Set(this.history.filter((t) => t.role === 'user').map((t) => t.content));
