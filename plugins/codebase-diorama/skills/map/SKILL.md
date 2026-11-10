@@ -74,8 +74,8 @@ labels like "Payments", "Inventory" or "Email" get fitting rooms.
 
 ## 4. Write the two map files
 
-Create `$VIEWER_DIR/maps-src/<id>/map.mjs` and
-`$VIEWER_DIR/maps-src/<id>/arch.json`. The exact formats, with a worked
+Run `mkdir -p "$VIEWER_DIR/maps-src/<id>"`, then create `map.mjs` and
+`arch.json` in that folder. The exact formats, with a worked
 example, are in [references/map-format.md](references/map-format.md). Read it
 before writing. Start from the templates in `templates/`.
 
@@ -86,17 +86,25 @@ before writing. Start from the templates in `templates/`.
   externals included;
 - `files`: a `{ "name", "d" }` entry for **every** included file;
 - `flows`: 2-4 end-to-end journeys (a user action through to its result),
-  4-8 steps each, every `ref` a real `f:<path>` or `n:<node id>`;
+  4-8 steps each, every `ref` a real `f:<path>` or `n:<node id>`, every
+  `note` one sentence of at most about 120 characters (it is shown on a
+  small card and read out loud);
 - `health`: 0-6 real concerns worth a visitor's attention (security,
   reliability, dead code), each with `file` and `line`;
 - `routes` / `frontendCalls` for web apps, so HTTP calls link the client
-  files to the server files that handle them.
+  files to the server files that handle them. Links the builder cannot see
+  for itself (a WebSocket, a queue, a file one part writes and another
+  reads) go in `extraLinks` in `map.mjs`.
+
+In `map.mjs`, leave out `license` when the repo has no license file, and
+leave out `source` altogether for a private repo the user does not want
+named on screen.
 
 ## 5. Build and check
 
 ```bash
 cd "$VIEWER_DIR"
-node scripts/build-map.mjs <target repo path> --map maps-src/<id>/map.mjs --arch maps-src/<id>/arch.json --out src/maps/custom/<id>.json
+node scripts/build-map.mjs "<target repo path>" --map maps-src/<id>/map.mjs --arch maps-src/<id>/arch.json --out src/maps/custom/<id>.json
 node "${CLAUDE_PLUGIN_ROOT}/skills/map/scripts/check-map.mjs" src/maps/custom/<id>.json
 npm run typecheck
 ```
@@ -108,7 +116,8 @@ from.
 
 Logo (optional): if the repo has a square PNG logo or favicon, copy it to
 `public/maps/<id>/logo.png` and set `logo: 'maps/<id>/logo.png'` in
-`map.mjs`, then rebuild.
+`map.mjs`, then rebuild. With no logo, leave the line out: the viewer draws
+a plain badge instead.
 
 ## 6. Keys
 

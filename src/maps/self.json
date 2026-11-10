@@ -6,7 +6,7 @@
  },
  "source": {
   "repo": "https://github.com/calebluh/meta-start-hackathon",
-  "commit": "e86fb6e150cf6fc7cd4cf495d7353fb232bd1772"
+  "commit": "80947659a8e20b500aa8851591ab45cdc487ff97"
  },
  "nodes": [
   {
@@ -27,8 +27,8 @@
    "kind": "ui",
    "summary": "The desk itself and what sits around it: the card that describes whatever you picked, the row of buttons for playing journeys and stepping inside, and the glowing floor and distant skyline that set the scene.",
    "stats": {
-    "files": 7,
-    "loc": 531
+    "files": 8,
+    "loc": 555
    }
   },
   {
@@ -39,7 +39,7 @@
    "summary": "Where a visit begins: it starts the app, shows the start menu, and walks first-time visitors through a short hands-on tour. It also quiets everything when the headset comes off.",
    "stats": {
     "files": 10,
-    "loc": 1009
+    "loc": 1028
    }
   },
   {
@@ -61,7 +61,7 @@
    "summary": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
    "stats": {
     "files": 3,
-    "loc": 1434
+    "loc": 1433
    }
   },
   {
@@ -453,7 +453,7 @@
    "n": "table.welcome",
    "name": "First-visit tour",
    "d": "Leads a new visitor through the basics with a floating card and an arrow, moving on only when they actually do each step.",
-   "loc": 310
+   "loc": 314
   },
   {
    "p": "src/guide.ts",
@@ -509,7 +509,7 @@
    "n": "table.welcome",
    "name": "Start menu",
    "d": "Shows a card for each map over the desk, one of them a map of this app itself; pinch a card to open that city.",
-   "loc": 56
+   "loc": 71
   },
   {
    "p": "src/panels.ts",
@@ -524,6 +524,13 @@
    "name": "Pause switch",
    "d": "Lets every part of the app know when you cannot see or hear it, such as when the headset comes off, so nothing talks or listens until you are back.",
    "loc": 32
+  },
+  {
+   "p": "src/placement.ts",
+   "n": "table.desk",
+   "name": "Near or far desk",
+   "d": "Decides how far away the desk sits: within reach on a Quest headset, further back on Meta VR Glasses so everything fits their narrower view.",
+   "loc": 16
   },
   {
    "p": "src/rays.ts",
@@ -572,7 +579,7 @@
    "n": "rooms.builder",
    "name": "Room director",
    "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question.",
-   "loc": 1146
+   "loc": 1145
   },
   {
    "p": "src/rooms/stations.ts",
@@ -621,7 +628,7 @@
    "n": "table.desk",
    "name": "Desk placement",
    "d": "Puts the desk in front of you at a comfortable height when you enter virtual reality, and again when you press Recenter.",
-   "loc": 80
+   "loc": 88
   },
   {
    "p": "vite.config.ts",
@@ -958,6 +965,12 @@
   },
   {
    "a": "f:src/guide-system.ts",
+   "b": "f:src/placement.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/guide-system.ts",
    "b": "f:src/transition.ts",
    "k": "import",
    "w": 1
@@ -1192,6 +1205,12 @@
   },
   {
    "a": "f:src/rooms/room.ts",
+   "b": "f:src/placement.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
    "b": "f:src/state.ts",
    "k": "import",
    "w": 1
@@ -1307,6 +1326,12 @@
   {
    "a": "f:src/state.ts",
    "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
+   "b": "f:src/placement.ts",
    "k": "import",
    "w": 1
   },

@@ -7,7 +7,7 @@ export default {
   summary: 'A virtual reality app that shows a software project as a miniature city on a desk, with rooms you can step into and robots you can ask.',
   source: {
     repo: 'https://github.com/calebluh/meta-start-hackathon',
-    commit: 'e86fb6e150cf6fc7cd4cf495d7353fb232bd1772',
+    commit: '80947659a8e20b500aa8851591ab45cdc487ff97',
   },
 
   // The build script has no exclude list, so these globs are kept narrow on
@@ -33,6 +33,7 @@ export default {
     'src/state.ts',
     'src/transition.ts',
     'src/workspace.ts',
+    'src/placement.ts',
     'src/agent/*.ts',
     'src/audio/*.ts',
     'src/rooms/*.ts',
@@ -129,6 +130,7 @@ export default {
       kind: 'ui',
       paths: [
         'src/workspace.ts',
+        'src/placement.ts',
         'src/atmosphere.ts',
         'src/panels.ts',
         'src/rays.ts',

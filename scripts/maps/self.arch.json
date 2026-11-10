@@ -147,6 +147,10 @@
       "name": "Step-inside timing",
       "d": "Keeps the city and the rooms in step during the dive: the building grows around you first, then the room fades in."
     },
+    "src/placement.ts": {
+      "name": "Near or far desk",
+      "d": "Decides how far away the desk sits: within reach on a Quest headset, further back on Meta VR Glasses so everything fits their narrower view."
+    },
     "src/workspace.ts": {
       "name": "Desk placement",
       "d": "Puts the desk in front of you at a comfortable height when you enter virtual reality, and again when you press Recenter."
