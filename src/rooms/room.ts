@@ -7,6 +7,7 @@ import {
   CylinderGeometry,
   type Entity,
   Group,
+  Hovered,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -14,6 +15,7 @@ import {
   QuadraticBezierCurve3,
   Quaternion,
   PlaneGeometry,
+  PokeInteractable,
   Pressed,
   RayInteractable,
   SphereGeometry,
@@ -33,6 +35,7 @@ import { app, currentStep, enterRoom, type Handoff, nextStep, onChange, startFlo
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
 import { thinkingLine } from './lines.js';
+import { ignoreRays } from '../rays.js';
 import { loadProps } from './props.js';
 import { makePropDecor, makePropStation, propsForTheme } from './stations.js';
 import { makeDecor, makeItem, makePalette, makeStation, pickTheme, type Theme } from './themes.js';
@@ -70,6 +73,9 @@ interface WorkerState {
   carrying: boolean;
   stations: [number, number];
   scripted: boolean;
+  /** Being pointed at: stands still, faces the visitor, ring at the feet. */
+  hovered: boolean;
+  ring: Mesh;
   /** What the worker is doing with their body, beyond walking and carrying. */
   mood: Mood;
   /** The line being typed into the bubble, if any. */
@@ -91,6 +97,11 @@ interface Station {
   /** What each spot faces: the part of the station in front of it. */
   faces: Vector3[];
 }
+
+/** Invisible shape that rays hit when pointing at a worker. */
+const WORKER_HITBOX = new CylinderGeometry(0.42, 0.42, 1.3, 12);
+const RING_GEOMETRY = new TorusGeometry(0.42, 0.018, 6, 40);
+const HITBOX_MATERIAL = new MeshBasicMaterial({ visible: false });
 
 /** Side-by-side spacing of standing spots at a station. */
 const SPOT_SPACING = 0.85;
@@ -123,6 +134,7 @@ interface Packet {
  */
 export class RoomSystem extends createSystem({
   pressedWorkers: { required: [Worker, Pressed] },
+  hoveredWorkers: { required: [Worker, Hovered] },
 }) {
   private workspace: Object3D | undefined;
   private roomEntity: Entity | null = null;
@@ -188,6 +200,14 @@ export class RoomSystem extends createSystem({
     this.cleanupFuncs.push(onChange(() => this.onStateChange()));
     this.wireAskPanel();
     this.cleanupFuncs.push(
+      this.queries.hoveredWorkers.subscribe('qualify', (entity) => {
+        const worker = this.workers.find((w) => w.entity === entity);
+        if (worker) worker.hovered = true;
+      }),
+      this.queries.hoveredWorkers.subscribe('disqualify', (entity) => {
+        const worker = this.workers.find((w) => w.entity === entity);
+        if (worker) worker.hovered = false;
+      }),
       this.queries.pressedWorkers.subscribe('qualify', (entity) => {
         const worker = this.workers.find((w) => w.entity === entity);
         if (worker && worker !== this.talking) this.startConversation(worker);
@@ -347,10 +367,24 @@ export class RoomSystem extends createSystem({
       // Each worker a slightly different shade of the room colour.
       const rig = new RobotCharacter(theme.accent, (i - 1) * 0.1);
       rig.root.position.copy(this.stations[i].spots[i]);
+      rig.root.name = `worker:${name}`;
+      // Pointing at a worker uses an invisible body-sized capsule: the
+      // skinned robot's own mesh is stored in unscaled bind-pose units, so
+      // ray tests against it miss the robot you see.
+      ignoreRays(rig.root);
+      const hitbox = new Mesh(WORKER_HITBOX, HITBOX_MATERIAL);
+      hitbox.position.y = 0.6;
+      rig.root.add(hitbox);
+      // A glowing ring at the feet while the worker is pointed at.
+      const ring = ignoreRays(new Mesh(RING_GEOMETRY, new MeshBasicMaterial({ color: theme.accent, transparent: true, opacity: 0.9 })));
+      ring.rotation.x = -Math.PI / 2;
+      ring.position.y = 0.02;
+      ring.visible = false;
+      rig.root.add(ring);
       const entity = this.world.createTransformEntity(rig.root, { parent: this.roomEntity! });
       entity.addComponent(Worker, { nodeId, name });
       entity.addComponent(RayInteractable);
-      const item = makeItem(theme.item, palette);
+      const item = ignoreRays(makeItem(theme.item, palette));
       item.visible = false;
       rig.hands.add(item);
       const bubble = new Bubble(1.2, theme.accent, 10);
@@ -369,6 +403,8 @@ export class RoomSystem extends createSystem({
         carrying: false,
         stations: [i, (i + 1) % this.stations.length] as [number, number],
         scripted: false,
+        hovered: false,
+        ring,
         mood: 'idle' as Mood,
         speech: null,
         speechToken: 0,
@@ -388,6 +424,7 @@ export class RoomSystem extends createSystem({
     packetGroup.add(packetLabel.mesh);
     this.bubbles.push(packetLabel);
     packetGroup.visible = false;
+    ignoreRays(packetGroup);
     group.add(packetGroup);
     this.trail = new Trail(group, theme.accent);
     this.packet = {
@@ -452,7 +489,7 @@ export class RoomSystem extends createSystem({
     const panel = this.world.getSceneObject<UIKitMLAsset>('ask-panel');
     this.askPanel = panel;
     if (!panel) return;
-    panel.visible = false;
+    this.showAskPanel(false);
     const on = (id: string, handler: () => void) => {
       const el = panel.getElementById(id);
       if (!el) return;
@@ -481,6 +518,23 @@ export class RoomSystem extends createSystem({
       onTurn: (text) => void this.askQuestion(text),
       onMode: () => this.updateMicLabel(),
     });
+  }
+
+  /**
+   * Shows or hides the question panel. Hidden, it must also stop taking
+   * pointer input: an invisible panel would still block rays aimed past it.
+   */
+  private showAskPanel(shown: boolean): void {
+    if (this.askPanel) this.askPanel.visible = shown;
+    const entity = this.world.getSceneEntity('ask-panel');
+    if (!entity) return;
+    if (shown) {
+      if (!entity.hasComponent(RayInteractable)) entity.addComponent(RayInteractable);
+      if (!entity.hasComponent(PokeInteractable)) entity.addComponent(PokeInteractable);
+    } else {
+      if (entity.hasComponent(RayInteractable)) entity.removeComponent(RayInteractable);
+      if (entity.hasComponent(PokeInteractable)) entity.removeComponent(PokeInteractable);
+    }
   }
 
   private setAskText(id: string, text: string): void {
@@ -553,7 +607,7 @@ export class RoomSystem extends createSystem({
     this.setAskText('ask-eyebrow', `ASK ${w.name.toUpperCase()}`);
     this.setAskText('ask-title', `${w.name}, ${this.theme.role} in ${node.label}`);
     this.showQuestions();
-    if (this.askPanel) this.askPanel.visible = true;
+    this.showAskPanel(true);
     void this.openMic();
   }
 
@@ -704,7 +758,7 @@ export class RoomSystem extends createSystem({
     this.hideFileCard();
     this.mic?.stop();
     this.updateMicLabel();
-    if (this.askPanel) this.askPanel.visible = false;
+    this.showAskPanel(false);
     const w = this.talking;
     this.talking = null;
     this.waiting = false;
@@ -921,6 +975,14 @@ export class RoomSystem extends createSystem({
   }
 
   private updateWorker(w: WorkerState, delta: number): void {
+    w.ring.visible = w.hovered && w !== this.talking;
+    // Pointed at (and not busy with a flow step): stop and look at the visitor.
+    if (w.hovered && !w.scripted) {
+      this.tmp2.set(0, 0, 0).sub(w.rig.root.position);
+      this.turnToward(w, Math.atan2(this.tmp2.x, this.tmp2.z), delta);
+      this.applyPose(w, false, delta);
+      return;
+    }
     if (w.queue.length === 0 && !w.scripted) this.queueAmbient(w);
     const task = w.queue[0];
     let walking = false;

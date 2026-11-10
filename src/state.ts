@@ -46,6 +46,10 @@ export function onChange(listener: () => void): () => void {
 }
 
 function emit(): void {
+  // Development: a one-line state trace, for automated interaction tests.
+  if (import.meta.env.DEV) {
+    console.log(`[state] map=${app.mapId} mode=${app.mode} room=${app.roomNode} selected=${app.selected} step=${app.stepIndex} flow=${app.flowIndex}`);
+  }
   for (const l of listeners) l();
 }
 

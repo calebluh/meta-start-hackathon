@@ -1,4 +1,5 @@
 import { CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from '@iwsdk/core';
+import { ignoreRays } from '../rays.js';
 
 /**
  * A speech bubble on a canvas texture. `setText` redraws it; the plane keeps
@@ -22,7 +23,8 @@ export class Bubble {
     this.texture.colorSpace = SRGBColorSpace;
     this.texture.anisotropy = 4;
     this.material = new MeshBasicMaterial({ map: this.texture, transparent: true, depthWrite: false });
-    this.mesh = new Mesh(new PlaneGeometry(1, 1), this.material);
+    // Bubbles hang over workers (who are pointable); they must not catch rays.
+    this.mesh = ignoreRays(new Mesh(new PlaneGeometry(1, 1), this.material));
     this.mesh.renderOrder = 20;
     this.mesh.visible = false;
   }

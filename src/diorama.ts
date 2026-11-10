@@ -7,6 +7,7 @@ import {
   CylinderGeometry,
   EdgesGeometry,
   type Entity,
+  Grabbed,
   Group,
   Hovered,
   LineBasicMaterial,
@@ -30,6 +31,7 @@ import {
 } from '@iwsdk/core';
 import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
+import { ignoreRays } from './rays.js';
 import { District } from './diorama-components.js';
 import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
@@ -188,6 +190,10 @@ export class DioramaSystem extends createSystem({
 
   private headWorld = new Vector3();
   private scratch = new Vector3();
+  /** The diorama's size; two-hand grabs stretch one axis, we apply it to all. */
+  private uniformScale = 1;
+  private grabStartScale = 1;
+  private wasGrabbed = false;
 
   init(): void {
     this.inspector = this.world.getSceneObject<UIKitMLAsset>('inspector-panel');
@@ -228,18 +234,22 @@ export class DioramaSystem extends createSystem({
     board.position.set(0, -0.004, -0.04);
     board.name = 'board';
     group.add(board);
-    const rim = new LineSegments(new EdgesGeometry(board.geometry), new LineBasicMaterial({ color: '#2f3b4a' }));
+    const rim = ignoreRays(new LineSegments(new EdgesGeometry(board.geometry), new LineBasicMaterial({ color: '#2f3b4a' })));
     rim.position.copy(board.position);
     group.add(rim);
 
     this.root = this.world.createTransformEntity(group, workspace ? { parent: workspace } : undefined);
     this.root.addComponent(TwoHandsGrabbable, {
       rotate: true,
+      // Spin it like a lazy Susan, but never tip the city over.
+      rotateMin: [0, -Infinity, 0],
+      rotateMax: [0, Infinity, 0],
       translate: true,
       scale: true,
       scaleMin: [0.5, 0.5, 0.5],
       scaleMax: [3, 3, 3],
     });
+    this.uniformScale = 1;
 
     const unitBox = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
     const unitEdges = new EdgesGeometry(unitBox);
@@ -255,7 +265,7 @@ export class DioramaSystem extends createSystem({
       entity.addComponent(RayInteractable);
       const label = makeLabel(node.label, labelHeight, KIND_COLORS[node.kind]);
       label.position.set(roof.x, roof.y + labelHeight * 0.9, roof.z);
-      group.add(label);
+      group.add(ignoreRays(label));
       this.labels.push(label);
       this.sitesById.set(id, { id, mesh, material, roof, conduits: [], issues: [], recentNotes: [], hovered: false, boost });
     };
@@ -366,7 +376,7 @@ export class DioramaSystem extends createSystem({
         if (!site) continue;
         site.recentNotes.push(item.note);
         if (site.recentNotes.length === 1 && site.mesh.geometry === unitBox) {
-          const outline = new LineSegments(unitEdges, recentLine);
+          const outline = ignoreRays(new LineSegments(unitEdges, recentLine));
           outline.scale.setScalar(1.02);
           outline.position.y = -0.01;
           site.mesh.add(outline);
@@ -622,6 +632,22 @@ export class DioramaSystem extends createSystem({
 
   update(delta: number, time: number): void {
     if (app.mode !== 'table') return;
+
+    // Two-hand resizing changes the axis between the hands; keep the city in
+    // proportion by applying whichever axis changed most to all three.
+    // The grab rewrites the scale every frame from its value when the grab
+    // began, so measure the change against that, not against the last frame.
+    const grabbed = this.root.hasComponent(Grabbed);
+    if (grabbed && !this.wasGrabbed) this.grabStartScale = this.uniformScale;
+    this.wasGrabbed = grabbed;
+    const scale = this.root.object3D!.scale;
+    if (scale.x !== scale.y || scale.y !== scale.z) {
+      const start = this.grabStartScale;
+      let next = start;
+      for (const v of [scale.x, scale.y, scale.z]) if (Math.abs(v - start) > Math.abs(next - start)) next = v;
+      this.uniformScale = Math.min(3, Math.max(0.5, next));
+      scale.setScalar(this.uniformScale);
+    }
 
     // Labels turn to face the viewer.
     this.world.camera.getWorldPosition(this.headWorld);

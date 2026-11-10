@@ -117,7 +117,8 @@
             "scale": 0.1
           },
           "components": {
-            "RayInteractable": {}
+            "RayInteractable": {},
+            "PokeInteractable": {}
           }
         },
         {
@@ -141,7 +142,8 @@
             "scale": 0.1
           },
           "components": {
-            "RayInteractable": {}
+            "RayInteractable": {},
+            "PokeInteractable": {}
           }
         }
       ]
