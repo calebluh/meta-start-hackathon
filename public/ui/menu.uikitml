@@ -152,14 +152,14 @@
         <span id="stats-larder" class="stats">...</span>
         <span class="go">Pinch to start</span>
       </div>
-      <div class="card info">
+      <div id="card-custom" class="card info">
         <div class="badge" background-color="#8b5cf6">
           <Sparkles width="32" height="32" color="#0d1117"></Sparkles>
         </div>
-        <span class="name">Your code</span>
-        <span class="pitch">Install the Codebase Diorama skill for Claude Code and ask it to map your own repo.</span>
-        <span class="stats">Runs on your machine with your own Meta AI key.</span>
-        <span class="skill">/codebase-diorama</span>
+        <span id="custom-name" class="name">Your code</span>
+        <span id="custom-pitch" class="pitch">Install the Codebase Diorama plugin for Claude Code and ask it to map your own repo.</span>
+        <span id="custom-stats" class="stats">Runs on your machine with your own Meta AI key.</span>
+        <span id="custom-go" class="skill">/codebase-diorama:map</span>
       </div>
     </div>
     <div class="hint-row">

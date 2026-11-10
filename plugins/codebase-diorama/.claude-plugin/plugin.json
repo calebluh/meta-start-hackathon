@@ -1,0 +1,9 @@
+{
+  "name": "codebase-diorama",
+  "description": "Turn any codebase into a walk-in VR diorama for Meta Quest: Claude maps the repo's parts, files and flows in plain English, and robots in each room answer questions about the code.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Caleb"
+  },
+  "keywords": ["vr", "webxr", "meta-quest", "codebase", "visualization", "onboarding"]
+}

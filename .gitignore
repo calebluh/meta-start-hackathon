@@ -44,3 +44,7 @@ pids/
 .vscode/mcp.json
 .codex/config.toml
 artifacts/
+
+# Maps made by the Claude skill stay local to each clone.
+src/maps/custom/*.json
+maps-src/

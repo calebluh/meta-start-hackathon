@@ -3,7 +3,8 @@ import projectOptions from 'virtual:iwsdk-project';
 import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
-import { app, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
+import { MAPS } from './maps/index.js';
+import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
 import { unlock } from './audio/sound.js';
 import { dive } from './transition.js';
 import { AtmosphereSystem } from './atmosphere.js';
@@ -22,6 +23,10 @@ World.create(
   world.registerSystem(GuideSystem);
   world.registerSystem(AtmosphereSystem);
   world.registerSystem(MenuSystem);
+
+  // A link straight to one map (the Claude skill prints one) skips the menu.
+  const wanted = new URLSearchParams(location.search).get('map');
+  if (wanted && MAPS[wanted]) chooseDemo(wanted);
 
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);

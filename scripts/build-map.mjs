@@ -22,6 +22,10 @@ const opt = (name) => {
 };
 const arch = JSON.parse(fs.readFileSync(opt('arch'), 'utf8'));
 const config = (await import(pathToFileURL(path.resolve(opt('map'))).href)).default;
+// Optional sections default to nothing, so a map config only says what it needs.
+config.packages ??= [];
+config.python ??= { root: '' };
+config.js ??= { alias: 'src' };
 const out = path.resolve(opt('out'));
 
 // ------------------------------------------------------------- files
@@ -84,7 +88,7 @@ function resolvePython(from, module, level) {
   if (level > 0) {
     base = path.posix.dirname(from);
     for (let i = 1; i < level; i += 1) base = path.posix.dirname(base);
-  } else base = root;
+  } else base = root || '.';
   const rel = module ? module.split('.').join('/') : '';
   const stem = rel ? `${base}/${rel}` : base;
   for (const cand of [`${stem}.py`, `${stem}/__init__.py`]) if (fileSet.has(cand)) return cand;
@@ -128,14 +132,17 @@ for (const p of files) {
       }
     }
   } else {
-    for (const m of src.matchAll(/(?:import\s[^'"]*?from\s*|import\s*\(\s*|import\s+)['"]([^'"]+)['"]/g)) {
+    for (const m of src.matchAll(/(?:import\s[^'"]*?from\s*|import\s*\(\s*|import\s+|require\s*\(\s*|export\s[^'";]*?from\s*)['"]([^'"]+)['"]/g)) {
       const spec = m[1];
       let base = null;
       if (spec.startsWith('.')) base = path.posix.join(path.posix.dirname(p), spec);
       else if (spec.startsWith('@/')) base = `${config.js.alias}/${spec.slice(2)}`;
       if (base) {
-        const cand = [base, `${base}.js`, `${base}.ts`, `${base}.vue`, `${base}/index.js`, `${base}/index.ts`].find((c) => fileSet.has(c));
-        if (cand) addLink(`f:${p}`, `f:${cand}`, 'import');
+        const exts = ['', '.js', '.ts', '.tsx', '.jsx', '.mjs', '.cjs', '.vue', '.svelte', '/index.js', '/index.ts', '/index.tsx', '/index.jsx'];
+        // TypeScript sources often import './x.js' meaning './x.ts'.
+        const stem = base.replace(/.(m?js|cjs|jsx)$/, '');
+        const cand = [...exts.map((e) => `${base}${e}`), ...exts.map((e) => `${stem}${e}`)].find((c) => fileSet.has(path.posix.normalize(c)));
+        if (cand) addLink(`f:${p}`, `f:${path.posix.normalize(cand)}`, 'import');
       } else {
         const ext = config.packages.find((x) => x.match.test(spec));
         if (ext) addLink(`f:${p}`, `n:${ext.node}`, 'import');

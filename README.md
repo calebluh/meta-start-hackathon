@@ -1,45 +1,79 @@
-# IWSDK App
+# Codebase Diorama
 
-This project uses `iwsdk.config.json` for declarative scene, asset, component,
-XR, and emulator configuration. Application systems remain explicit in
-`src/index.ts`.
+Step inside a codebase. A real software project becomes a little city on
+your desk in VR: every part of the code is a building, and you can walk into
+any of them. Inside, robot workers run that part of the code. Packets of data
+travel from room to room along the code's real flows. You can point at any
+robot and ask it a question, out loud or with a pinch, and it answers about
+the actual code.
+
+Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start
+Developer Competition. Everything works with bare hands on a Meta Quest:
+point and pinch, or poke the panels with a fingertip.
+
+## Try it
 
 ```sh
 npm install
 npm run dev
 ```
 
-Use the Runtime and Editor controls in the managed browser to switch between
-the running experience and its authored scene.
+The dev server prints a network URL. Open it in the Quest browser on the same
+Wi-Fi, accept the local certificate warning, and press Enter VR. On a desktop,
+the managed browser runs a headset emulator.
 
-## Starter content
+Optional keys go in `.env.local`, which stays on your machine:
 
-The robot and welcome panel are small examples of authored scene content plus
-runtime systems. The robot turns toward the player's head and plays a sound
-when pressed. To remove the robot, delete its scene node, its `RobotSystem`
-registration from `src/index.ts` or `src/index.js`, and its `Robot` registration
-from `src/components.ts` or `src/components.js`; you can then delete the unused
-robot component and system files. To remove the welcome panel, delete its scene
-node and its `PanelSystem` registration from the application entry point.
+```sh
+MODEL_API_KEY=LLM_...      # Meta Model API (dev.meta.ai): the robots' answers and speech recognition
+OPENAI_API_KEY=sk-...      # natural robot voices; without it the browser's voice is used
+```
 
-The robot stands on the second of three numbered stations. The first holds dark
-pieces you can grab and move, and the third holds a ring you can spin in place.
-The studio props (the plinths and the dark pieces, plus the floor and stage in VR
-and Desktop 3D) are built in code in `src/scene-assets/studio.scene-asset.ts` or
-`.js`. The VR and Desktop 3D background furniture is built the same way in
-`src/scene-assets/decor.scene-asset.ts` or `.js`, so the starter downloads no
-extra models. To remove any of them, delete their scene nodes and their entries
-in `src/assets.ts` or `src/assets.js`, then delete the files you no longer use.
-The station labels are `public/ui/label-*.uikitml`.
+Without a Meta key the robots still talk, using canned answers built from the
+map.
 
-The rest of the look is built-in components in the scene, which you can edit in
-the editor without code. The soft light on every object is the scene root's
-`IBLGradient` (select the Level Root to edit it), and the soft shadows under
-each object are `ContactShadow` nodes. In VR and Desktop 3D, the sky is the
-scene root's `DomeGradient` (its colors, tilt and dither are also on the Level
-Root), and the floor fades into it through the `DomeFade` on the floor node. AR
-projects have no sky or floor, so passthrough stays visible, and a
-`ShadowCatcher` node grounds the stations.
+## Map your own codebase with Claude Code
 
-- Minimal scene walkthrough: https://iwsdk.dev/guides/01b-minimal-scene.html
-- XR-enabled projects — IWER emulator controls: https://iwsdk.dev/guides/02-testing-experience.html#iwer-controls
+The `codebase-diorama` plugin teaches Claude Code to map any repository. It
+reads the repo without running it and names its parts in plain English. It
+describes every file, traces the main flows and notes real issues. Then it
+builds the map and starts this viewer with your own key.
+
+```sh
+claude plugin marketplace add OWNER/codebase-diorama
+claude plugin install codebase-diorama@codebase-diorama
+```
+
+Then, inside the repository you want to see, ask Claude Code:
+
+```text
+/codebase-diorama:map
+```
+
+You can also get the plugin as a zip from `public/downloads/codebase-diorama-plugin.zip`.
+Its source is in [`plugins/codebase-diorama`](plugins/codebase-diorama).
+
+Maps of your own code are written to `src/maps/custom/<id>.json`, which git
+ignores. Open one at `/?map=<id>`, or pinch "Your code" on the start menu.
+
+## How it is built
+
+- `src/diorama.ts`: the tabletop city, its connections, flows and panels.
+- `src/rooms/`: the walk-in rooms, their themes, props and robot workers.
+- `src/agent/` and `server/`: the robots' conversations. Prompts are built on
+  the server from the map, so the page never sees an API key.
+- `src/guide-system.ts`, `src/menu.ts`, `src/atmosphere.ts`,
+  `src/transition.ts`: the guided first visit, the start menu, the
+  surroundings and the dive into a building.
+- `scripts/build-map.mjs`: turns a repo plus a hand-written map into a map
+  file (Floorplan's `floorplan/graph@1` format).
+
+## Credits
+
+- Demo codebase: [MiroFish](https://github.com/666ghj/MiroFish) (AGPL-3.0),
+  mapped from a read-only snapshot. Its logo appears on the map's plaque.
+- Map format: [Floorplan](https://github.com/haydenschmitty/floorplan) (MIT).
+- Robot: "RobotExpressive" by Tomás Laulhé (Quaternius), CC0, via the
+  three.js examples.
+- Props: [Poly Haven](https://polyhaven.com), CC0. See
+  `public/models/props/CREDITS.md`.
