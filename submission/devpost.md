@@ -12,7 +12,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Track | Productivity |
 | Division | New Experience |
 | Special prize (if the form asks for one) | Best Agentic Interaction |
-| Public link | `[FILL IN: https://codebase-diorama.vercel.app, or whatever Vercel gives you]` |
+| Public link | https://codebase-diorama.vercel.app |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
 | Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/codebase-diorama (public viewer and Claude Code plugin, AGPL-3.0) |
 | Built with | IWSDK, WebXR, three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
