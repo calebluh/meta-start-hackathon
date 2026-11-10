@@ -88,6 +88,8 @@ interface WorkerState {
   speechToken: number;
 }
 
+/** How far to either side of straight ahead a robot may stand to talk, in radians. */
+const TALK_ARC = 0.25;
 /** Typing speed of speech bubbles, matched to talking pace. */
 const CHARS_PER_SECOND = 16;
 /** A ready answer waits at most this long for the "let me check" line to finish. */
@@ -652,9 +654,11 @@ export class RoomSystem extends createSystem({
     this.history = [];
     this.questions = suggestedQuestions(app.graph, this.builtNode);
 
-    // Come within comfortable talking distance, in front of the viewer.
+    // Come within comfortable talking distance, in front of the viewer and
+    // inside the gap between the two side panels, which would hide a robot
+    // standing farther round.
     const p = w.rig.root.position;
-    const angle = Math.max(-0.6, Math.min(0.6, Math.atan2(p.x, -p.z)));
+    const angle = Math.max(-TALK_ARC, Math.min(TALK_ARC, Math.atan2(p.x, -p.z)));
     const spot = new Vector3(Math.sin(angle) * 2.0, 0, -Math.cos(angle) * 2.0);
     w.scripted = true;
     w.item.visible = false;

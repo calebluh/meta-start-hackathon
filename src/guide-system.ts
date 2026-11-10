@@ -130,6 +130,12 @@ const STORAGE_KEY = 'codebase-diorama.guide';
 const ACCENT = '#7ee0ff';
 /** Where the card floats, in the workspace's space: above the far edge of the board. */
 const CARD_ANCHOR = new Vector3(0, 0.3, -0.24);
+/**
+ * Inside a room the city is gone and a robot stands straight ahead to talk,
+ * so the card drops to the empty desk top, just behind the buttons, where it
+ * covers neither the robot nor its speech bubble.
+ */
+const ROOM_ANCHOR = new Vector3(0, 0.085, 0.05);
 const CARD_WIDTH = 0.46;
 const PINCH_SECONDS = 1.6;
 
@@ -277,7 +283,7 @@ export class GuideSystem extends createSystem({
     this.holder.visible = !hidden;
     this.world.camera.getWorldPosition(this.head);
     if (workspace && !hidden) {
-      this.holder.position.copy(CARD_ANCHOR);
+      this.holder.position.copy(app.mode === 'room' ? ROOM_ANCHOR : CARD_ANCHOR);
       workspace.localToWorld(this.holder.position);
       this.holder.lookAt(this.head);
     }
