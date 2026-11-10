@@ -1,11 +1,14 @@
-import { World } from '@iwsdk/core';
+import { VisibilityState, World } from '@iwsdk/core';
 import projectOptions from 'virtual:iwsdk-project';
 import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
 import { MAPS } from './maps/index.js';
 import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
-import { unlock } from './audio/sound.js';
+import { stopSpeaking } from './agent/client.js';
+import { warmVoice } from './agent/voice.js';
+import { pauseAudio, resumeAudio, unlock } from './audio/sound.js';
+import { isPaused, onPause, setPaused } from './pause.js';
 import { dive } from './transition.js';
 import { AtmosphereSystem } from './atmosphere.js';
 import { GuideSystem } from './guide-system.js';
@@ -30,7 +33,27 @@ World.create(
 
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);
-  world.visibilityState.subscribe(() => unlock());
+
+  // Pause cleanly. In VR that is the headset coming off or the system menu
+  // opening over the app; outside VR it is the browser tab going to the
+  // background. Nothing talks, listens or hums until the visitor is back.
+  const updatePaused = () => {
+    const state = world.visibilityState.peek();
+    setPaused(state === VisibilityState.NonImmersive ? document.hidden : state !== VisibilityState.Visible);
+    unlock();
+  };
+  world.visibilityState.subscribe(updatePaused);
+  document.addEventListener('visibilitychange', updatePaused);
+  onPause((paused) => {
+    if (import.meta.env.DEV) console.log(`[pause] ${paused}`);
+    if (paused) {
+      stopSpeaking();
+      pauseAudio();
+    } else resumeAudio();
+  });
+
+  // Find out now whether natural voices are available, not at the first hello.
+  warmVoice();
 
   // Development shortcuts for testing without a headset. Stripped from builds.
   if (import.meta.env.DEV) {
@@ -56,6 +79,8 @@ World.create(
       if (digit >= 1 && digit <= 9) enterRoom(rooms[digit - 1]);
       if (e.key === 'm') cycleMap();
       if (e.key === 'u') restartGuide();
+      // z: pretend the headset came off (and again: back on).
+      if (e.key === 'z') setPaused(!isPaused());
       // j: freeze the next dive partway (0.35, then 0.6, then off) to inspect it.
       if (e.key === 'j') {
         dive.holdAt = dive.holdAt === null ? 0.35 : dive.holdAt < 0.5 ? 0.6 : null;

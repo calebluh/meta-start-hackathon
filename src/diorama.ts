@@ -39,6 +39,7 @@ import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
 import { District } from './diorama-components.js';
+import { isPaused } from './pause.js';
 import { dive, DIVE_SECONDS } from './transition.js';
 import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
@@ -84,6 +85,8 @@ const KIND_NAMES: Record<NodeKind, string> = {
   misc: 'OTHER',
 };
 
+/** A second pinch on the selected building within this time is the same pinch. */
+const RESELECT_QUIET_MS = 1200;
 const BASE_GLOW = 0.16;
 const HOVER_GLOW = 0.55;
 const SELECT_GLOW = 0.85;
@@ -218,6 +221,8 @@ export class DioramaSystem extends createSystem({
   private uniformScale = 1;
   private grabStartScale = 1;
   private wasGrabbed = false;
+  /** When the current building was picked, to tell a second pinch from a shaky first one. */
+  private selectedAt = 0;
 
   // The dive into a building (see transition.ts). The board scales up about
   // the building's base while that base slides under the viewer.
@@ -249,7 +254,16 @@ export class DioramaSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (e) => {
         if (app.mode !== 'table') return;
         const id = e.getValue(District, 'nodeId') as string;
-        select(app.selected === id ? null : id);
+        const now = performance.now();
+        if (app.selected === id) {
+          // A hand pinch often registers twice. Pinching the same building
+          // again only clears it once the first pinch is clearly over.
+          if (now - this.selectedAt < RESELECT_QUIET_MS) return;
+          select(null);
+        } else {
+          this.selectedAt = now;
+          select(id);
+        }
       }),
     );
     this.render();
@@ -484,17 +498,24 @@ export class DioramaSystem extends createSystem({
   private wireControls(): void {
     const panel = this.controls;
     if (!panel) return;
-    const on = (id: string, handler: () => void) => {
+    // `quiet`: a hand pinch or a fingertip poke can land twice in a moment.
+    // A repeat inside this time is ignored, so Play does not start and stop
+    // at once, and Step inside does not step straight back out.
+    const on = (id: string, handler: () => void, quiet = 350) => {
       const el = panel.getElementById(id);
       if (!el) return;
+      let last = -Infinity;
       const withSound = () => {
+        const now = performance.now();
+        if (now - last < quiet) return;
+        last = now;
         click();
         handler();
       };
       el.addEventListener('click', withSound);
       this.cleanupFuncs.push(() => el.removeEventListener('click', withSound));
     };
-    on('btn-play', () => (app.stepIndex >= 0 ? stopFlow() : startFlow()));
+    on('btn-play', () => (app.stepIndex >= 0 ? stopFlow() : startFlow()), 800);
     on('btn-next', () => nextStep());
     on('btn-flow', () => cycleFlow());
     // Hackathon: back to the demo menu. Personal: on to the next of your maps.
@@ -505,7 +526,20 @@ export class DioramaSystem extends createSystem({
         const target = currentStep()?.nodeId ?? app.selected;
         if (target) enterRoom(target);
       }
-    });
+    }, 800);
+    // Recenter also puts the city back to its starting place and size (the
+    // desk itself is moved by WorkspaceSystem).
+    on('btn-recenter', () => this.resetBoard());
+  }
+
+  private resetBoard(): void {
+    if (app.mode !== 'table' || this.diveDir !== 0 || this.surfaceFrom) return;
+    const board = this.root.object3D!;
+    board.position.set(0, 0.002, -0.04);
+    board.quaternion.identity();
+    board.scale.setScalar(1);
+    this.uniformScale = 1;
+    this.grabStartScale = 1;
   }
 
   private setText(panel: UIKitMLAsset | undefined, id: string, text: string): void {
@@ -839,6 +873,7 @@ export class DioramaSystem extends createSystem({
   // --------------------------------------------------------------- frame
 
   update(delta: number, time: number): void {
+    if (isPaused()) return; // headset off or system menu up: hold everything still
     this.updateDive(delta);
     if (app.mode !== 'table' || this.diveDir !== 0) return;
 
@@ -852,8 +887,9 @@ export class DioramaSystem extends createSystem({
     const scale = this.root.object3D!.scale;
     if (scale.x !== scale.y || scale.y !== scale.z) {
       const start = this.grabStartScale;
-      let next = start;
-      for (const v of [scale.x, scale.y, scale.z]) if (Math.abs(v - start) > Math.abs(next - start)) next = v;
+      let next = scale.x;
+      if (Math.abs(scale.y - start) > Math.abs(next - start)) next = scale.y;
+      if (Math.abs(scale.z - start) > Math.abs(next - start)) next = scale.z;
       this.uniformScale = Math.min(3, Math.max(0.5, next));
       scale.setScalar(this.uniformScale);
     }

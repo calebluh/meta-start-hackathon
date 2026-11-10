@@ -39,6 +39,8 @@ export class LiveMic {
   private processor: ScriptProcessorNode | null = null;
   private socket: WebSocket | null = null;
   private mode: 'live' | 'fallback' | 'off' = 'off';
+  private run = 0;
+  private starting = false;
   private frame = new Int16Array(FRAME);
   private frameFill = 0;
   private resampleCarry = 0;
@@ -52,25 +54,46 @@ export class LiveMic {
 
   constructor(private events: LiveMicEvents) {}
 
+  /** True while the microphone is open or being opened. */
   get active(): boolean {
-    return this.mode !== 'off';
+    return this.starting || this.mode !== 'off';
   }
 
+  /**
+   * Opening the microphone takes a moment (a permission prompt, then the
+   * relay). `stop()` may arrive in the middle, so each start carries a number
+   * and gives up, releasing the microphone, if a stop has happened since.
+   */
   async start(keywords: string[]): Promise<void> {
     if (this.active) return;
-    this.stream = await navigator.mediaDevices.getUserMedia({
-      audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
-    this.context = new AudioContext();
-    const source = this.context.createMediaStreamSource(this.stream);
-    this.processor = this.context.createScriptProcessor(2048, 1, 1);
-    this.processor.onaudioprocess = (e) => this.onAudio(e.inputBuffer.getChannelData(0));
-    source.connect(this.processor);
-    this.processor.connect(this.context.destination);
-    this.setMode((await this.connect(keywords)) ? 'live' : 'fallback');
+    const run = ++this.run;
+    this.starting = true;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      if (run !== this.run) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      this.stream = stream;
+      this.context = new AudioContext();
+      const source = this.context.createMediaStreamSource(stream);
+      this.processor = this.context.createScriptProcessor(2048, 1, 1);
+      this.processor.onaudioprocess = (e) => this.onAudio(e.inputBuffer.getChannelData(0));
+      source.connect(this.processor);
+      this.processor.connect(this.context.destination);
+      const live = await this.connect(keywords);
+      if (run !== this.run) return; // stopped while connecting; stop() already cleaned up
+      this.setMode(live ? 'live' : 'fallback');
+    } finally {
+      if (run === this.run) this.starting = false;
+    }
   }
 
   stop(): void {
+    this.run += 1;
+    this.starting = false;
     this.socket?.close();
     this.socket = null;
     this.processor?.disconnect();

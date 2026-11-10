@@ -25,6 +25,7 @@ export class WorkspaceSystem extends createSystem({}) {
   private homePosition = new Vector3();
   private homeYaw = 0;
   private pendingFrames = -1;
+  private immersive = false;
   private head = new Vector3();
   private headQuat = new Quaternion();
   private forward = new Vector3();
@@ -38,10 +39,14 @@ export class WorkspaceSystem extends createSystem({}) {
     this.cleanupFuncs.push(
       this.world.visibilityState.subscribe((state) => {
         if (state === VisibilityState.NonImmersive) {
+          this.immersive = false;
           this.pendingFrames = -1;
           this.workspace!.position.copy(this.homePosition);
           this.workspace!.rotation.set(0, this.homeYaw, 0);
-        } else if (state === VisibilityState.Visible && this.pendingFrames < 0) {
+        } else if (state === VisibilityState.Visible && !this.immersive) {
+          // Only on entering VR. Coming back from the Quest menu or putting the
+          // headset back on must not move a desk the visitor already placed.
+          this.immersive = true;
           this.pendingFrames = SETTLE_FRAMES;
         }
       }),

@@ -25,27 +25,45 @@ function context(): AudioContext | null {
   return ctx;
 }
 
+let paused = false;
+
 export function unlock(): void {
+  if (paused) return;
   const c = context();
-  if (c && c.state === 'suspended') void c.resume();
+  // `interrupted` (the system took the audio away) also needs a resume.
+  if (c && c.state !== 'running' && c.state !== 'closed') void c.resume().catch(() => undefined);
 }
+
+/** Silences everything at once: the headset came off or the system menu is up. */
+export function pauseAudio(): void {
+  paused = true;
+  if (ctx?.state === 'running') void ctx.suspend().catch(() => undefined);
+}
+
+export function resumeAudio(): void {
+  paused = false;
+  unlock();
+}
+
+export const audioPaused = (): boolean => paused;
 
 /** Moves the listener to the viewer's head every frame. */
 export function setListener(position: Vector3, forward: Vector3, up: Vector3): void {
   const c = ctx;
   if (!c || c.state !== 'running') return;
   const l = c.listener;
-  const t = c.currentTime;
   if (l.positionX) {
-    l.positionX.setValueAtTime(position.x, t);
-    l.positionY.setValueAtTime(position.y, t);
-    l.positionZ.setValueAtTime(position.z, t);
-    l.forwardX.setValueAtTime(forward.x, t);
-    l.forwardY.setValueAtTime(forward.y, t);
-    l.forwardZ.setValueAtTime(forward.z, t);
-    l.upX.setValueAtTime(up.x, t);
-    l.upY.setValueAtTime(up.y, t);
-    l.upZ.setValueAtTime(up.z, t);
+    // Plain assignment: scheduling an event every frame would grow each
+    // parameter's timeline for as long as the app runs.
+    l.positionX.value = position.x;
+    l.positionY.value = position.y;
+    l.positionZ.value = position.z;
+    l.forwardX.value = forward.x;
+    l.forwardY.value = forward.y;
+    l.forwardZ.value = forward.z;
+    l.upX.value = up.x;
+    l.upY.value = up.y;
+    l.upZ.value = up.z;
   }
 }
 

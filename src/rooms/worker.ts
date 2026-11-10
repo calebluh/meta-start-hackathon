@@ -55,7 +55,8 @@ export class Bubble {
     const shown = lines.slice(0, this.maxLines);
     const top = title ? 70 : 32;
     const h = top + shown.length * 44 + 30;
-    if (this.canvas.height !== h) this.canvas.height = h;
+    const resized = this.canvas.height !== h;
+    if (resized) this.canvas.height = h;
     ctx.clearRect(0, 0, w, h);
     ctx.fillStyle = 'rgba(13, 17, 23, 0.92)';
     ctx.beginPath();
@@ -73,7 +74,9 @@ export class Bubble {
     ctx.font = font;
     ctx.fillStyle = '#f0f3f6';
     shown.forEach((l, i) => ctx.fillText(l, 32, top + i * 44));
-    this.texture.dispose(); // canvas size may have changed; rebuild the GPU texture
+    // A new canvas size needs a new GPU texture; the same size is just re-uploaded
+    // (text types out a few characters at a time, so this runs many times a line).
+    if (resized) this.texture.dispose();
     this.texture.needsUpdate = true;
     this.mesh.scale.set(this.widthMeters, (this.widthMeters * h) / w, 1);
     this.mesh.visible = true;

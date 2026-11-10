@@ -161,5 +161,6 @@ export function enterRoom(id: string): void {
 export function leaveRoom(): void {
   app.mode = 'table';
   app.roomNode = null;
+  app.handoff = null;
   emit();
 }

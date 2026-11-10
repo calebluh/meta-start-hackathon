@@ -1,5 +1,5 @@
 import type { Vector3 } from '@iwsdk/core';
-import { audioContext, audioOutput } from '../audio/sound.js';
+import { audioContext, audioOutput, audioPaused } from '../audio/sound.js';
 
 /**
  * Worker voices. With a cloud voice set up on the server (/api/tts), each
@@ -18,13 +18,35 @@ const CHUNK_CHARS = 300;
 /** Roughly how long a line takes to say, for pacing when there is no voice. */
 export const speakingSeconds = (text: string): number => Math.max(1.2, text.length / 15);
 
+/** Longest wait for one piece of speech before the browser voice takes over. */
+const TTS_TIMEOUT_MS = 8000;
+const CHECK_TIMEOUT_MS = 4000;
+const RETRY_CHECK_MS = 30000;
+
 let cloud: Promise<boolean> | null = null;
+/**
+ * Whether the server has a cloud voice. A clear answer is kept; a failed
+ * check (offline, a slow start) is asked again half a minute later, so one
+ * bad moment does not cost the natural voices for the whole visit.
+ */
 function cloudAvailable(): Promise<boolean> {
-  cloud ??= fetch('/api/tts')
-    .then((r): Promise<{ enabled?: boolean }> | { enabled?: boolean } => (r.ok ? r.json() : {}))
-    .then((j) => Boolean(j.enabled))
-    .catch(() => false);
+  cloud ??= fetch('/api/tts', { signal: AbortSignal.timeout(CHECK_TIMEOUT_MS) })
+    .then(async (r) => {
+      if (!r.ok) throw new Error(`tts check ${r.status}`);
+      return Boolean(((await r.json()) as { enabled?: boolean }).enabled);
+    })
+    .catch(() => {
+      setTimeout(() => {
+        cloud = null;
+      }, RETRY_CHECK_MS);
+      return false;
+    });
   return cloud;
+}
+
+/** Asks early, so the first line a robot says does not wait for the answer. */
+export function warmVoice(): void {
+  void cloudAvailable();
 }
 
 let generation = 0;
@@ -64,16 +86,15 @@ export function voiceLevel(): number {
 export async function speak(text: string, seed = 0, at?: Vector3): Promise<void> {
   const gen = ++generation;
   stopAll();
+  if (audioPaused()) return; // nobody is listening: the headset is off or the menu is up
+  let rest = text;
   if ((await cloudAvailable()) && audioContext() && gen === generation) {
-    try {
-      await speakCloud(text, CLOUD_VOICES[seed % CLOUD_VOICES.length], at, gen);
-      return;
-    } catch {
-      // Network or service trouble: the browser voice takes over.
-    }
+    // Whatever the cloud voice could not say (network or service trouble),
+    // the browser voice says after it, never over it.
+    rest = await speakCloud(text, CLOUD_VOICES[seed % CLOUD_VOICES.length], at, gen);
   }
-  if (gen !== generation) return;
-  return speakBrowser(text, seed);
+  if (!rest || gen !== generation) return;
+  return speakBrowser(rest, seed);
 }
 
 export function stopSpeaking(): void {
@@ -95,31 +116,43 @@ function chunks(text: string): string[] {
   return out;
 }
 
-async function speakCloud(text: string, voice: string, at: Vector3 | undefined, gen: number): Promise<void> {
+/** Plays the line with the cloud voice and returns the part it could not say ('' when it said it all). */
+async function speakCloud(text: string, voice: string, at: Vector3 | undefined, gen: number): Promise<string> {
   const c = audioContext()!;
   const out = audioOutput(at, 1.6);
-  if (!out) throw new Error('audio not running');
+  if (!out) return text;
   const meter = c.createAnalyser();
   meter.fftSize = 512;
   meter.connect(out);
   analyser = meter;
 
-  const requests = chunks(text).map((part) =>
+  const parts = chunks(text);
+  const requests = parts.map((part) =>
     fetch('/api/tts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text: part, voice }),
+      signal: AbortSignal.timeout(TTS_TIMEOUT_MS),
     }).then((r) => {
       if (!r.ok) throw new Error(`tts ${r.status}`);
       return r.arrayBuffer();
     }),
   );
+  // A request that fails after an earlier one already ended the loop is expected.
+  for (const request of requests) request.catch(() => undefined);
 
   let endAt = 0;
+  let rest = '';
   let last: AudioBufferSourceNode | null = null;
-  for (const request of requests) {
-    const audio = await c.decodeAudioData(await request);
-    if (gen !== generation) return;
+  for (let i = 0; i < requests.length; i += 1) {
+    let audio: AudioBuffer;
+    try {
+      audio = await c.decodeAudioData(await requests[i]);
+    } catch {
+      rest = parts.slice(i).join(' ');
+      break;
+    }
+    if (gen !== generation) return '';
     const source = c.createBufferSource();
     source.buffer = audio;
     source.connect(meter);
@@ -129,7 +162,10 @@ async function speakCloud(text: string, voice: string, at: Vector3 | undefined, 
     sources.push(source);
     last = source;
   }
-  if (!last) return;
+  if (!last) {
+    if (gen === generation) analyser = null;
+    return rest;
+  }
   const final = last;
   await new Promise<void>((resolve) => {
     final.onended = () => resolve();
@@ -143,6 +179,7 @@ async function speakCloud(text: string, voice: string, at: Vector3 | undefined, 
     final.addEventListener('ended', () => clearInterval(check));
   });
   if (gen === generation) analyser = null;
+  return rest;
 }
 
 /** The most natural-sounding English voices this browser has, best first. */

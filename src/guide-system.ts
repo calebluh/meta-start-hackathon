@@ -21,6 +21,8 @@ import type { GraphData } from './maps/types.js';
 import { ignoreRays } from './rays.js';
 import { Bubble } from './rooms/worker.js';
 import { app } from './state.js';
+import { HACKATHON } from './edition.js';
+import { isPaused } from './pause.js';
 import { dive } from './transition.js';
 
 /**
@@ -30,7 +32,10 @@ import { dive } from './transition.js';
  * finishes when the visitor actually does it, and steps they do early are
  * skipped, so nobody has to read ahead or press Next.
  *
- * Shown once per browser; development key `u` starts it over.
+ * The competition build shows it on every visit (a headset is often passed
+ * around); the personal edition shows it once per browser. `?guide=0` in the
+ * address turns it off and `?guide=1` turns it on; development key `u`
+ * starts it over.
  */
 
 type Target = 'building' | 'worker' | null;
@@ -174,7 +179,8 @@ export class GuideSystem extends createSystem({
     this.world.createTransformEntity(this.holder, { persistent: true });
     this.world.createTransformEntity(this.arrow, { persistent: true });
 
-    this.active = !this.seen();
+    const wanted = new URLSearchParams(location.search).get('guide');
+    this.active = wanted === '0' ? false : wanted === '1' || HACKATHON || !this.seen();
   }
 
   private seen(): boolean {
@@ -218,6 +224,7 @@ export class GuideSystem extends createSystem({
   }
 
   update(delta: number, time: number): void {
+    if (isPaused()) return;
     if (guideProgress.restart) {
       guideProgress.restart = false;
       this.active = true;
