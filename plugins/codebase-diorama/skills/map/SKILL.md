@@ -38,7 +38,15 @@ VIEWER_REPO=https://github.com/OWNER/codebase-diorama   # set by the plugin auth
 VIEWER_DIR="$HOME/codebase-diorama"
 if [ -d "$VIEWER_DIR/.git" ]; then git -C "$VIEWER_DIR" pull --ff-only; else git clone "$VIEWER_REPO" "$VIEWER_DIR"; fi
 cd "$VIEWER_DIR" && npm install
+# Personal edition: opens straight onto the user's own maps (no demo menu).
+grep -qs '^VITE_EDITION=' .env.local || printf 'VITE_EDITION=personal
+' >> .env.local
 ```
+
+The repository also contains a competition build with bundled demo maps. The
+`VITE_EDITION=personal` line switches those off, so the viewer only shows maps
+you make. It is not a secret, so you may write it; never write the user's
+keys.
 
 Requires Node 20+ and git. If either is missing, tell the user what to install
 and stop.
@@ -113,7 +121,8 @@ Logo (optional): if the repo has a square PNG logo or favicon, copy it to
 ## 6. Keys
 
 The robots answer using the Meta Model API. Ask the user to create a key at
-https://dev.meta.ai and add this line to `$VIEWER_DIR/.env.local` themselves:
+https://dev.meta.ai and add this line to `$VIEWER_DIR/.env.local` themselves
+(below the `VITE_EDITION` line):
 
 ```
 MODEL_API_KEY=LLM_...
@@ -138,7 +147,8 @@ This starts the server and opens a browser with a headset emulator. Then:
   certificate), then press Enter VR.
 - **On the desktop:** open `https://localhost:8081/?map=<id>`.
 
-The map also appears on the start menu's "Your code" card.
+Without `?map=` the viewer opens the user's first map; the Next map button on
+the desk's control strip switches between their maps.
 
 Tell the user how to use it, briefly: point at a building and pinch to
 inspect it, pinch Step inside to enter its room, point at a robot and pinch to

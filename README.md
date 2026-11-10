@@ -53,8 +53,13 @@ Then, inside the repository you want to see, ask Claude Code:
 You can also get the plugin as a zip from `public/downloads/codebase-diorama-plugin.zip`.
 Its source is in [`plugins/codebase-diorama`](plugins/codebase-diorama).
 
-Maps of your own code are written to `src/maps/custom/<id>.json`, which git
-ignores. Open one at `/?map=<id>`, or pinch "Your code" on the start menu.
+The plugin sets the viewer up as the **personal edition** (`VITE_EDITION=personal`
+in `.env.local`). It opens straight onto your own maps, with no demo menu and
+no MiroFish. Maps of your own code are written to `src/maps/custom/<id>.json`,
+which git ignores. Open one at `/?map=<id>`, or use Next map on the desk.
+
+Without that line you get the **hackathon edition**: a start menu with the
+MiroFish and Larder demos, plus your own maps on the "Your code" card.
 
 ## How it is built
 

@@ -34,6 +34,7 @@ import {
 } from '@iwsdk/core';
 import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
+import { HACKATHON } from './edition.js';
 import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
@@ -50,6 +51,7 @@ import {
   enterRoom,
   leaveRoom,
   nextStep,
+  cycleMap,
   onChange,
   openMenu,
   select,
@@ -495,7 +497,8 @@ export class DioramaSystem extends createSystem({
     on('btn-play', () => (app.stepIndex >= 0 ? stopFlow() : startFlow()));
     on('btn-next', () => nextStep());
     on('btn-flow', () => cycleFlow());
-    on('btn-map', () => openMenu());
+    // Hackathon: back to the demo menu. Personal: on to the next of your maps.
+    on('btn-map', () => (HACKATHON ? openMenu() : cycleMap()));
     on('btn-inside', () => {
       if (app.mode === 'room') leaveRoom();
       else {
@@ -614,7 +617,7 @@ export class DioramaSystem extends createSystem({
       this.disposeDiorama();
       this.buildDiorama();
     }
-    this.setText(this.controls, 'map-label', 'Demos');
+    this.setText(this.controls, 'map-label', HACKATHON ? 'Demos' : 'Next map');
     const flow = currentFlow();
     const step = currentStep();
     this.setText(this.controls, 'flow-label', flow ? flow.title : 'No flows');

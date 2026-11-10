@@ -1,5 +1,6 @@
 import { larder } from './larder.js';
 import { mirofish } from './mirofish.js';
+import { HACKATHON } from '../edition.js';
 import type { GraphData } from './types.js';
 
 /**
@@ -15,13 +16,17 @@ try {
   // Not built by Vite: import.meta.glob does not exist, so no custom maps.
 }
 
-/** Custom maps by id (the file name), newest skill output first in the menu. */
+/** Custom maps by id (the file name), in file-name order. */
 export const CUSTOM_MAPS: Record<string, GraphData> = Object.fromEntries(
   Object.entries(customFiles).map(([path, mod]) => [path.replace(/^.*\/|\.json$/g, ''), mod.default as GraphData]),
 );
 
-/** Every map, by id. The server only answers about these. */
-export const MAPS: Record<string, GraphData> = { mirofish, larder, ...CUSTOM_MAPS };
+/**
+ * Every map, by id. The server only answers about these. MiroFish is a
+ * hackathon demo only; the personal edition has the user's own maps, plus the
+ * small Larder sample so it is never empty.
+ */
+export const MAPS: Record<string, GraphData> = HACKATHON ? { mirofish, larder, ...CUSTOM_MAPS } : { ...CUSTOM_MAPS, larder };
 
-/** The map shown first. */
-export const DEFAULT_MAP = 'mirofish';
+/** The map shown first: the hackathon's headline demo, or the user's own map. */
+export const DEFAULT_MAP = HACKATHON ? 'mirofish' : (Object.keys(CUSTOM_MAPS)[0] ?? 'larder');

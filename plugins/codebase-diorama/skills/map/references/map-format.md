@@ -10,7 +10,7 @@ An ES module with a default export:
 
 ```js
 export default {
-  name: 'Acme Shop',                       // shown on the menu and the desk
+  name: 'Acme Shop',                       // shown on the desk and the inspector
   summary: 'An online shop for ...',       // fallback if arch.json has no projectSummary
   logo: 'maps/acme-shop/logo.png',         // optional, relative to the viewer's public/
   source: {                                // optional, credited on screen

@@ -1,4 +1,5 @@
 import { resolveRef } from './layout.js';
+import { HACKATHON } from './edition.js';
 import { DEFAULT_MAP, MAPS } from './maps/index.js';
 import type { Flow, GraphData } from './maps/types.js';
 
@@ -15,7 +16,7 @@ export const app = {
   /** Id of the bundled map, as the agent server knows it. */
   mapId: DEFAULT_MAP,
   /** The start menu is up: pick a demo before anything else shows. */
-  menu: true,
+  menu: HACKATHON,
   graph: MAPS[DEFAULT_MAP] as GraphData,
   /** `table`: the diorama on the desk. `room`: sitting inside one part. */
   mode: 'table' as 'table' | 'room',
