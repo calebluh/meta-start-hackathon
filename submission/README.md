@@ -24,7 +24,7 @@ because it needs your login and your API key.
 5. In the project, open **Settings, Deployment Protection** and make sure
    the production address does not ask for a Vercel login. If it does, turn
    **Vercel Authentication** off.
-6. Open `https://codebase-diorama.vercel.app` (or the address Vercel gives
+6. Open `https://diorama.calebluh.com` (or the address Vercel gives
    you) in a private browser window. You should see the landing page with
    **Enter VR**.
 
@@ -32,9 +32,9 @@ Then check the four server functions from a terminal. Replace the address if
 yours differs:
 
 ```bash
-curl -s -o /dev/null -w '%{http_code}\n' https://codebase-diorama.vercel.app/
-curl -s https://codebase-diorama.vercel.app/api/tts
-curl -s -X POST https://codebase-diorama.vercel.app/api/agent \
+curl -s -o /dev/null -w '%{http_code}\n' https://diorama.calebluh.com/
+curl -s https://diorama.calebluh.com/api/tts
+curl -s -X POST https://diorama.calebluh.com/api/agent \
   -H 'Content-Type: application/json' \
   -d '{"mapId":"larder","nodeId":"api.payments","persona":{"name":"Eli","role":"cashier","place":"cashier office"},"question":"Take me to the kitchen.","history":[]}'
 ```
