@@ -17,9 +17,21 @@ import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
 
+// Headset troubleshooting switches, e.g. ?nogaze or ?nooffer&nogaze. Normal
+// visits are unchanged.
+const params = new URLSearchParams(location.search);
+const options = { ...projectOptions } as typeof projectOptions;
+if (options.xr && (params.has('nogaze') || params.has('nooffer'))) {
+  const xr = { ...options.xr, features: { ...options.xr.features } };
+  if (params.has('nogaze')) delete (xr.features as Record<string, unknown>).gazeTracking;
+  if (params.has('nooffer')) xr.offer = 'none';
+  options.xr = xr;
+  console.log('[xr] troubleshooting', JSON.stringify(xr));
+}
+
 World.create(
   document.getElementById('scene-container') as HTMLDivElement,
-  projectOptions,
+  options,
 ).then((world) => {
   world.registerSystem(WorkspaceSystem);
   world.registerSystem(DioramaSystem);
