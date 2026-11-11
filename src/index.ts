@@ -17,16 +17,16 @@ import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
 
-// Headset troubleshooting switches, e.g. ?nogaze or ?nooffer&nogaze. Normal
-// visits are unchanged.
+// Eye tracking is only for Meta VR Glasses (open with ?gaze). Asking for it
+// crashes the Quest 2 browser at page load, and Quest has no eye tracking.
+// ?nooffer stops the browser's own Enter VR prompt (for troubleshooting).
 const params = new URLSearchParams(location.search);
 const options = { ...projectOptions } as typeof projectOptions;
-if (options.xr && (params.has('nogaze') || params.has('nooffer'))) {
+if (options.xr) {
   const xr = { ...options.xr, features: { ...options.xr.features } };
-  if (params.has('nogaze')) delete (xr.features as Record<string, unknown>).gazeTracking;
+  if (!params.has('gaze')) delete (xr.features as Record<string, unknown>).gazeTracking;
   if (params.has('nooffer')) xr.offer = 'none';
   options.xr = xr;
-  console.log('[xr] troubleshooting', JSON.stringify(xr));
 }
 
 World.create(
@@ -46,6 +46,11 @@ World.create(
 
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);
+  // A pinch in VR counts as a gesture too. This matters when the visitor
+  // entered through the browser's own Enter VR prompt, not the page button.
+  world.renderer.xr.addEventListener('sessionstart', () => {
+    world.renderer.xr.getSession()?.addEventListener('selectstart', unlock);
+  });
 
   // Pause cleanly. In VR that is the headset coming off or the system menu
   // opening over the app; outside VR it is the browser tab going to the
