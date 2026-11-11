@@ -22,6 +22,7 @@ import {
 import { KIND_COLORS } from './colors.js';
 import type { GraphData } from './maps/types.js';
 import { ignoreRays } from './rays.js';
+import { inPassthrough } from './passthrough.js';
 import { app } from './state.js';
 
 /**
@@ -203,7 +204,7 @@ export class AtmosphereSystem extends createSystem({}) {
       this.graph = app.graph;
       this.buildSkyline(app.graph);
     }
-    this.root.visible = app.mode === 'table';
+    this.root.visible = app.mode === 'table' && !inPassthrough(this.world);
 
     if (this.root.visible) {
       this.ripple.uniforms.uTime.value = time;

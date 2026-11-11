@@ -35,6 +35,7 @@ import {
 import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
 import { HACKATHON } from './edition.js';
+import { inPassthrough } from './passthrough.js';
 import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
@@ -572,7 +573,8 @@ export class DioramaSystem extends createSystem({
     // Inside a room the desk would hide the floor; the panels stay.
     const desk = this.world.getSceneObject('desk');
     // The desk drops away as a dive starts, so the city rises around the viewer.
-    if (desk) desk.visible = onTable && this.diveDir === 0;
+    // In mixed reality the visitor's own desk takes its place.
+    if (desk) desk.visible = onTable && this.diveDir === 0 && !inPassthrough(this.world);
     for (const label of this.labels) label.visible = this.diveDir === 0;
   }
 

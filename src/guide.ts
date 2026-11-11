@@ -6,16 +6,19 @@
 export const guideProgress = {
   talked: false,
   asked: false,
+  /** The visitor has dragged the desk with its grab bar. */
+  moved: false,
   /** Development: start the guide over. */
   restart: false,
 };
 
-export function guideNote(event: 'talked' | 'asked'): void {
+export function guideNote(event: 'talked' | 'asked' | 'moved'): void {
   guideProgress[event] = true;
 }
 
 export function restartGuide(): void {
   guideProgress.talked = false;
   guideProgress.asked = false;
+  guideProgress.moved = false;
   guideProgress.restart = true;
 }

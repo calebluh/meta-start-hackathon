@@ -16,6 +16,8 @@ import {
   Vector3,
   VisibilityState,
 } from '@iwsdk/core';
+import { guideNote } from './guide.js';
+import { inPassthrough } from './passthrough.js';
 import { FAR, NEAR, placement } from './placement.js';
 import { app } from './state.js';
 import { dive } from './transition.js';
@@ -55,6 +57,9 @@ export class WorkspaceSystem extends createSystem({}) {
   private handleMaterial = new MeshBasicMaterial({ color: HANDLE_IDLE });
   private handlePos = new Vector3();
   private offset = new Vector3();
+  private wasGrabbed = false;
+  private floor: Object3D | undefined;
+  private passthrough = false;
 
   init(): void {
     this.workspace = this.world.getSceneObject('workspace');
@@ -89,6 +94,7 @@ export class WorkspaceSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => xr.removeEventListener('sessionstart', onSessionStart));
 
     this.buildHandle();
+    this.floor = this.world.getSceneObject('floor');
 
     const recenter = this.world.getSceneObject<UIKitMLAsset>('controls-panel')?.getElementById('btn-recenter');
     if (recenter) {
@@ -104,6 +110,12 @@ export class WorkspaceSystem extends createSystem({}) {
       if (this.pendingFrames === 0) this.placeInFrontOfHead();
     }
     this.updateHandle();
+    // Mixed reality: the real floor is the floor.
+    const passthrough = this.immersive && inPassthrough(this.world);
+    if (passthrough !== this.passthrough) {
+      this.passthrough = passthrough;
+      if (this.floor) this.floor.visible = !passthrough;
+    }
   }
 
   /** A pill-shaped bar, inside a larger invisible catch area so it is easy to hit. */
@@ -141,6 +153,8 @@ export class WorkspaceSystem extends createSystem({}) {
     if (!usable) return;
 
     const grabbed = handle.hasComponent(Grabbed);
+    if (this.wasGrabbed && !grabbed) guideNote('moved');
+    this.wasGrabbed = grabbed;
     this.handleMaterial.color.set(grabbed || handle.hasComponent(Hovered) ? HANDLE_LIVE : HANDLE_IDLE);
     if (grabbed) {
       this.player.head.getWorldPosition(this.head);
