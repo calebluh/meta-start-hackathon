@@ -335,6 +335,13 @@ export class RoomSystem extends createSystem({
     staticGroup.name = 'static';
     group.add(staticGroup);
     group.position.set(0, -(this.workspace?.position.y ?? 0.74), placement.reach);
+    // The visitor may have moved the desk: centre the room under their head.
+    if (this.workspace) {
+      this.world.camera.getWorldPosition(this.head);
+      this.workspace.worldToLocal(this.head);
+      group.position.x = this.head.x;
+      group.position.z = this.head.z;
+    }
 
     const floor = new Mesh(new CircleGeometry(ROOM_RADIUS, 48), new MeshStandardMaterial({ color: theme.floor, roughness: 0.85 }));
     floor.rotation.x = -Math.PI / 2;

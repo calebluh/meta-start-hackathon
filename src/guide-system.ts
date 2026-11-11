@@ -132,10 +132,11 @@ const ACCENT = '#7ee0ff';
 const CARD_ANCHOR = new Vector3(0, 0.3, -0.24);
 /**
  * Inside a room the city is gone and a robot stands straight ahead to talk,
- * so the card drops to the empty desk top, just behind the buttons, where it
- * covers neither the robot nor its speech bubble.
+ * so the card shrinks and sits low, just behind the buttons, well below the
+ * line from the eyes to the robot and its speech bubble.
  */
-const ROOM_ANCHOR = new Vector3(0, 0.085, 0.05);
+const ROOM_ANCHOR = new Vector3(0, 0.045, 0.16);
+const ROOM_SCALE = 0.6;
 const CARD_WIDTH = 0.46;
 const PINCH_SECONDS = 1.6;
 
@@ -285,6 +286,7 @@ export class GuideSystem extends createSystem({
     if (workspace && !hidden) {
       this.holder.position.copy(app.mode === 'room' ? ROOM_ANCHOR : CARD_ANCHOR);
       workspace.localToWorld(this.holder.position);
+      this.holder.scale.setScalar(app.mode === 'room' ? ROOM_SCALE : 1);
       this.holder.lookAt(this.head);
     }
 
