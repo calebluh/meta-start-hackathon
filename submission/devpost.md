@@ -42,7 +42,9 @@ Paste each part into the matching Devpost field. Everything marked
 8. If the desk is ever in the wrong place, pinch **Recenter**.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
-On a computer, the same link shows a flat preview you can click through.
+Controllers work too: the trigger is a pinch, and the right thumbstick spins
+and resizes the city. On a computer, the same link shows a flat preview:
+click to pick, WASD to move, right-drag to look.
 
 ## About the project
 
@@ -68,15 +70,24 @@ desk.
   is wrong with it.
 - **The flows.** Pinch **Play flow** and a packet of data travels from
   building to building along a real path through the code, such as a first
-  order in a shop, while each step is read aloud.
+  order in a shop, while each step is read aloud. It comes in through an
+  Internet gateway, and every step shows whether it crosses the network
+  (high and blue), touches stored data (amber) or is the code working on
+  its own (a small white hop), so you see where a request really travels.
+- **Carry the request.** Inside a room during a flow, the robot hands you
+  the request. Pinch it, then pinch the pipe it goes down next. Pick the
+  wrong pipe and the robot tells you where that one leads.
 - **The rooms.** Pinch **Step inside** and the building grows around you
   until you are standing in it. Each room looks like the real-world place
   that does the same job: payments is a cashier's office, storage is a
   warehouse, messaging is a post office. Robots work there.
-- **The robots.** Pinch a robot, or just talk. It answers about the actual
-  code in its room, in its own voice, and it acts on what you ask: it walks
-  you to another room, plays a flow, points at the pipe that leads next
-  door, hands you a card about a file, or takes you back to the city.
+- **The robots.** Pinch a robot, or just talk, and cut in whenever you
+  like. It answers about the actual code in its room, in its own voice, and
+  it acts on what you ask: it walks you to another room, plays a flow,
+  points at the pipe that leads next door, hands you a card about a file, or
+  takes you back to the city. When it sends you on, it names the colleague
+  who will help, and that robot comes out of the pipe to meet you, already
+  knowing what you asked.
 - **The quiz.** Pinch **Quiz me** and the robot turns the tables: it tests
   you on its own room. What is this room's job, where does the work go next,
   which file lives here, what is the warning about. The room's notes are put
