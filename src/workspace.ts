@@ -94,6 +94,10 @@ export class WorkspaceSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => xr.removeEventListener('sessionstart', onSessionStart));
 
     this.buildHandle();
+    placement.recentre = () => {
+      if (this.immersive) this.placeInFrontOfHead();
+    };
+    this.cleanupFuncs.push(() => (placement.recentre = () => undefined));
     this.floor = this.world.getSceneObject('floor');
 
     const recenter = this.world.getSceneObject<UIKitMLAsset>('controls-panel')?.getElementById('btn-recenter');
@@ -160,7 +164,8 @@ export class WorkspaceSystem extends createSystem({}) {
       this.player.head.getWorldPosition(this.head);
       object.getWorldPosition(this.handlePos);
       // Face the visitor from wherever the bar now is.
-      const yaw = Math.atan2(this.handlePos.x - this.head.x, this.handlePos.z - this.head.z);
+      // The desk's front (+Z) points back at the viewer, as in placeInFrontOfHead.
+      const yaw = Math.atan2(this.head.x - this.handlePos.x, this.head.z - this.handlePos.z);
       this.workspace.rotation.set(0, yaw, 0);
       this.offset.copy(HANDLE_REST).applyAxisAngle(UP, yaw);
       this.workspace.position.copy(this.handlePos).sub(this.offset);

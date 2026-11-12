@@ -44,6 +44,10 @@ World.create(
   const wanted = new URLSearchParams(location.search).get('map');
   if (wanted && MAPS[wanted]) chooseDemo(wanted);
 
+  // A Quest 2 has about a third of a Quest 3's graphics power: draw slightly
+  // fewer pixels there so turning the head stays smooth.
+  if (/Quest 2/.test(navigator.userAgent)) world.renderer.xr.setFramebufferScaleFactor(0.85);
+
   // Browsers allow audio only after a gesture: the first press, or entering VR.
   window.addEventListener('pointerdown', unlock);
   // A pinch in VR counts as a gesture too. This matters when the visitor

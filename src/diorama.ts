@@ -36,6 +36,7 @@ import { click } from './audio/sound.js';
 import { KIND_COLORS } from './colors.js';
 import { HACKATHON } from './edition.js';
 import { inPassthrough } from './passthrough.js';
+import { placement } from './placement.js';
 import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { mergeGeometries } from './rooms/merge.js';
@@ -629,6 +630,9 @@ export class DioramaSystem extends createSystem({
   private updateDive(delta: number): void {
     if (this.surfaceFrom && !dive.roomShown) {
       // The room is gone behind the dark: start huge and shrink to the desk.
+      // The visitor may have turned around inside the room, so the desk
+      // comes back in front of them first, unseen.
+      placement.recentre();
       const from = this.surfaceFrom;
       this.surfaceFrom = null;
       this.root.object3D!.visible = true;

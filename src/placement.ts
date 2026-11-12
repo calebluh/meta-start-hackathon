@@ -9,10 +9,15 @@
  * the desk sits further away and a little higher: the whole city, its
  * buttons and the side panel then fit in one look.
  */
-export const NEAR = { reach: 0.6, drop: 0.42 } as const;
+export const NEAR = { reach: 0.7, drop: 0.42 } as const;
 export const FAR = { reach: 0.95, drop: 0.36 } as const;
 
-export const placement: { reach: number; drop: number; gaze: boolean } = { ...NEAR, gaze: false };
+export const placement: { reach: number; drop: number; gaze: boolean; recentre: () => void } = {
+  ...NEAR,
+  gaze: false,
+  /** Puts the desk back in front of the viewer (set by WorkspaceSystem; does nothing outside VR). */
+  recentre: () => undefined,
+};
 
 /** "Point at" for hands on a Quest, "Look at" where the eyes do the aiming. */
 export const aimWord = (): string => (placement.gaze ? 'Look at' : 'Point at');
