@@ -7,6 +7,7 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  PlaneGeometry,
   SphereGeometry,
   SRGBColorSpace,
   Vector3,
@@ -44,6 +45,74 @@ export function addCeiling(group: Group, theme: Theme, palette: Palette, radius:
     box(group, light, 0.9, 0.03, 0.35, Math.sin(a) * radius * 0.55, height - 0.04, -Math.cos(a) * radius * 0.55, -a);
   }
   box(group, palette.glow, 1.6, 0.03, 0.12, 0, height - 0.05, -radius * 0.62);
+}
+
+/**
+ * High windows round the room with the rest of the city outside: a dusk sky
+ * and a skyline of towers in the colours of the codebase's parts, lit
+ * windows and all. One shared canvas texture, so it merges into one mesh.
+ */
+export function addWindows(group: Group, colors: string[], seed: number, radius: number, height: number): void {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d')!;
+  const sky = ctx.createLinearGradient(0, 0, 0, 256);
+  sky.addColorStop(0, '#0b1424');
+  sky.addColorStop(0.65, '#27324d');
+  sky.addColorStop(1, '#5a4a6a');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, 512, 256);
+  let r = seed || 1;
+  const rand = () => {
+    r = (r * 16807) % 2147483647;
+    return r / 2147483647;
+  };
+  // Two rows of towers: far ones dim, near ones in the parts' colours.
+  for (const near of [false, true]) {
+    let x = -10;
+    while (x < 512) {
+      const w = 26 + rand() * 46;
+      const h = (near ? 70 : 110) + rand() * (near ? 110 : 80);
+      const base = new Color(colors[Math.floor(rand() * colors.length)] ?? '#5b8def');
+      base.multiplyScalar(near ? 0.45 : 0.22);
+      ctx.fillStyle = `#${base.getHexString()}`;
+      ctx.fillRect(x, 256 - h, w, h);
+      if (near) {
+        ctx.fillStyle = 'rgba(255, 228, 170, 0.85)';
+        for (let wy = 256 - h + 8; wy < 248; wy += 12) {
+          for (let wx = x + 5; wx < x + w - 6; wx += 9) if (rand() > 0.45) ctx.fillRect(wx, wy, 4, 5);
+        }
+      }
+      x += w + (near ? 4 : -8) + rand() * 10;
+    }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const glass = new MeshBasicMaterial({ map: texture });
+  const frame = new MeshStandardMaterial({ color: '#1b1f27', roughness: 0.6, metalness: 0.3 });
+  const w = 1.5;
+  const h = 0.72;
+  const y = height - 0.75;
+  for (const deg of [-150, -90, -32, 32, 90, 150]) {
+    const a = (deg * Math.PI) / 180;
+    const pane = new Mesh(new PlaneGeometry(w, h), glass);
+    // Each window shows a different stretch of the skyline.
+    const uv = pane.geometry.attributes.uv;
+    const offset = ((deg + 180) / 360) * 0.5;
+    for (let i = 0; i < uv.count; i += 1) uv.setX(i, offset + uv.getX(i) * 0.5);
+    pane.position.set(Math.sin(a) * (radius - 0.05), y, -Math.cos(a) * (radius - 0.05));
+    pane.lookAt(0, y, 0);
+    group.add(pane);
+    const sill = new Mesh(unitBox, frame);
+    sill.scale.set(w + 0.12, 0.06, 0.12);
+    sill.position.set(Math.sin(a) * (radius - 0.08), y - h / 2 - 0.03, -Math.cos(a) * (radius - 0.08));
+    sill.rotation.y = -a;
+    group.add(sill);
+    const lintel = sill.clone();
+    lintel.position.y = y + h / 2 + 0.03;
+    group.add(lintel);
+  }
 }
 
 /** Wall pilasters every 30 degrees break up the curved wall. */

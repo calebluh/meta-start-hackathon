@@ -1,4 +1,4 @@
-import { Group, Mesh, MeshStandardMaterial } from '@iwsdk/core';
+import { Box3, Group, Mesh, MeshStandardMaterial } from '@iwsdk/core';
 import { prop, type PropId } from './props.js';
 import type { DecorKind, Palette, StationKind, Theme } from './themes.js';
 import { unitBox } from './themes.js';
@@ -55,6 +55,12 @@ function place(parent: Group, child: Group, x: number, y: number, z: number, yaw
   return child;
 }
 
+/** The height of a placed prop's top, so another can sit on it rather than inside it. */
+const measure = new Box3();
+function topOf(child: Group): number {
+  return measure.setFromObject(child).max.y;
+}
+
 function box(parent: Group, m: MeshStandardMaterial, w: number, h: number, d: number, x: number, y: number, z: number, tilt = 0): Mesh {
   const mesh = new Mesh(unitBox, m);
   mesh.scale.set(w, h, d);
@@ -88,14 +94,16 @@ export function makePropStation(kind: StationKind, p: Palette): Group | null {
   switch (kind) {
     case 'rack':
       place(g, prop('steel_frame_shelves_01', 2.1), 0, 0, -0.1);
-      place(g, prop('wooden_crate_01', 0.8, 'longest'), -1.15, 0, 0.1, 0.2);
-      place(g, prop('wooden_crate_01', 0.8, 'longest'), -1.1, 0.34, 0.05, -0.1);
+      {
+        const low = place(g, prop('wooden_crate_01', 0.8, 'longest'), -1.15, 0, 0.1, 0.2);
+        place(g, prop('wooden_crate_01', 0.8, 'longest'), -1.1, topOf(low), 0.05, -0.1);
+      }
       place(g, prop('plastic_crate_02', 0.5, 'longest'), 1.15, 0, 0.15, -0.3);
       break;
     case 'pallets': {
       box(g, p.wood, 1.3, 0.12, 1.05, 0, 0, 0);
-      place(g, prop('wooden_crate_01', 0.8, 'longest'), -0.2, 0.12, -0.2);
-      place(g, prop('wooden_crate_01', 0.8, 'longest'), -0.2, 0.46, -0.2, 0.15);
+      const low = place(g, prop('wooden_crate_01', 0.8, 'longest'), -0.2, 0.12, -0.2);
+      place(g, prop('wooden_crate_01', 0.8, 'longest'), -0.2, topOf(low), -0.2, 0.15);
       place(g, prop('plastic_crate_02', 0.5, 'longest'), 0.35, 0.12, 0.25, 0.4);
       break;
     }
@@ -197,10 +205,11 @@ export function makePropDecor(kind: DecorKind): Group | null {
     case 'chair':
       place(g, prop('plastic_monobloc_chair_01', 0.88), 0, 0, 0, Math.PI);
       break;
-    case 'crateStack':
-      place(g, prop('wooden_crate_01', 0.8, 'longest'), 0, 0, 0);
-      place(g, prop('plastic_crate_02', 0.5, 'longest'), 0.05, 0.34, 0, 0.3);
+    case 'crateStack': {
+      const low = place(g, prop('wooden_crate_01', 0.8, 'longest'), 0, 0, 0);
+      place(g, prop('plastic_crate_02', 0.5, 'longest'), 0.05, topOf(low), 0, 0.3);
       break;
+    }
     case 'sofa':
       place(g, prop('sofa_02', 0.71), 0, 0, 0, Math.PI);
       place(g, prop('side_table_01', 0.45), 1.2, 0, 0);

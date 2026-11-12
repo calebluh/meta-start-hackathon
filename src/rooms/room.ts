@@ -38,7 +38,8 @@ import { isPaused, onPause, whenResumed } from '../pause.js';
 import { placement } from '../placement.js';
 import { app, currentStep, enterRoom, type Handoff, leaveRoom, nextStep, onChange, setQuiz, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
-import { addCeiling, addFloorMarkings, addPilasters, makeSwirl, Trail } from './dressing.js';
+import { addCeiling, addFloorMarkings, addPilasters, addWindows, makeSwirl, Trail } from './dressing.js';
+import { KIND_COLORS } from '../colors.js';
 import { thinkingLine } from './lines.js';
 import { ignoreRays } from '../rays.js';
 import { mergeStatic } from './merge.js';
@@ -404,6 +405,19 @@ export class RoomSystem extends createSystem({
     addCeiling(staticGroup, theme, palette, ROOM_RADIUS, WALL_HEIGHT);
     addPilasters(staticGroup, theme, ROOM_RADIUS, WALL_HEIGHT);
     addFloorMarkings(staticGroup, theme, palette);
+    addWindows(staticGroup, app.graph.nodes.filter((n) => n.id !== nodeId).map((n) => KIND_COLORS[n.kind]), this.hash(nodeId), ROOM_RADIUS, WALL_HEIGHT);
+
+    // The room's own files on plaques round the side and back walls, biggest first.
+    const files = app.graph.files.filter((f) => f.n === nodeId).sort((a, b) => b.loc - a.loc).slice(0, 6);
+    const plaqueAngles = [118, -118, 145, -145, 172, -172];
+    files.forEach((f, i) => {
+      const a = (plaqueAngles[i] * Math.PI) / 180;
+      const plaque = new Bubble(1.6, theme.accent, 4);
+      plaque.setText(`${f.d} (${f.loc} lines)`, f.name);
+      plaque.mesh.position.set(Math.sin(a) * (ROOM_RADIUS - 0.3), 1.7, -Math.cos(a) * (ROOM_RADIUS - 0.3));
+      group.add(plaque.mesh);
+      this.bubbles.push(plaque);
+    });
 
     // Room sign on the far wall, straight ahead.
     const sign = new Bubble(2.2, theme.accent);
@@ -448,7 +462,8 @@ export class RoomSystem extends createSystem({
     });
 
     // Background props near the wall, between and beside the stations.
-    const decorAngles = [-90, -28, 28, 90].map((d) => (d * Math.PI) / 180);
+    // A second ring behind and beside the visitor, so turning round is not a bare wall.
+    const decorAngles = [-90, -28, 28, 90, -130, 130, -160, 160].map((d) => (d * Math.PI) / 180);
     decorAngles.forEach((a, i) => {
       const kind = theme.decor[i % theme.decor.length];
       const prop = makePropDecor(kind) ?? makeDecor(kind, palette);
