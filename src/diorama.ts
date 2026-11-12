@@ -9,6 +9,7 @@ import {
   EdgesGeometry,
   type Entity,
   Grabbed,
+  InputComponent,
   Group,
   Hovered,
   InstancedMesh,
@@ -958,6 +959,18 @@ export class DioramaSystem extends createSystem({
       if (Math.abs(scale.z - start) > Math.abs(next - start)) next = scale.z;
       this.uniformScale = Math.min(3, Math.max(0.5, next));
       scale.setScalar(this.uniformScale);
+    }
+
+    // Controllers: the right thumbstick spins the city (left and right) and
+    // resizes it (up and down), when it is not being held.
+    const stick = this.input.xr.gamepads.right?.getAxesValues(InputComponent.Thumbstick);
+    if (stick && !grabbed && (Math.abs(stick.x) > 0.2 || Math.abs(stick.y) > 0.2)) {
+      const obj = this.root.object3D!;
+      if (Math.abs(stick.x) > 0.2) obj.rotation.y -= stick.x * 1.4 * delta;
+      if (Math.abs(stick.y) > 0.2) {
+        this.uniformScale = Math.min(3, Math.max(0.5, this.uniformScale * (1 - stick.y * 0.9 * delta)));
+        obj.scale.setScalar(this.uniformScale);
+      }
     }
 
     // Labels turn to face the viewer.

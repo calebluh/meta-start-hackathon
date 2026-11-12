@@ -16,6 +16,7 @@ import { landingFailed, landingReady } from './landing.js';
 import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
+import { DesktopControlsSystem } from './desktop-controls.js';
 
 // Eye tracking is only for Meta VR Glasses (open with ?gaze). Asking for it
 // crashes the Quest 2 browser at page load, and Quest has no eye tracking.
@@ -39,6 +40,7 @@ World.create(
   world.registerSystem(GuideSystem);
   world.registerSystem(AtmosphereSystem);
   world.registerSystem(MenuSystem);
+  world.registerSystem(DesktopControlsSystem);
 
   // A link straight to one map (the Claude skill prints one) skips the menu.
   const wanted = new URLSearchParams(location.search).get('map');

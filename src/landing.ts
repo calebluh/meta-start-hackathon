@@ -66,7 +66,8 @@ export async function landingReady(world: World): Promise<void> {
     // A phone or a desktop browser: say where the real thing is, then get out of the way.
     note.textContent =
       'This is a VR app. Open this page in the browser on a Meta Quest headset to step inside. ' +
-      'Here you can preview it with a mouse: click a building, then press Step inside.';
+      'Here you can preview it with a mouse: click a building, then press Step inside. ' +
+      'WASD moves you, and the arrow keys or a right-mouse drag look around.';
     enter.textContent = 'Preview here';
     enter.hidden = false;
     enter.addEventListener('click', () => {
