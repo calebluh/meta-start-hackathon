@@ -23,9 +23,11 @@ Paste each part into the matching Devpost field. Everything marked
 2. Put the controllers down. Everything is done with bare hands.
 3. Pinch **Allow microphone** if you would like to talk to the robots out
    loud (optional: every question can also be pinched from a list), then
-   pinch **Enter VR**.
+   pinch **Mixed reality** to see the city on your own desk, or **Enter VR**
+   for a fully virtual room.
 4. Stay seated. A desk appears in front of you with three cards. Pinch or
-   poke **Larder**, the small one, for a first visit.
+   poke **Larder**, the small one, for a first visit. To move the desk,
+   pinch the grey bar under its buttons and drag.
 5. Follow the card that floats above the desk. It teaches one thing at a
    time and takes about three minutes: pinch a building, step inside, pinch a
    robot, ask it something.
@@ -81,6 +83,9 @@ desk.
   away while it runs. Pinch one of three answers, or say it in your own
   words. A wrong answer is corrected straight away, with the right one left
   standing on the panel, and you get a score at the end.
+- **Mixed reality.** Choose **Mixed reality** and the city sits on your own
+  desk, in your own room, through the headset's passthrough cameras. The
+  rooms you step into still surround you, with your real room around them.
 - **Your own code.** A Claude Code plugin maps any repository into a city.
   The third demo, **This app**, is the diorama's own source code, mapped by
   that plugin.
@@ -128,17 +133,19 @@ Development was done with Claude Code as a pair programmer.
   before the session starts, instead of in the middle of a conversation.
 - **Voice as a second way in.** Anything a pinch can do inside a room can
   also be said: ask a question, change room, play a flow, leave.
-- **Seated and still.** The desk places itself within arm's reach of wherever
-  you are sitting, and stays put. Rooms come to you: there is no walking and
-  no turning. Everything is inside a two-foot reach.
-- **Narrow views.** On Meta VR Glasses the app detects gaze tracking and
-  moves the desk farther away and a little higher, so the city, its buttons
-  and the side panel fit in one look, and every target works with a look and
-  a pinch. This was checked in the IWSDK glasses emulator and has not yet
-  been run on glasses hardware.
+- **Seated and still.** The desk places itself just in front of wherever you
+  are sitting, and comes back in front of you each time you leave a room.
+  A grab bar, like the one under a Quest window, drags it nearer, further or
+  aside, and it keeps facing you. Rooms come to you: there is no walking.
+- **Narrow views.** On Meta VR Glasses (open the link with `?gaze` on the
+  end) the app asks for eye tracking, moves the desk farther away and a
+  little higher, so the city, its buttons and the side panel fit in one
+  look, and every target works with a look and a pinch. This was checked in
+  the IWSDK glasses emulator and has not yet been run on glasses hardware.
 - **A first five minutes without a wall of text.** One floating card, one
-  short line at a time, and an arrow on the thing to pinch. Each step
-  finishes when you do it.
+  short line at a time, and an arrow on the thing to pinch: get comfortable,
+  pinch a building, step inside, talk to a robot, ask something, come back.
+  Each step finishes when you do it.
 - **Pause and resume.** Take the headset off or open the Quest menu and the
   robots stop talking, the microphone closes and the sound stops. Put it
   back on and it carries on where it was.
@@ -148,6 +155,10 @@ Development was done with Claude Code as a pair programmer.
 
 ### Challenges
 
+- **A browser that crashed on a Quest 2.** Asking the Quest Browser for eye
+  tracking, which only Meta VR Glasses use, crashed the whole page on a
+  Quest 2 before it drew a frame. Eye tracking is now only requested when
+  the link asks for it.
 - **Hand input is noisy.** One pinch often arrives twice, which made buttons
   start and stop at once and buildings select and deselect. Every control now
   ignores a repeat that arrives too soon.
