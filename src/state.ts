@@ -39,6 +39,8 @@ export interface Handoff {
   toRoom: string;
   fromWorker: string;
   fromRoom: string;
+  /** The room left, so the colleague can come in through the pipe from it. */
+  fromRoomId: string;
   question: string;
   answer: string;
 }

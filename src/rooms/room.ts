@@ -712,6 +712,9 @@ export class RoomSystem extends createSystem({
     const spot = new Vector3(Math.sin(angle) * 2.0, 0, -Math.cos(angle) * 2.0);
     w.scripted = true;
     w.item.visible = false;
+    // A colleague sent for from next door comes in through the pipe from there.
+    const door = handoff ? this.portals.find((d) => d.nodeId === handoff.fromRoomId) : undefined;
+    if (door) p.copy(door.landing);
     w.queue = [
       { kind: 'walk', to: spot },
       { kind: 'face', at: new Vector3(0, 0, 0) },
@@ -993,7 +996,20 @@ export class RoomSystem extends createSystem({
       if (talk !== this.conversation) return;
     }
     if (leave?.type === 'go_to_room') {
-      app.handoff = { toRoom: leave.roomId, fromWorker: w.name, fromRoom: app.graph.nodes.find((n) => n.id === nodeId)?.label ?? nodeId, question, answer };
+      // Hand over out loud: name the colleague who will pick up next door.
+      const colleague = this.colleagueIn(leave.roomId);
+      const there = app.graph.nodes.find((n) => n.id === leave.roomId)?.label ?? 'the next room';
+      w.rig.gesture('Wave');
+      await this.say(w, `I'll get ${colleague} in ${there} to take it from here.`, this.titleFor(w));
+      if (talk !== this.conversation) return;
+      app.handoff = {
+        toRoom: leave.roomId,
+        fromWorker: w.name,
+        fromRoom: app.graph.nodes.find((n) => n.id === nodeId)?.label ?? nodeId,
+        fromRoomId: nodeId,
+        question,
+        answer,
+      };
       this.endConversation();
       enterRoom(leave.roomId);
     } else if (leave?.type === 'play_flow') {
@@ -1004,6 +1020,11 @@ export class RoomSystem extends createSystem({
       this.endConversation();
       leaveRoom();
     }
+  }
+
+  /** The worker who picks up a handoff in a room: the second one there (see build). */
+  private colleagueIn(roomId: string): string {
+    return NAMES[(this.hash(roomId) + 1) % NAMES.length];
   }
 
   /** The first neighbouring room named in a reply, if any. */
