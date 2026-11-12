@@ -30,7 +30,7 @@ import { LiveMic } from '../agent/live-mic.js';
 import { canRecord } from '../agent/recorder.js';
 import { leavesRoom, plainRequest, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { answerOrder, asksForQuiz, asksToStopQuiz, heardAnswer, quizRound, type QuizQuestion } from '../agent/quiz.js';
-import { Worker } from '../diorama-components.js';
+import { Carryable, Pipe, Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
 import { dive, DIVE_FADE_AT } from '../transition.js';
 import { guideNote } from '../guide.js';
@@ -52,6 +52,20 @@ const ROOM_RADIUS = 5.2;
 const WALL_HEIGHT = 3.4;
 const STATION_RADIUS = 3.3;
 const PORTAL_RADIUS = 5.05;
+/** Where the lead stands to hand the visitor the request, and how long it waits. */
+const OFFER_SPOT = new Vector3(0.45, 0, -1.3);
+const OFFER_SECONDS = import.meta.env.DEV ? 40 : 10;
+
+/** The request held out to the visitor during a flow (see RoomSystem.offerPacket). */
+interface Offer {
+  lead: WorkerState;
+  portal: Portal;
+  next: string;
+  /** When the lead stops waiting and sends it itself (seconds, performance clock). */
+  deadline: number;
+  carrying: boolean;
+  sending: boolean;
+}
 const WALK_SPEED = 0.8;
 /** Workers keep at least this far from the seated viewer. */
 const SAFE_RADIUS = 2.3;
@@ -131,6 +145,8 @@ interface Portal {
   mouth: Vector3;
   /** Floor spot in front of it where a worker waits. */
   landing: Vector3;
+  /** The swirl inside the tube: pinch it to send the request this way. */
+  hole: Mesh;
 }
 
 interface Packet {
@@ -178,6 +194,8 @@ const WRONG_LINES = ['Not quite.', 'Not that one.', 'Close, but no.', 'Afraid no
  */
 export class RoomSystem extends createSystem({
   pressedWorkers: { required: [Worker, Pressed] },
+  pressedPacket: { required: [Carryable, Pressed] },
+  pressedPipes: { required: [Pipe, Pressed] },
   hoveredWorkers: { required: [Worker, Hovered] },
 }) {
   private workspace: Object3D | undefined;
@@ -215,6 +233,13 @@ export class RoomSystem extends createSystem({
   private micOff = false;
   private fileCard: Bubble | null = null;
   private swirls: Mesh[] = [];
+  /** Pinchable pipes and the invisible catch area around the request (see offerPacket). */
+  private pipeEntities: Entity[] = [];
+  private catcher: Entity | null = null;
+  /** The request held out to the visitor during a flow, until it goes down the next pipe. */
+  private offer: Offer | null = null;
+  /** The visitor has been told once how to carry the request. */
+  private taughtCarry = false;
   private trail: Trail | null = null;
 
   // Fade between rooms: a dark sphere around the head.
@@ -278,6 +303,8 @@ export class RoomSystem extends createSystem({
         const worker = this.workers.find((w) => w.entity === entity);
         if (worker && worker !== this.talking) this.startConversation(worker);
       }),
+      this.queries.pressedPacket.subscribe('qualify', () => this.takePacket()),
+      this.queries.pressedPipes.subscribe('qualify', (entity) => this.sendPacketTo(entity.getValue(Pipe, 'nodeId') as string)),
     );
   }
 
@@ -306,6 +333,7 @@ export class RoomSystem extends createSystem({
   /** The flow was stopped part-way through a step: put the packet away and free the lead. */
   private dropStep(): void {
     this.handledStep = -1;
+    this.endOffer();
     const packet = this.packet;
     if (packet) {
       packet.flying = false;
@@ -473,13 +501,28 @@ export class RoomSystem extends createSystem({
       group.add(label.mesh);
       this.bubbles.push(label);
       const landing = new Vector3(Math.sin(a) * (PORTAL_RADIUS - 0.9), 0, -Math.cos(a) * (PORTAL_RADIUS - 0.9));
-      return { nodeId: id, mouth, landing };
+      return { nodeId: id, mouth, landing, hole };
     });
 
     const folded = mergeStatic(staticGroup);
     if (import.meta.env.DEV) console.log(`[perf] merged ${folded} static meshes in ${nodeId}`);
     this.roomGroup = group;
     this.roomEntity = this.world.createTransformEntity(group, workspaceEntity ? { parent: workspaceEntity } : undefined);
+    // Pipes take a pinch while the visitor carries a request (see sendPacketTo).
+    for (const p of this.portals) {
+      p.hole.name = `pipe:${p.nodeId}`;
+      const pipe = this.world.createTransformEntity(p.hole, { parent: this.roomEntity });
+      pipe.addComponent(Pipe, { nodeId: p.nodeId });
+      pipe.addComponent(RayInteractable);
+      this.pipeEntities.push(pipe);
+    }
+    const catchArea = new Mesh(
+      new SphereGeometry(0.24, 12, 8),
+      new MeshBasicMaterial({ transparent: true, opacity: 0, depthWrite: false }),
+    );
+    catchArea.name = 'request';
+    this.catcher = this.world.createTransformEntity(catchArea, { parent: this.roomEntity });
+    this.catcher.addComponent(Carryable, { nodeId });
 
     // Staff: three workers looping between stations.
     this.workers = [0, 1, 2].map((i) => {
@@ -592,6 +635,11 @@ export class RoomSystem extends createSystem({
     this.builtNode = null;
     this.stations = [];
     this.portals = [];
+    for (const e of this.pipeEntities) e.dispose();
+    this.pipeEntities = [];
+    this.catcher?.dispose();
+    this.catcher = null;
+    this.offer = null;
     this.swirls = [];
     this.trail = null;
   }
@@ -1264,7 +1312,16 @@ export class RoomSystem extends createSystem({
       read,
       { kind: 'call', fn: () => this.hush(lead) },
     );
-    if (outPortal) {
+    if (outPortal && next) {
+      // The visitor carries it on: the lead holds it out, and does it
+      // itself if nobody takes it (see offerPacket and updateOffer).
+      tasks.push(
+        { kind: 'walk', to: OFFER_SPOT },
+        { kind: 'face', at: new Vector3(0, 0, 0) },
+        { kind: 'call', fn: () => this.offerPacket(lead, outPortal, next) },
+        { kind: 'until', test: () => this.offer === null },
+      );
+    } else if (outPortal) {
       tasks.push(
         { kind: 'walk', to: outPortal.landing },
         { kind: 'face', at: outPortal.mouth },
@@ -1292,6 +1349,110 @@ export class RoomSystem extends createSystem({
     }
     tasks.push({ kind: 'call', fn: () => (lead.scripted = false) });
     lead.queue = tasks;
+  }
+
+  // ------------------------------------------------------ carrying the request
+
+  /** The lead holds the request out: pinch it, then pinch the pipe it goes down next. */
+  private offerPacket(lead: WorkerState, portal: Portal, next: string): void {
+    this.offer = { lead, portal, next, deadline: Infinity, carrying: false, sending: false };
+    const offer = this.offer;
+    if (this.catcher && !this.catcher.hasComponent(RayInteractable)) this.catcher.addComponent(RayInteractable);
+    const where = app.graph.nodes.find((n) => n.id === next)?.label ?? 'next';
+    const line = this.taughtCarry
+      ? `Your turn. Send it on to ${where}.`
+      : `Here, you take it. Pinch the request, then pinch the ${where} pipe.`;
+    this.taughtCarry = true;
+    lead.rig.gesture('Yes');
+    const title = `${lead.name} | ${this.theme?.role ?? ''}`;
+    // The wait starts once the visitor has heard what to do.
+    const startClock = () => {
+      if (offer.deadline === Infinity) offer.deadline = performance.now() / 1000 + OFFER_SECONDS;
+    };
+    if (this.talking) {
+      lead.bubble.setText(line, title);
+      startClock();
+    } else void this.say(lead, line, title).then(startClock);
+  }
+
+  /** The visitor pinched the request: it leaves the lead's hands and floats with them. */
+  private takePacket(): void {
+    const offer = this.offer;
+    const packet = this.packet;
+    if (!offer || offer.carrying || offer.sending || !packet || !this.roomGroup) return;
+    offer.carrying = true;
+    offer.deadline = performance.now() / 1000 + OFFER_SECONDS * 2;
+    if (this.catcher?.hasComponent(RayInteractable)) this.catcher.removeComponent(RayInteractable);
+    packet.held = false;
+    this.roomGroup.attach(packet.group);
+    click();
+    const where = app.graph.nodes.find((n) => n.id === offer.next)?.label ?? 'next';
+    offer.lead.bubble.setText(`Now pinch the ${where} pipe.`, `${offer.lead.name} | ${this.theme?.role ?? ''}`);
+  }
+
+  /** The visitor pinched a pipe while carrying the request. */
+  private sendPacketTo(nodeId: string): void {
+    const offer = this.offer;
+    if (!offer?.carrying || offer.sending) return;
+    const title = `${offer.lead.name} | ${this.theme?.role ?? ''}`;
+    if (nodeId !== offer.next) {
+      const wrong = app.graph.nodes.find((n) => n.id === nodeId)?.label ?? 'somewhere else';
+      const right = app.graph.nodes.find((n) => n.id === offer.next)?.label ?? 'the next part';
+      offer.lead.rig.gesture('No');
+      void this.say(offer.lead, `Not that one, that goes to ${wrong}. This needs to go to ${right}.`, title);
+      return;
+    }
+    offer.lead.rig.gesture('ThumbsUp');
+    offer.lead.bubble.setText('Nice. Off it goes.', title);
+    this.launchPacket(offer);
+  }
+
+  /** Sends the request down the offer's pipe, from wherever it is now. */
+  private launchPacket(offer: Offer): void {
+    const packet = this.packet;
+    if (!packet || !this.roomGroup) return;
+    offer.sending = true;
+    if (this.catcher?.hasComponent(RayInteractable)) this.catcher.removeComponent(RayInteractable);
+    packet.label.setText(this.callLabel(this.builtNode, offer.next) ?? '');
+    if (packet.group.parent !== this.roomGroup) this.roomGroup.attach(packet.group);
+    const from = packet.group.position.clone();
+    this.fly(from, offer.portal.mouth, 1.1, () => {
+      packet.group.visible = false;
+      if (this.offer === offer) this.offer = null;
+      this.packetLeft();
+    });
+  }
+
+  private endOffer(): void {
+    if (this.catcher?.hasComponent(RayInteractable)) this.catcher.removeComponent(RayInteractable);
+    this.offer = null;
+  }
+
+  /** Each frame: keep the catch area on the request, float a carried one before the visitor, or time out. */
+  private updateOffer(): void {
+    const offer = this.offer;
+    const packet = this.packet;
+    if (!offer || !packet || !this.roomGroup || offer.sending) return;
+    if (!offer.carrying) {
+      packet.group.getWorldPosition(this.tmp);
+      this.roomGroup.worldToLocal(this.tmp);
+      this.catcher?.object3D?.position.copy(this.tmp);
+    } else {
+      // In front of the visitor, a little low, as if held.
+      this.tmp2.copy(this.headForward);
+      this.tmp2.y = 0;
+      if (this.tmp2.lengthSq() < 1e-4) this.tmp2.set(0, 0, -1);
+      this.tmp2.normalize();
+      this.tmp.copy(this.head).addScaledVector(this.tmp2, 0.5);
+      this.tmp.y -= 0.18;
+      this.roomGroup.worldToLocal(this.tmp);
+      packet.group.position.lerp(this.tmp, 0.25);
+    }
+    if (performance.now() / 1000 > offer.deadline) {
+      // Nobody took it, or it was never sent: the lead does it.
+      if (!offer.carrying) offer.lead.rig.gesture('Throw');
+      this.launchPacket(offer);
+    }
   }
 
   /** The request text on the link between two parts, e.g. "POST /checkout". */
@@ -1368,6 +1529,7 @@ export class RoomSystem extends createSystem({
 
     for (const w of this.workers) this.updateWorker(w, delta);
     this.separateWorkers();
+    this.updateOffer();
 
     // The mic stays open while the worker talks, so the visitor can cut in
     // (see isEcho); it is only closed while the answer is being worked out.

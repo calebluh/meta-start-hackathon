@@ -86,7 +86,7 @@ World.create(
         app.graph.nodes.map((n) => `${n.label} -> ${pickTheme(app.graph, n.id).place}`).join(' | '),
     );
     window.addEventListener('keydown', (e) => {
-      if (e.key === 'i') enterRoom(app.selected ?? 'api.payments');
+      if (e.key === 'i') enterRoom(app.flowSteps[app.stepIndex]?.nodeId ?? app.selected ?? 'api.payments');
       if (e.key === 't') leaveRoom();
       if (e.key === 'p') startFlow();
       if (e.key === 'n') nextStep();
