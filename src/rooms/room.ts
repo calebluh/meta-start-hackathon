@@ -56,7 +56,13 @@ const WALK_SPEED = 0.8;
 /** Workers keep at least this far from the seated viewer. */
 const SAFE_RADIUS = 2.3;
 const FADE_SECONDS = 0.35;
-const NAMES = ['Ada', 'Bo', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal', 'Ivy'];
+/** Short, easy to say and to hear, from many places. */
+const NAMES = [
+  'Ada', 'Bo', 'Cy', 'Dee', 'Eli', 'Fay', 'Gus', 'Hal', 'Ivy', 'Jun',
+  'Kai', 'Lena', 'Milo', 'Nia', 'Omar', 'Pia', 'Quinn', 'Rosa', 'Sami', 'Tess',
+  'Uma', 'Vik', 'Wren', 'Yara', 'Zed', 'Aiko', 'Bram', 'Chloe', 'Dev', 'Esme',
+  'Femi', 'Greta', 'Hugo', 'Ines', 'Jonah', 'Kofi', 'Luca', 'Mira', 'Noor', 'Otto',
+];
 
 type Task =
   | { kind: 'walk'; to: Vector3 }
@@ -84,7 +90,8 @@ interface WorkerState {
   /** What the worker is doing with their body, beyond walking and carrying. */
   mood: Mood;
   /** The line being typed into the bubble, if any. */
-  speech: { text: string; title: string; start: number } | null;
+  /** The line being said: typed out from `start` (when the voice began) at `rate` characters a second. */
+  speech: { text: string; title: string; start: number; rate: number } | null;
   /** Bumped whenever a new line starts, so a finished old line does not reset the mood. */
   speechToken: number;
 }
@@ -184,6 +191,10 @@ export class RoomSystem extends createSystem({
   private bubbles: Bubble[] = [];
   /** The sign on the far wall, and what it says outside a quiz. */
   private sign: { bubble: Bubble; text: string; title: string } | null = null;
+  /** The worker's latest line and until when the mic may still hear it (seconds). */
+  private lastSaid: { text: string; until: number } | null = null;
+  /** Counts the visitor cutting in, so an interrupted answer's actions are dropped. */
+  private cutIns = 0;
   private packet: Packet | null = null;
   private handledStep = -1;
   private offRoomClock = 0;
@@ -620,16 +631,27 @@ export class RoomSystem extends createSystem({
     this.mic = new LiveMic({
       onSpeechStart: () => {
         const w = this.talking;
-        if (w && !this.waiting) {
+        // While the worker talks this may be its own voice: wait for words.
+        if (w && !this.waiting && w.mood !== 'talking') {
           w.mood = 'listening';
           w.bubble.setText('...', 'YOU');
         }
       },
       onPartial: (text) => {
         const w = this.talking;
-        if (w && !this.waiting) w.bubble.setText(text, 'YOU');
+        if (!w || this.waiting || this.isEcho(text)) return;
+        // The visitor is cutting in: stop talking and listen.
+        if (w.mood === 'talking') {
+          if (text.trim().split(/s+/).length < 2) return;
+          this.interrupt(w);
+        }
+        w.bubble.setText(text, 'YOU');
       },
-      onTurn: (text) => this.heard(text),
+      onTurn: (text) => {
+        if (this.isEcho(text)) return;
+        if (this.talking?.mood === 'talking') this.interrupt(this.talking);
+        this.heard(text);
+      },
       onMode: () => this.updateMicLabel(),
     });
   }
@@ -673,13 +695,22 @@ export class RoomSystem extends createSystem({
     await whenResumed();
     if (w.speechToken !== token) return;
     if (import.meta.env.DEV) console.log(`[say] ${w.name}: ${text.slice(0, 70)}`);
-    w.speech = { text, title, start: performance.now() / 1000 };
+    // The bubble shows "..." until the voice starts, then keeps pace with it.
+    const speech = { text, title, start: Infinity, rate: CHARS_PER_SECOND };
+    w.speech = speech;
+    this.lastSaid = { text, until: Infinity };
     const mouth = w.rig.root.getWorldPosition(new Vector3()).setY(1.1);
     blip(mouth);
     w.mood = 'talking';
-    return speak(text, this.hash(w.name), mouth).then(() => {
+    const onStart = (rate: number) => {
+      speech.start = performance.now() / 1000;
+      speech.rate = Math.min(30, Math.max(8, rate));
+    };
+    return speak(text, this.hash(w.name), mouth, onStart).then(() => {
       if (w.speechToken !== token) return;
       w.mood = 'idle';
+      // The microphone can still hear the tail of this line for a moment.
+      this.lastSaid = { text, until: performance.now() / 1000 + 2.5 };
       // Leave the whole line up after speaking.
       if (w.speech) w.bubble.setText(w.speech.text, w.speech.title);
       w.speech = null;
@@ -949,7 +980,7 @@ export class RoomSystem extends createSystem({
 
     // React straight away and look busy while the model works.
     stopSpeaking();
-    const ack = this.say(w, thinkingLine(this.theme.id), this.titleFor(w)).then(() => {
+    const ack = this.say(w, thinkingLine(this.theme.id, question), this.titleFor(w)).then(() => {
       if (this.waiting && this.talking === w) w.mood = 'thinking';
     });
     const reply = await ask(app.mapId, app.graph, nodeId, persona, question, this.history);
@@ -985,8 +1016,11 @@ export class RoomSystem extends createSystem({
     if (file?.type === 'show_file') this.showFileCard(file.path);
 
     const answer = reply.answer || 'Right this way.';
+    const cuts = this.cutIns;
     await this.say(w, answer, this.titleFor(w, reply.offline ? ' (offline)' : ''));
     if (talk !== this.conversation) return;
+    // Cut off mid-answer: the visitor has moved on, so do not act on it.
+    if (this.cutIns !== cuts) return;
 
     // Actions that leave the room happen once the worker has finished talking.
     const leave = reply.actions.find(leavesRoom);
@@ -1020,6 +1054,31 @@ export class RoomSystem extends createSystem({
       this.endConversation();
       leaveRoom();
     }
+  }
+
+  /**
+   * True when what the microphone heard is mostly the worker's own line:
+   * the headset speaker leaking into the mic, not the visitor.
+   */
+  private isEcho(heard: string): boolean {
+    const said = this.lastSaid;
+    if (!said || performance.now() / 1000 > said.until) return false;
+    const words = (s: string) => s.toLowerCase().match(/[a-z0-9']+/g) ?? [];
+    const spoken = new Set(words(said.text));
+    const got = words(heard).filter((x) => x.length > 2);
+    if (got.length === 0) return true;
+    const shared = got.filter((x) => spoken.has(x)).length;
+    return shared / got.length >= 0.6;
+  }
+
+  /** Stops the worker mid-line because the visitor started talking. */
+  private interrupt(w: WorkerState): void {
+    this.cutIns += 1;
+    w.speechToken += 1;
+    stopSpeaking();
+    if (w.speech) w.speech = null;
+    this.lastSaid = null;
+    w.mood = 'listening';
   }
 
   /** The worker who picks up a handoff in a room: the second one there (see build). */
@@ -1310,11 +1369,9 @@ export class RoomSystem extends createSystem({
     for (const w of this.workers) this.updateWorker(w, delta);
     this.separateWorkers();
 
-    // Half-duplex: the mic is muted while the worker talks or thinks, so it
-    // never hears the worker's own voice as a question.
-    if (this.talking && this.mic) {
-      this.mic.muted = this.waiting || this.talking.mood === 'talking' || this.talking.mood === 'thinking';
-    }
+    // The mic stays open while the worker talks, so the visitor can cut in
+    // (see isEcho); it is only closed while the answer is being worked out.
+    if (this.talking && this.mic) this.mic.muted = this.waiting;
 
     const packet = this.packet;
     if (packet?.flying) {
@@ -1441,7 +1498,7 @@ export class RoomSystem extends createSystem({
     // The bubble types the current line out at talking pace, a word at a time.
     if (w.speech) {
       const text = w.speech.text;
-      let cut = Math.floor((performance.now() / 1000 - w.speech.start) * CHARS_PER_SECOND);
+      let cut = Math.floor((performance.now() / 1000 - w.speech.start) * w.speech.rate);
       if (cut < text.length) {
         const space = text.lastIndexOf(' ', cut);
         cut = space > 0 ? space : 0;

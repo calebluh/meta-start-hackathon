@@ -140,7 +140,11 @@ function mergeBody(model: Object3D): void {
 export class RobotCharacter {
   /** Move and turn this; the model sits inside it, facing +Z. */
   readonly root = new Group();
-  /** Carried items and packets go here; it sits in the right palm. */
+  /**
+   * Carried items and packets go here: held in front of the chest, like a box
+   * carried in both hands. (Pinned to the palm bone they swung below the hand
+   * and into the legs, since that bone's axes point down the arm.)
+   */
   readonly hands = new Object3D();
   private mixer: AnimationMixer;
   private actions = new Map<string, AnimationAction>();
@@ -182,9 +186,8 @@ export class RobotCharacter {
       }
     });
     this.head = model.getObjectByName('Head') ?? null;
-    const palm = model.getObjectByName('Palm2R') ?? model.getObjectByName('Palm2.R') ?? model.getObjectByName('HandR');
-    (palm ?? this.root).add(this.hands);
-    if (!palm) this.hands.position.set(0, 0.62, 0.3);
+    this.root.add(this.hands);
+    this.hands.position.set(0, TARGET_HEIGHT * 0.5, 0.26);
 
     this.mixer = new AnimationMixer(model);
     for (const clip of gltf.animations) {
@@ -212,11 +215,6 @@ export class RobotCharacter {
       modelScale = TARGET_HEIGHT / Math.max(headY > 0 ? headY * 1.12 : boxY, 1e-3);
     }
     model.scale.setScalar(modelScale);
-    if (palm) {
-      // Undo the bone's inherited scale so items keep their real size.
-      this.root.updateWorldMatrix(true, true);
-      this.hands.scale.setScalar(1 / palm.getWorldScale(new Vector3()).x);
-    }
   }
 
   /** Plays a one-shot gesture, then returns to walking or idling. */

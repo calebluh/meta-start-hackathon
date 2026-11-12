@@ -85,4 +85,4 @@ export async function markSpoken(
 }
 
 // Speech lives in voice.ts.
-export { speak, speakingSeconds, stopSpeaking, voiceLevel } from './voice.js';
+export { type OnVoiceStart, speak, speakingSeconds, stopSpeaking, voiceLevel } from './voice.js';

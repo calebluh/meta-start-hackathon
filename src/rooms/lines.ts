@@ -32,11 +32,24 @@ const BY_THEME: Partial<Record<ThemeId, string[]>> = {
   workshop: ['Let me check the workbench.', 'Hmm, let me find the right tool for that.'],
 };
 
+/** Asked to go somewhere or watch something: no "let me check", just go. */
+const GOING = ['Sure, one moment.', 'On it.', 'Right, give me a second.', 'Okay, let me sort that out.'];
+const GOING_WORDS = /(take|bring|walk|send|go|going|show me|back to|leave|play|watch)/i;
+/** Asked about a file: look for the file. */
+const FILE = ['Let me find that file.', 'One sec, pulling up that file.'];
+const FILE_WORDS = /(file|files|code|function|w+.(ts|tsx|js|py|go|rs|json))/i;
+
 let counter = 0;
 
-/** A different reaction each time, cycling through the room's lines. */
-export function thinkingLine(theme: ThemeId): string {
-  const lines = [...(BY_THEME[theme] ?? []), ...GENERAL];
+/**
+ * What a worker says straight away while the answer is worked out. It fits
+ * the kind of request (going somewhere, a file, or a question about the
+ * room), and only a question gets the room's own flavour.
+ */
+export function thinkingLine(theme: ThemeId, question = ''): string {
   counter += 1;
+  if (GOING_WORDS.test(question)) return GOING[counter % GOING.length];
+  if (FILE_WORDS.test(question)) return FILE[counter % FILE.length];
+  const lines = [...(BY_THEME[theme] ?? []), ...GENERAL];
   return lines[counter % lines.length];
 }

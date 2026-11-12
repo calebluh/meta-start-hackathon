@@ -80,21 +80,33 @@ export function voiceLevel(): number {
 }
 
 /**
+ * Called once, when the voice actually starts, with how fast it speaks in
+ * characters per second, so on-screen text can keep pace with it.
+ */
+export type OnVoiceStart = (charsPerSecond: number) => void;
+
+/**
  * Says a line and resolves when it is finished. `seed` picks the robot's
  * voice; `at` is where its head is, so the voice comes from there.
  */
-export async function speak(text: string, seed = 0, at?: Vector3): Promise<void> {
+export async function speak(text: string, seed = 0, at?: Vector3, onStart?: OnVoiceStart): Promise<void> {
   const gen = ++generation;
   stopAll();
+  let started = false;
+  const begin: OnVoiceStart = (rate) => {
+    if (started || gen !== generation) return;
+    started = true;
+    onStart?.(rate);
+  };
   if (audioPaused()) return; // nobody is listening: the headset is off or the menu is up
   let rest = text;
   if ((await cloudAvailable()) && audioContext() && gen === generation) {
     // Whatever the cloud voice could not say (network or service trouble),
     // the browser voice says after it, never over it.
-    rest = await speakCloud(text, CLOUD_VOICES[seed % CLOUD_VOICES.length], at, gen);
+    rest = await speakCloud(text, CLOUD_VOICES[seed % CLOUD_VOICES.length], at, gen, begin);
   }
   if (!rest || gen !== generation) return;
-  return speakBrowser(rest, seed);
+  return speakBrowser(rest, seed, begin);
 }
 
 export function stopSpeaking(): void {
@@ -117,7 +129,13 @@ function chunks(text: string): string[] {
 }
 
 /** Plays the line with the cloud voice and returns the part it could not say ('' when it said it all). */
-async function speakCloud(text: string, voice: string, at: Vector3 | undefined, gen: number): Promise<string> {
+async function speakCloud(
+  text: string,
+  voice: string,
+  at: Vector3 | undefined,
+  gen: number,
+  onStart: OnVoiceStart,
+): Promise<string> {
   const c = audioContext()!;
   const out = audioOutput(at, 1.6);
   if (!out) return text;
@@ -158,6 +176,10 @@ async function speakCloud(text: string, voice: string, at: Vector3 | undefined, 
     source.connect(meter);
     const start = Math.max(c.currentTime + 0.02, endAt);
     source.start(start);
+    if (i === 0) {
+      const rate = parts[0].length / Math.max(audio.duration, 0.3);
+      setTimeout(() => onStart(rate), Math.max(0, (start - c.currentTime) * 1000));
+    }
     endAt = start + audio.duration;
     sources.push(source);
     last = source;
@@ -196,9 +218,13 @@ function bestVoices(): SpeechSynthesisVoice[] {
     .slice(0, 4);
 }
 
-function speakBrowser(text: string, seed: number): Promise<void> {
+function speakBrowser(text: string, seed: number, onStart: OnVoiceStart): Promise<void> {
   const estimate = speakingSeconds(text) * 1000;
-  if (!('speechSynthesis' in window)) return new Promise((r) => setTimeout(r, estimate));
+  const paced = text.length / speakingSeconds(text);
+  if (!('speechSynthesis' in window)) {
+    onStart(paced);
+    return new Promise((r) => setTimeout(r, estimate));
+  }
   return new Promise((resolve) => {
     const utterance = new SpeechSynthesisUtterance(text);
     const voices = bestVoices();
@@ -212,6 +238,9 @@ function speakBrowser(text: string, seed: number): Promise<void> {
       clearTimeout(fallback);
       resolve();
     };
+    utterance.onstart = () => onStart(paced * 1.04);
+    // A browser with no voices never starts: show the text anyway.
+    setTimeout(() => onStart(paced), 1500);
     utterance.onend = done;
     utterance.onerror = done;
     window.speechSynthesis.speak(utterance);
