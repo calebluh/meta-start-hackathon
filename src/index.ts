@@ -4,7 +4,7 @@ import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
 import { MAPS } from './maps/index.js';
-import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, startFlow } from './state.js';
+import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, setStreet, startFlow } from './state.js';
 import { stopSpeaking } from './agent/client.js';
 import { warmVoice } from './agent/voice.js';
 import { pauseAudio, resumeAudio, unlock } from './audio/sound.js';
@@ -105,6 +105,7 @@ World.create(
       const digit = Number(e.key);
       if (digit >= 1 && digit <= 9) enterRoom(rooms[digit - 1]);
       if (e.key === 'm') cycleMap();
+      if (e.key === '-') setStreet(!app.street);
       // 0: close the start menu on the current map (emulator presses can be too slow to click).
       if (e.key === '0') chooseDemo(app.mapId);
       if (e.key === 'u') restartGuide();

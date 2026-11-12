@@ -20,6 +20,8 @@ export const app = {
   graph: MAPS[DEFAULT_MAP] as GraphData,
   /** `table`: the diorama on the desk. `room`: sitting inside one part. */
   mode: 'table' as 'table' | 'room',
+  /** Street view: the city is life size around the visitor instead of on the desk. */
+  street: false,
   roomNode: null as string | null,
   selected: null as string | null,
   flowIndex: 0,
@@ -120,6 +122,7 @@ export function setMap(id: string): void {
   if (!graph || id === app.mapId) return;
   app.mapId = id;
   app.graph = graph;
+  app.street = false;
   app.mode = 'table';
   app.roomNode = null;
   app.selected = null;
@@ -136,9 +139,18 @@ export function cycleMap(): void {
   setMap(ids[(ids.indexOf(app.mapId) + 1) % ids.length]);
 }
 
+/** Switches between the city on the desk (map view) and walking its streets. */
+export function setStreet(on: boolean): void {
+  if (app.street === on || app.mode !== 'table') return;
+  app.street = on;
+  app.selected = null;
+  emit();
+}
+
 /** Back to the start menu, from the table or a room. */
 export function openMenu(): void {
   app.menu = true;
+  app.street = false;
   app.mode = 'table';
   app.roomNode = null;
   app.selected = null;

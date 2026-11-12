@@ -62,6 +62,7 @@ import {
   onChange,
   openMenu,
   select,
+  setStreet,
   startFlow,
   stopFlow,
 } from './state.js';
@@ -70,6 +71,26 @@ import {
 
 /** A building's footprint grows to about this many metres as you dive in. */
 const DIVE_SPAN = 9;
+/** Street view: how many times life size is the desk model, and how long the change takes. */
+const STREET_SCALE = 150;
+const STREET_SECONDS = 1.8;
+const STREET_LABEL_SCALE = 0.3;
+/** Ignore pinches this soon after a move: one pinch often registers twice. */
+const STREET_QUIET_MS = 700;
+/** How far outside a building's front wall the visitor stands, in board units (the middle of the alley). */
+const DOOR_STANDOFF = 0.012;
+const STREET_WALK_SPEED = 2.5;
+const UP = new Vector3(0, 1, 0);
+const BOARD_GRAB = {
+  rotate: true,
+  // Spin it like a lazy Susan, but never tip the city over.
+  rotateMin: [0, -Infinity, 0] as [number, number, number],
+  rotateMax: [0, Infinity, 0] as [number, number, number],
+  translate: true,
+  scale: true,
+  scaleMin: [0.5, 0.5, 0.5] as [number, number, number],
+  scaleMax: [3, 3, 3] as [number, number, number],
+};
 /** Where the building's base ends up: the floor under a seated viewer. */
 const DIVE_FLOOR_BELOW_HEAD = 1.15;
 
@@ -233,6 +254,20 @@ export class DioramaSystem extends createSystem({
   private wasGrabbed = false;
   /** When the current building was picked, to tell a second pinch from a shaky first one. */
   private selectedAt = 0;
+  /** Street view: whether the city is life size now, and the move between the two. */
+  private streetShown = false;
+  private streetMoving = false;
+  private streetMove = { t: 0, toStreet: false, focus: new Vector3(), from: new Vector3(), to: new Vector3(), fromScale: 1, toScale: 1, fromYaw: 0, toYaw: 0 };
+  private mapPose = { position: new Vector3(), yaw: 0, scale: 1 };
+  private streetAt = new Vector3();
+  private streetSpot = new Vector3();
+  private streetTmp = new Vector3();
+  private streetInverse = new Matrix4();
+  private streetMovedAt = 0;
+  /** Where the last pinch landed on the city (world space), and when. */
+  private hitPoint = new Vector3();
+  private hitAt = 0;
+  private streetPressed: string | null = null;
 
   // The dive into a building (see transition.ts). The board scales up about
   // the building's base while that base slides under the viewer.
@@ -264,6 +299,11 @@ export class DioramaSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (e) => {
         if (app.mode !== 'table') return;
         const id = e.getValue(District, 'nodeId') as string;
+        if (app.street) {
+          // Decided next frame, once the pinch's landing point is known.
+          this.streetPressed = id;
+          return;
+        }
         const now = performance.now();
         if (app.selected === id) {
           // A hand pinch often registers twice. Pinching the same building
@@ -315,6 +355,9 @@ export class DioramaSystem extends createSystem({
       scaleMax: [3, 3, 3],
     });
     this.uniformScale = 1;
+    this.streetShown = false;
+    this.streetMoving = false;
+    this.streetPressed = null;
 
     const unitBox = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
     const unitEdges = new EdgesGeometry(unitBox);
@@ -328,6 +371,15 @@ export class DioramaSystem extends createSystem({
       this.entities.push(entity);
       entity.addComponent(District, { nodeId: id });
       entity.addComponent(RayInteractable);
+      // Remember where a pinch lands, for walking to that spot in street view.
+      (mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void }).addEventListener(
+        'pointerdown',
+        (e) => {
+          if (!e.point) return;
+          this.hitPoint.copy(e.point);
+          this.hitAt = performance.now();
+        },
+      );
       const label = makeLabel(node.label, labelHeight, KIND_COLORS[node.kind]);
       label.position.set(roof.x, roof.y + labelHeight * 0.9, roof.z);
       group.add(ignoreRays(label));
@@ -545,10 +597,11 @@ export class DioramaSystem extends createSystem({
     // Recenter also puts the city back to its starting place and size (the
     // desk itself is moved by WorkspaceSystem).
     on('btn-recenter', () => this.resetBoard());
+    on('btn-street', () => setStreet(!app.street), 800);
   }
 
   private resetBoard(): void {
-    if (app.mode !== 'table' || this.diveDir !== 0 || this.surfaceFrom) return;
+    if (app.mode !== 'table' || this.diveDir !== 0 || this.surfaceFrom || app.street || this.streetMoving) return;
     const board = this.root.object3D!;
     board.position.set(0, 0.002, -0.04);
     board.quaternion.identity();
@@ -588,7 +641,7 @@ export class DioramaSystem extends createSystem({
     const desk = this.world.getSceneObject('desk');
     // The desk drops away as a dive starts, so the city rises around the viewer.
     // In mixed reality the visitor's own desk takes its place.
-    if (desk) desk.visible = onTable && this.diveDir === 0 && !inPassthrough(this.world);
+    if (desk) desk.visible = onTable && this.diveDir === 0 && !inPassthrough(this.world) && !app.street && !this.streetShown && !this.streetMoving;
     for (const label of this.labels) label.visible = this.diveDir === 0;
   }
 
@@ -610,6 +663,8 @@ export class DioramaSystem extends createSystem({
     this.divePivot.y = this.diveBox.min.y;
     this.diveBox.getSize(this.diveCentre);
     this.diveGrowth = DIVE_SPAN / Math.max(this.diveCentre.x, this.diveCentre.z, 1e-3);
+    // From the street the building is already bigger than a room: just walk in.
+    if (this.streetShown) this.diveGrowth = Math.max(1, this.diveGrowth);
     this.world.camera.getWorldPosition(this.diveTo);
     this.diveTo.y -= DIVE_FLOOR_BELOW_HEAD;
     // Work in the workspace's space, where the board's position lives.
@@ -649,6 +704,11 @@ export class DioramaSystem extends createSystem({
       const from = this.surfaceFrom;
       this.surfaceFrom = null;
       this.root.object3D!.visible = true;
+      // Back out on the street, at the door of the building just left.
+      if (this.streetShown) {
+        this.root.object3D!.parent?.updateWorldMatrix(true, false);
+        this.standAtDoor(from);
+      }
       if (this.beginDive(from)) {
         this.diveDir = -1;
         dive.t = 1;
@@ -675,6 +735,7 @@ export class DioramaSystem extends createSystem({
     const step = currentStep();
     this.setText(this.controls, 'flow-label', flow ? flow.title : 'No flows');
     this.setText(this.controls, 'play-label', app.stepIndex >= 0 ? 'Stop' : 'Play flow');
+    this.setText(this.controls, 'street-label', app.street ? 'Map view' : 'Street view');
     this.setText(
       this.controls,
       'inside-label',
@@ -937,12 +998,179 @@ export class DioramaSystem extends createSystem({
     this.gatePoint.set(x, 0.03, z);
   }
 
+  // ---------------------------------------------------------- street view
+
+  /** The board's turn about the vertical axis (it only ever turns that way). */
+  private boardYaw(): number {
+    const q = this.root.object3D!.quaternion;
+    return 2 * Math.atan2(q.y, q.w);
+  }
+
+  /** The floor under the viewer's head, in the workspace's space. */
+  private floorUnderHead(out: Vector3): Vector3 {
+    this.world.camera.getWorldPosition(out);
+    out.y = 0;
+    return this.root.object3D!.parent!.worldToLocal(out);
+  }
+
+  /** Poses the board so its local point `focus` sits at `at` (workspace space). */
+  private poseBoard(focus: Vector3, at: Vector3, yaw: number, scale: number): void {
+    const obj = this.root.object3D!;
+    obj.quaternion.setFromAxisAngle(UP, yaw);
+    obj.scale.setScalar(scale);
+    this.streetTmp.copy(focus).multiplyScalar(scale).applyAxisAngle(UP, yaw);
+    obj.position.copy(at).sub(this.streetTmp);
+  }
+
+  /** Starts growing the city to life size around the viewer, or shrinking it back onto the desk. */
+  private beginStreetMove(toStreet: boolean): void {
+    const obj = this.root.object3D!;
+    const move = this.streetMove;
+    move.t = 0;
+    move.toStreet = toStreet;
+    move.fromScale = obj.scale.x;
+    move.fromYaw = this.boardYaw();
+    if (toStreet) {
+      this.mapPose.position.copy(obj.position);
+      this.mapPose.yaw = move.fromYaw;
+      this.mapPose.scale = obj.scale.x;
+      if (this.root.hasComponent(TwoHandsGrabbable)) this.root.removeComponent(TwoHandsGrabbable);
+      // Arrive at the Internet gateway, like a request does.
+      move.focus.set(this.gatePoint.x - 0.02, 0, this.gatePoint.z);
+      move.from.copy(move.focus).multiplyScalar(move.fromScale).applyAxisAngle(UP, move.fromYaw).add(obj.position);
+      this.floorUnderHead(move.to);
+      move.toScale = STREET_SCALE;
+      move.toYaw = move.fromYaw;
+    } else {
+      // Shrink away from wherever the viewer is standing.
+      this.floorUnderHead(move.from);
+      obj.updateWorldMatrix(true, false);
+      this.world.camera.getWorldPosition(move.focus);
+      move.focus.y = 0;
+      obj.worldToLocal(move.focus);
+      move.toScale = this.mapPose.scale;
+      move.toYaw = this.mapPose.yaw;
+      move.to.copy(move.focus).multiplyScalar(move.toScale).applyAxisAngle(UP, move.toYaw).add(this.mapPose.position);
+    }
+    this.streetMoving = true;
+    this.applyVisibility();
+  }
+
+  private updateStreetMove(delta: number): void {
+    const move = this.streetMove;
+    move.t = Math.min(1, move.t + delta / STREET_SECONDS);
+    const u = move.t * move.t * (3 - 2 * move.t);
+    // Exponential growth, so the zoom feels steady.
+    const scale = Math.exp(Math.log(move.fromScale) + (Math.log(move.toScale) - Math.log(move.fromScale)) * (move.toStreet ? move.t * move.t : 1 - (1 - move.t) * (1 - move.t)));
+    this.streetAt.lerpVectors(move.from, move.to, u);
+    this.poseBoard(move.focus, this.streetAt, move.fromYaw + (move.toYaw - move.fromYaw) * u, scale);
+    if (move.t < 1) return;
+    this.streetMoving = false;
+    this.streetShown = move.toStreet;
+    // Name signs sized for the desk would be billboards at life size.
+    for (const label of this.labels) label.scale.setScalar(move.toStreet ? STREET_LABEL_SCALE : 1);
+    if (!move.toStreet) {
+      this.root.object3D!.position.copy(this.mapPose.position);
+      if (!this.root.hasComponent(TwoHandsGrabbable)) this.root.addComponent(TwoHandsGrabbable, BOARD_GRAB);
+    }
+    this.applyVisibility();
+  }
+
+  /** Stands the viewer on a spot of the board (board space), keeping the city's turn unless `yaw` is given. */
+  private standAt(spot: Vector3, yaw = this.boardYaw()): void {
+    this.poseBoard(spot, this.floorUnderHead(this.streetAt), yaw, STREET_SCALE);
+    this.streetMovedAt = performance.now();
+    click();
+  }
+
+  /** Stands the viewer at a building's door, facing it. */
+  private standAtDoor(id: string): void {
+    const d = this.layout.districts.get(id);
+    if (!d) return;
+    this.streetSpot.set(d.rect.x + d.rect.w / 2, d.base, d.rect.z + d.rect.d + DOOR_STANDOFF);
+    // Turn the city so the door (towards -Z on the board) is where the head is looking.
+    const parent = this.root.object3D!.parent!;
+    this.world.camera.getWorldDirection(this.streetTmp);
+    this.streetTmp.y = 0;
+    if (this.streetTmp.lengthSq() < 1e-4) this.streetTmp.set(0, 0, -1);
+    this.streetTmp.normalize().transformDirection(this.streetInverse.copy(parent.matrixWorld).invert());
+    this.standAt(this.streetSpot, Math.atan2(-this.streetTmp.x, -this.streetTmp.z));
+  }
+
+  /** A pinch on the city in street view: walk to that spot, or to that building's door. */
+  private streetPress(id: string): void {
+    const now = performance.now();
+    // A hand pinch often registers twice, and after a move the ray points somewhere new.
+    if (this.streetMoving || now - this.streetMovedAt < STREET_QUIET_MS) return;
+    const d = this.layout.districts.get(id);
+    if (!d) {
+      select(id); // an outside service: just show what it is
+      return;
+    }
+    if (d.isLeaf) {
+      // Pinching the building you are standing at goes in.
+      if (app.selected === id) {
+        enterRoom(id);
+        return;
+      }
+      this.standAtDoor(id);
+      select(id);
+      return;
+    }
+    // Open ground: walk to the spot pointed at, on top of that plinth.
+    const obj = this.root.object3D!;
+    if (now - this.hitAt < 400) {
+      obj.updateWorldMatrix(true, false);
+      obj.worldToLocal(this.streetSpot.copy(this.hitPoint));
+    } else this.streetSpot.set(d.rect.x + d.rect.w / 2, 0, d.rect.z + d.rect.d / 2);
+    this.streetSpot.y = d.base + d.height;
+    this.standAt(this.streetSpot);
+  }
+
+  /** Controllers and keyboard: the left thumbstick walks the streets. */
+  private updateStreetWalk(delta: number): void {
+    const stick = this.input.xr.gamepads.left?.getAxesValues(InputComponent.Thumbstick);
+    if (!stick || (Math.abs(stick.x) < 0.2 && Math.abs(stick.y) < 0.2)) return;
+    const parent = this.root.object3D!.parent!;
+    this.world.camera.getWorldDirection(this.streetTmp);
+    this.streetTmp.y = 0;
+    if (this.streetTmp.lengthSq() < 1e-4) return;
+    this.streetTmp.normalize().transformDirection(this.streetInverse.copy(parent.matrixWorld).invert());
+    const fx = this.streetTmp.x;
+    const fz = this.streetTmp.z;
+    // Forward is stick up (negative y); right is (-fz, fx).
+    const mx = fx * -stick.y + -fz * stick.x;
+    const mz = fz * -stick.y + fx * stick.x;
+    const obj = this.root.object3D!;
+    obj.position.x -= mx * STREET_WALK_SPEED * delta;
+    obj.position.z -= mz * STREET_WALK_SPEED * delta;
+  }
+
   // --------------------------------------------------------------- frame
 
   update(delta: number, time: number): void {
     if (isPaused()) return; // headset off or system menu up: hold everything still
     this.updateDive(delta);
     if (app.mode !== 'table' || this.diveDir !== 0) return;
+
+    // Street view: grow to life size or shrink back, then walk by pinching.
+    if (this.streetMoving) {
+      this.updateStreetMove(delta);
+    } else if (app.street !== this.streetShown && !this.surfaceFrom) {
+      if (app.menu) {
+        // The menu opened from the street: put the city back on the desk at once.
+        this.poseBoard(this.streetSpot.set(0, 0, 0), this.mapPose.position, this.mapPose.yaw, this.mapPose.scale);
+        this.streetShown = false;
+        if (!this.root.hasComponent(TwoHandsGrabbable)) this.root.addComponent(TwoHandsGrabbable, BOARD_GRAB);
+        this.applyVisibility();
+      } else this.beginStreetMove(app.street);
+    }
+    if (this.streetPressed) {
+      const id = this.streetPressed;
+      this.streetPressed = null;
+      if (this.streetShown && !this.streetMoving) this.streetPress(id);
+    }
+    if (this.streetShown && !this.streetMoving) this.updateStreetWalk(delta);
 
     // Two-hand resizing changes the axis between the hands; keep the city in
     // proportion by applying whichever axis changed most to all three.
@@ -964,7 +1192,7 @@ export class DioramaSystem extends createSystem({
     // Controllers: the right thumbstick spins the city (left and right) and
     // resizes it (up and down), when it is not being held.
     const stick = this.input.xr.gamepads.right?.getAxesValues(InputComponent.Thumbstick);
-    if (stick && !grabbed && (Math.abs(stick.x) > 0.2 || Math.abs(stick.y) > 0.2)) {
+    if (stick && !grabbed && !this.streetShown && !this.streetMoving && (Math.abs(stick.x) > 0.2 || Math.abs(stick.y) > 0.2)) {
       const obj = this.root.object3D!;
       if (Math.abs(stick.x) > 0.2) obj.rotation.y -= stick.x * 1.4 * delta;
       if (Math.abs(stick.y) > 0.2) {

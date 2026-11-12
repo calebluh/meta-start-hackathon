@@ -204,7 +204,7 @@ export class AtmosphereSystem extends createSystem({}) {
       this.graph = app.graph;
       this.buildSkyline(app.graph);
     }
-    this.root.visible = app.mode === 'table' && !inPassthrough(this.world);
+    this.root.visible = app.mode === 'table' && !app.street && !inPassthrough(this.world);
 
     if (this.root.visible) {
       this.ripple.uniforms.uTime.value = time;

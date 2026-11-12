@@ -46,6 +46,12 @@
     </ButtonIcon>
     <ButtonLabel id="inside-label" class="label">Step inside</ButtonLabel>
   </Button>
+  <Button id="btn-street">
+    <ButtonIcon>
+      <Footprints></Footprints>
+    </ButtonIcon>
+    <ButtonLabel id="street-label" class="label">Street view</ButtonLabel>
+  </Button>
   <Button id="btn-recenter">
     <ButtonIcon>
       <LocateFixed></LocateFixed>

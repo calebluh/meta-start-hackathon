@@ -1,4 +1,5 @@
 import { createSystem, Vector3, VisibilityState } from '@iwsdk/core';
+import { app } from './state.js';
 
 const MOVE_SPEED = 0.9; // metres a second
 const TURN_SPEED = 1.6; // radians a second, arrow keys
@@ -117,6 +118,7 @@ export class DesktopControlsSystem extends createSystem({}) {
     this.step.set(0, 0, 0).addScaledVector(this.forward, ahead).addScaledVector(this.right, side);
     if (this.step.lengthSq() > 0) this.step.normalize();
     this.step.y = lift;
-    this.world.camera.position.addScaledVector(this.step, MOVE_SPEED * delta);
+    // Streets are life size: cover the ground faster there.
+    this.world.camera.position.addScaledVector(this.step, MOVE_SPEED * (app.street ? 5 : 1) * delta);
   }
 }

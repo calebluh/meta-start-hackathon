@@ -36,10 +36,13 @@ Paste each part into the matching Devpost field. Everything marked
    - "Take me to the kitchen."
    - "Show me what happens on billing day."
    - "Take me back to the city."
-7. Pinch **Quiz me** on the question panel, or say "quiz me". The robot asks
+7. Back at the desk, pinch **Street view** to stand in the city at life
+   size. Pinch the ground to walk, a building to go to its door, and the
+   same building again to step in.
+8. Pinch **Quiz me** on the question panel, or say "quiz me". The robot asks
    four questions about its room. Pinch an answer or say it in your own
    words; a wrong answer is corrected on the spot.
-8. If the desk is ever in the wrong place, pinch **Recenter**.
+9. If the desk is ever in the wrong place, pinch **Recenter**.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
 Controllers work too: the trigger is a pinch, and the right thumbstick spins
@@ -74,6 +77,11 @@ desk.
   Internet gateway, and every step shows whether it crosses the network
   (high and blue), touches stored data (amber) or is the code working on
   its own (a small white hop), so you see where a request really travels.
+- **Street view.** Pinch **Street view** and the city grows to life size
+  around you, starting at the Internet gateway. Point at the street and
+  pinch to walk there; pinch a building to walk to its lit door, and pinch
+  it again to go in. Leaving a room puts you back at that door. **Map view**
+  shrinks the city back onto the desk.
 - **Carry the request.** Inside a room during a flow, the robot hands you
   the request. Pinch it, then pinch the pipe it goes down next. Pick the
   wrong pipe and the robot tells you where that one leads.

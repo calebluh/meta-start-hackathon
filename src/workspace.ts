@@ -148,7 +148,7 @@ export class WorkspaceSystem extends createSystem({}) {
     const handle = this.handle;
     const object = handle?.object3D;
     if (!handle || !object || !this.workspace) return;
-    const usable = this.immersive && app.mode === 'table' && !dive.active;
+    const usable = this.immersive && app.mode === 'table' && !dive.active && !app.street;
     if (usable !== object.visible) {
       object.visible = usable;
       if (usable && !handle.hasComponent(DistanceGrabbable)) handle.addComponent(DistanceGrabbable, GRAB);

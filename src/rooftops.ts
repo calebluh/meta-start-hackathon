@@ -29,6 +29,7 @@ export function buildRooftops(districts: Iterable<District>): Group {
   const group = new Group();
   group.name = 'rooftops';
   const trim = new MeshStandardMaterial({ color: '#d7dde6', roughness: 0.5, metalness: 0.2 });
+  const door = new MeshStandardMaterial({ color: '#ffe2a8', emissive: new Color('#ffd27a'), emissiveIntensity: 1.1 });
   const glows = new Map<string, MeshStandardMaterial>();
   const glow = (kind: string): MeshStandardMaterial => {
     let m = glows.get(kind);
@@ -52,6 +53,9 @@ export function buildRooftops(districts: Iterable<District>): Group {
       group.add(mesh);
       return mesh;
     };
+    // A lit door in the front wall: in street view, where you stand to go in.
+    const doorH = Math.min(0.014, d.height * 0.8);
+    add(new Mesh(new BoxGeometry(Math.min(0.008, w * 0.5), doorH, 0.0008), door), x, d.base + doorH / 2, d.rect.z + depth + 0.0002);
     switch (d.kind) {
       case 'ui': {
         // A billboard screen standing on the roof, facing the viewer (+Z).

@@ -117,7 +117,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'You are set',
-    text: () => 'Pinch Play flow to watch a request travel through the code, or ask a robot to quiz you. Have fun!',
+    text: () => 'Pinch Street view to walk the city at life size, or Play flow to watch a request travel through the code. Have fun!',
     done: (clock) => clock > 7,
     target: null,
     pinch: false,
@@ -315,7 +315,7 @@ export class GuideSystem extends createSystem({
 
   private placeArrow(target: Target, delta: number, time: number, hidden: boolean): void {
     let size = 0;
-    if (!hidden && target === 'building' && app.mode === 'table') {
+    if (!hidden && target === 'building' && app.mode === 'table' && !app.street) {
       this.suggested ??= this.findSuggested();
       if (this.suggested) {
         this.box.setFromObject(this.suggested);
