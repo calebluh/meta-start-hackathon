@@ -103,6 +103,8 @@ World.create(
       const digit = Number(e.key);
       if (digit >= 1 && digit <= 9) enterRoom(rooms[digit - 1]);
       if (e.key === 'm') cycleMap();
+      // 0: close the start menu on the current map (emulator presses can be too slow to click).
+      if (e.key === '0') chooseDemo(app.mapId);
       if (e.key === 'u') restartGuide();
       // z: pretend the headset came off (and again: back on).
       if (e.key === 'z') setPaused(!isPaused());

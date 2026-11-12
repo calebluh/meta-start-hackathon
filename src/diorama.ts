@@ -39,6 +39,7 @@ import { inPassthrough } from './passthrough.js';
 import { placement } from './placement.js';
 import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
+import { buildRooftops } from './rooftops.js';
 import { mergeGeometries } from './rooms/merge.js';
 import { District } from './diorama-components.js';
 import { isPaused } from './pause.js';
@@ -349,7 +350,8 @@ export class DioramaSystem extends createSystem({
           t.needsUpdate = true;
         }
       }
-      const mesh = new Mesh(unitBox, material);
+      // Data stores are round silos; everything else is a block.
+      const mesh = new Mesh(d.isLeaf && d.kind === 'data' ? unitTower : unitBox, material);
       mesh.name = `district:${d.id}`;
       mesh.position.set(d.rect.x + d.rect.w / 2, d.base, d.rect.z + d.rect.d / 2);
       mesh.scale.set(d.rect.w, d.height, d.rect.d);
@@ -359,6 +361,8 @@ export class DioramaSystem extends createSystem({
         : new Vector3(mesh.position.x, d.base + d.height + 0.004, d.rect.z + d.rect.d - 0.008);
       addSite(d.id, mesh, material, roof, d.depth === 0 ? 0.02 : 0.016, d.isLeaf ? 5 : 1);
     }
+
+    group.add(buildRooftops(this.layout.districts.values()));
 
     for (const s of this.layout.externals.values()) {
       const material = new MeshStandardMaterial({
