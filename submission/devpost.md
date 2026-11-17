@@ -19,7 +19,8 @@ Paste each part into the matching Devpost field. Everything marked
 
 ## Testing instructions (for the judges)
 
-1. On a Meta Quest 3 or 3S, open the public link in the Quest Browser.
+1. On a Meta Quest 3 or 3S, open the public link in the Quest Browser. (A
+   Quest 2 works too, in VR only: it has no colour passthrough.)
 2. Put the controllers down. Everything is done with bare hands.
 3. Pinch **Allow microphone** if you would like to talk to the robots out
    loud (optional: every question can also be pinched from a list), then
@@ -28,9 +29,11 @@ Paste each part into the matching Devpost field. Everything marked
    the headset asks to share the layout of your room, allow it: that is how
    the city finds your table. (If your room has never been scanned, the city
    floats in front of you instead and you set it down yourself.)
-4. Stay seated. Three cards appear in front of you. Pinch or poke
-   **Larder**, the small one, for a first visit. To move the city, pinch
-   the grey bar under its buttons and drag.
+4. Stay seated. Three cards appear in front of you, within reach. Tap
+   **Larder**, the small one, with a fingertip for a first visit. Buttons
+   are tapped like a touch screen; things further away are pointed at and
+   pinched. To move the city, pinch the grey bar under its buttons and drag.
+   To turn it, pinch and hold one of the glowing pegs at its corners.
 5. Follow the card that floats above the city. It teaches one thing at a
    time and takes about three minutes: pinch a building and its roof lifts
    to show its robots, pinch **Step inside** over it, pinch a robot, ask it
@@ -40,13 +43,21 @@ Paste each part into the matching Devpost field. Everything marked
    - "Take me to the kitchen."
    - "Show me what happens on billing day."
    - "Take me back to the city."
-7. Back at the desk, pinch **Street view** to stand in the city at life
-   size. Pinch the ground to walk, a building to go to its door, and the
-   same building again to step in.
-8. Pinch **Quiz me** on the question panel, or say "quiz me". The robot asks
-   four questions about its room. Pinch an answer or say it in your own
+7. Back at the desk, tap **Street view** to stand in the city at life
+   size, still seated. Pinch a glowing disc on the street to move to it, a
+   **Turn** arrow to turn, a building to go to its door, and the same
+   building again to step in. (With controllers: the left stick glides, the
+   right stick turns.)
+8. Tap **Demos** and open **MiroFish**. Step into **Endpoints** (its
+   building shows a red warning) and ask its robot "How would I fix the
+   warning?". It suggests a fix and puts it on your notes list. Then tap
+   **Notes** on the desk: the note taker greets you with the robot's fix
+   already on the wall. Say an idea of your own and it writes it down,
+   word for word or after talking it over with you.
+9. Tap **Quiz me** on the question panel, or say "quiz me". The robot asks
+   four questions about its room. Tap an answer or say it in your own
    words; a wrong answer is corrected on the spot.
-9. If the desk is ever in the wrong place, pinch **Recenter**.
+10. If the desk is ever in the wrong place, tap **Recenter**.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
 Controllers work too: the trigger is a pinch, and the right thumbstick spins
@@ -126,6 +137,25 @@ desk.
   only if the city landed on your real desk. So far this was verified in the
   IWSDK emulator's furnished room, where the emulated headset's desk, side
   table, couch and walls are reported the same way.]`
+- **Robots that help you change the code.** Ask a robot how to fix
+  something, such as the warning on its building, and it works out a
+  concrete fix from what it knows about its room, names the files, and puts
+  the fix on your notes list.
+- **The notes room.** Tap **Notes** and step into a room for thinking out
+  loud. Say an idea and the note taker writes it down, either word for word
+  or after talking it over with you in a sentence or two. "Scratch that"
+  takes it back, "read them back" reads the list. The robots' fixes land on
+  the same list, pinned to the wall.
+- **Your coding agent picks up the list.** Running the viewer on your own
+  computer (the Claude Code plugin sets it up), the list is saved into the
+  project as a checklist. Ask your coding agent to work through your
+  diorama notes: it checks each one against the real code, makes the
+  change, ticks the line and updates the map.
+- **Your screen and a live city.** In that same local setup, open `/share`
+  on the computer and its screen appears on a monitor behind the city, so
+  you can watch the agent work without taking the headset off. When the
+  agent updates the map, the city changes in front of you, still in VR, and
+  the parts that changed glow.
 - **Your own code.** A Claude Code plugin maps any repository into a city.
   The third demo, **This app**, is the diorama's own source code, mapped by
   that plugin.
@@ -179,8 +209,11 @@ Development was done with Claude Code as a pair programmer.
 
 ### Designed for hands, a seat and a narrow view
 
-- **Hands only.** Every action is a pinch on something you point at, or a
-  fingertip poke on a panel. The landing page's buttons are large enough to
+- **Hands only.** Buttons are tapped with a fingertip, like a touch screen:
+  with bare hands the panels come within arm's reach for that. Things
+  further away, such as robots and buildings, are pointed at and pinched,
+  and whatever you point at lights up before you pinch, so a miss shows
+  before it happens. The landing page's buttons are large enough to
   pinch in the Quest Browser, and the microphone prompt is answered there,
   before the session starts, instead of in the middle of a conversation.
 - **Point at it or reach for it.** A building can be pinched from a distance
@@ -227,6 +260,10 @@ Development was done with Claude Code as a pair programmer.
   a grab at all: a pinch on or near a building picks it, and the city turns
   and resizes with four pegs at its corners (hold one to turn it, two to
   resize it).
+- **A pointer that jumps when you pinch.** Closing your fingers to pinch
+  swings the hand's pointing ray, so a pinch aimed at a small peg or a far
+  disc often landed beside it. The app now remembers what each hand was
+  pointing at a moment before the pinch, and uses that.
 - **A robot that talks has to stay visible.** Side panels, a speech bubble
   and the guide card all want the same space in front of you. The robot now
   walks to a spot between the panels, and the card drops to the desk.
@@ -248,12 +285,15 @@ Development was done with Claude Code as a pair programmer.
 - You can learn how an unfamiliar codebase works without reading a line of
   it, and without touching a controller.
 - The robots do things. Asking "where does the money go next?" gets you
-  walked there.
+  walked there, and asking how to fix something puts the fix on your list.
+- The loop closes: what you work out in the headset lands in your project,
+  your coding agent acts on it, and you watch the city change.
 - It maps itself: the app's own code is one of the demos.
 
 ### What is next
 
-- Live cities: watch a repository and rebuild the city as the code changes,
+- Live cities for everyone: today the city updates when your coding agent
+  rebuilds the map on your own computer. Next, watch a repository directly,
   with open pull requests shown as building sites.
 - Guided tours: a teammate records a walk through the code for a new joiner.
 - Two people at the same desk.

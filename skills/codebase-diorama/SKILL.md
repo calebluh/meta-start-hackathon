@@ -187,4 +187,11 @@ runs this skill and a notes file exists for the map):
    keeps ticked lines ticked when it next writes the file.
 4. Update the map for the files you changed (see Updating a map) so the
    city shows the change; a fix that clears a health warning should remove
-   that warning from `arch.json`.
+   that warning from `arch.json`. While the viewer runs, the rebuilt map
+   reaches the headset in place: the user stays in VR and the parts you
+   changed glow.
+
+To watch you work from inside the headset, the user can open
+`https://localhost:8081/share` on this computer and share the terminal
+window: it appears on a monitor behind the city. Mention this when they
+ask you to work through the notes with the headset on.

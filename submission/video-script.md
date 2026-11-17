@@ -43,7 +43,7 @@ code.** Every shot below serves that line; cut anything that does not.
 | 1:18 to 1:30 | Say: "Take me to the kitchen." The robot says it is handing you over, the view cuts to the kitchen, and that robot greets you, already knowing what you asked. | "The robots don't just answer. They act: they move you, play a flow, hand you on to a colleague who knows the thread." |
 | 1:30 to 1:55 | Tap Demos, open **MiroFish**, step into **Endpoints** (its building has a red warning). Ask its robot: "How would I fix the warning?" It suggests a concrete fix, naming the files, and says it has put it on your notes list. | "And they help you change the code. Ask how to fix something, and the robot works out a fix from what it knows, and puts it on your list." |
 | 1:55 to 2:15 | Tap **Notes** on the desk. The note taker greets you; the robot's fix is already on the wall. Say an idea of your own, e.g. "We should show people how long their report will take." The note taker talks it over in a sentence and writes it down tight; it appears on the panel. | "The notes room is for thinking out loud. Talk an idea over, or just dictate. Everything lands in one list, in your project." |
-| 2:15 to 2:32 | Screen recording (desktop, 15 seconds): in a terminal, Claude Code with the plugin: "work through my diorama notes". It lists the two notes, makes the first change, ticks it off. Cut back to the headset: the city of the code. | "Back at your desk, your coding agent picks up the same list, makes the changes, and updates the city. The plugin works with Claude Code, Codex, Cursor and Gemini." |
+| 2:15 to 2:32 | Still in the headset, back at the table: your PC's terminal is on the monitor behind the city. Claude Code (typed beforehand: "work through my diorama notes") lists the notes, makes the first change, ticks it off, rebuilds the map. The building it changed glows on the desk in front of you. | "Your coding agent picks up the same list, makes the change, and updates the map. You watch it from inside: the city changes in front of you. The plugin works with Claude Code, Codex, Cursor and Gemini." |
 | 2:32 to 2:40 | Menu: the "This app" card, then its city. | "It maps any repository. This one is the diorama's own source code." |
 | 2:40 to 2:45 | Title card: "Codebase Diorama" and the public link. | "Codebase Diorama. Step inside your code." |
 
@@ -61,5 +61,11 @@ It fits in place of the corner-peg shot.
 - A robot does not offer a fix: ask "How would I fix the warning in here?"
   in a room whose building shows the red warning.
 - Hand tracking drops: bring your hands up into view and keep them apart.
-- The Claude Code clip: run it on a copy of the target repo, and keep only
-  the part where it lists the notes, edits one file and ticks the line.
+- The coding-agent shot needs the local viewer (the live link has no
+  monitor): run the dev server, open its network address on the Quest, and
+  on the PC open `https://localhost:8091/share` and share the terminal
+  window. Use a large terminal font. Run the agent on a copy of the target
+  repo. If the shot will not come together, fall back to a 15-second
+  desktop screen recording of the same steps.
+- For a local recording, add `OPENAI_API_KEY` to `.env.local` first, or the
+  robots are silent there.
