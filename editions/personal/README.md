@@ -10,26 +10,32 @@ code.
 Built with [Meta IWSDK](https://iwsdk.dev) (WebXR). Everything works with bare
 hands on a Meta Quest: point and pinch, or poke the panels with a fingertip.
 
-## Map your codebase with Claude Code
+## Map your codebase with your coding agent
 
-This repository is also a Claude Code plugin marketplace. Install the plugin:
+The mapping is done by an Agent Skill: a folder of instructions that coding
+agents load when asked. It reads the repo without running it and names its
+parts in plain English. It describes every file, traces the main flows and
+notes real issues. Then it clones this viewer to `~/codebase-diorama`, builds
+the map and starts the viewer. One skill, packaged for each agent:
 
-```sh
-claude plugin marketplace add calebluh/codebase-diorama
-claude plugin install codebase-diorama@codebase-diorama
-```
+| Agent | Install | Then ask |
+| --- | --- | --- |
+| Claude Code | `claude plugin marketplace add calebluh/codebase-diorama` then `claude plugin install codebase-diorama@codebase-diorama` | `/codebase-diorama:map` |
+| Codex and the ChatGPT desktop app | `codex plugin marketplace add calebluh/codebase-diorama`, then install **codebase-diorama** from the plugins list | "Map this repo into a Codebase Diorama" |
+| Cursor | `npx skills add calebluh/codebase-diorama --skill codebase-diorama -a cursor` | "Map this repo into a Codebase Diorama" |
+| Gemini CLI | `gemini extensions install https://github.com/calebluh/codebase-diorama` | "Map this repo into a Codebase Diorama" |
+| Antigravity | `npx skills add calebluh/codebase-diorama --skill codebase-diorama -a antigravity` | "Map this repo into a Codebase Diorama" |
+| GitHub Copilot, OpenCode, Windsurf and others | `npx skills add calebluh/codebase-diorama --skill codebase-diorama` (it finds the agents you have) | "Map this repo into a Codebase Diorama" |
+| Anything else that can run a shell | nothing | "Read https://raw.githubusercontent.com/calebluh/codebase-diorama/main/skills/codebase-diorama/SKILL.md and follow it for this repository." |
 
-Then, inside the repository you want to see, ask Claude Code:
+Add `-g` to an `npx skills add` line to install for every project instead of
+the current one. The agent has to run on your own computer: it uses git and
+Node there, and the headset reaches the viewer over your Wi-Fi.
 
-```text
-/codebase-diorama:map
-```
-
-Claude reads the repo without running it and names its parts in plain
-English. It describes every file, traces the main flows and notes real issues.
-Then it clones this viewer to `~/codebase-diorama`, builds the map and starts
-the viewer. The plugin's source is in
-[`plugins/codebase-diorama`](plugins/codebase-diorama).
+The skill is written once, in
+[`plugins/codebase-diorama/skills/map`](plugins/codebase-diorama/skills/map),
+and copied to [`skills/codebase-diorama`](skills/codebase-diorama) for agents
+that install bare skills (`node scripts/sync-skills.mjs`).
 
 ## Keys
 
@@ -62,6 +68,10 @@ you make one, a small sample shop called Larder is shown.
 ## How it is built
 
 - `src/diorama.ts`: the tabletop city, its connections, flows and panels.
+  `src/city-style.ts` gives it its look and `src/peek.ts` lifts a building's
+  roof to show the robots inside.
+- `src/workspace.ts`: where the desk goes. In mixed reality it finds a real
+  table in the room (WebXR plane detection) and stands the city on it.
 - `src/rooms/`: the walk-in rooms, their themes, props and robot workers.
 - `src/agent/` and `server/`: the robots' conversations. Prompts are built on
   the server from the map, so the page never sees an API key.

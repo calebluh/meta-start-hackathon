@@ -49,12 +49,14 @@ OPENAI_API_KEY=sk-...      # natural robot voices; without it the browser's voic
 Without a Meta key the robots still talk, using canned answers built from the
 map.
 
-## Map your own codebase with Claude Code
+## Map your own codebase with your coding agent
 
-The `codebase-diorama` plugin teaches Claude Code to map any repository. It
+The `codebase-diorama` plugin teaches a coding agent to map any repository. It
 reads the repo without running it and names its parts in plain English. It
 describes every file, traces the main flows and notes real issues. Then it
 builds the map and starts this viewer with your own key.
+
+In Claude Code:
 
 ```sh
 claude plugin marketplace add calebluh/codebase-diorama
@@ -67,6 +69,12 @@ Then, inside the repository you want to see, ask Claude Code:
 /codebase-diorama:map
 ```
 
+The same skill is packaged for Codex and the ChatGPT desktop app, Cursor,
+Gemini CLI, Antigravity, GitHub Copilot and others. The install line for each
+is in the public repository's README (here: `editions/personal/README.md`).
+The packaging follows each tool's published format and has been installed
+only in Claude Code so far.
+
 ## Two repositories
 
 - **This one, [meta-start-hackathon](https://github.com/calebluh/meta-start-hackathon),**
@@ -75,7 +83,7 @@ Then, inside the repository you want to see, ask Claude Code:
   mapped by its own plugin. The Devpost text, video script and a submission
   checklist are in [submission/](submission/).
 - **[codebase-diorama](https://github.com/calebluh/codebase-diorama)** is the
-  public viewer and the Claude Code plugin, and it is what the plugin installs.
+  public viewer and the plugin for coding agents, and it is what the plugin installs.
   It has no demo menu and no MiroFish. It opens straight onto your own maps.
 
 All work happens here. `node scripts/export-personal.mjs <folder>` writes the

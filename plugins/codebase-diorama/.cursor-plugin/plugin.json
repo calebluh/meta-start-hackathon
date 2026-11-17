@@ -1,0 +1,11 @@
+{
+  "name": "codebase-diorama",
+  "version": "0.2.0",
+  "description": "Turn any codebase into a walk-in VR diorama for Meta Quest: your coding agent maps the repo's parts, files and flows in plain English, and robots in each room answer questions about the code.",
+  "author": {
+    "name": "Caleb"
+  },
+  "homepage": "https://diorama.calebluh.com",
+  "repository": "https://github.com/calebluh/codebase-diorama",
+  "keywords": ["vr", "webxr", "meta-quest", "codebase", "visualization", "onboarding"]
+}

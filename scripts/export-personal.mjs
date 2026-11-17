@@ -55,8 +55,11 @@ const EDITS = [
       '"private": true,\n  "license": "AGPL-3.0-or-later",',
     )],
   // The public repo is AGPL (editions/personal/LICENSE); the competition repo is not licensed.
-  ['plugins/codebase-diorama/.claude-plugin/plugin.json', (t) =>
-    replaceOnce(t, '"version": "0.1.0",', '"version": "0.1.0",\n  "license": "AGPL-3.0-or-later",')],
+  // Every plugin manifest (Claude Code, the Agent Plugins standard, Cursor) says so there.
+  ...['.claude-plugin/plugin.json', 'plugin.json', '.cursor-plugin/plugin.json'].map((manifest) => [
+    `plugins/codebase-diorama/${manifest}`,
+    (t) => replaceOnce(t, '"version": "0.2.0",', '"version": "0.2.0",\n  "license": "AGPL-3.0-or-later",'),
+  ]),
 ];
 
 function removeLines(text, pattern, expected) {
@@ -83,6 +86,9 @@ function removeNode(scene, id) {
   if (removed !== 1) throw new Error(`expected one scene node "${id}", found ${removed}`);
   return scene;
 }
+
+// The bare-skill copy must match the plugin's skill before anything is exported.
+execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'sync-skills.mjs'), '--check'], { stdio: 'inherit' });
 
 const dest = process.argv[2] && path.resolve(process.argv[2]);
 if (!dest) {

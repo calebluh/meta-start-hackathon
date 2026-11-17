@@ -1,0 +1,20 @@
+{
+  "projectSummary": "<2-3 plain sentences: what the product does and for whom.>",
+  "nodeSummaries": {
+    "<node id>": "<One or two sentences on what this part does for the product.>"
+  },
+  "files": {
+    "<repo-relative path>": { "name": "<2-4 plain words>", "d": "<One sentence on what it does.>" }
+  },
+  "flows": [
+    {
+      "id": "<kebab-id>",
+      "title": "<Short journey title>",
+      "description": "<From what the user does to the result.>",
+      "steps": [{ "ref": "f:<path> or n:<node id>", "note": "<A short story beat.>" }]
+    }
+  ],
+  "health": [],
+  "routes": [],
+  "frontendCalls": []
+}
