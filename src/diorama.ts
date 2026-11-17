@@ -8,8 +8,6 @@ import {
   CylinderGeometry,
   EdgesGeometry,
   type Entity,
-  Grabbed,
-  GrabSystem,
   InputComponent,
   Group,
   Hovered,
@@ -23,14 +21,12 @@ import {
   OctahedronGeometry,
   PlaneGeometry,
   Pressed,
-  Quaternion,
   QuadraticBezierCurve3,
   RayInteractable,
   SphereGeometry,
   SRGBColorSpace,
   TorusGeometry,
   TubeGeometry,
-  TwoHandsGrabbable,
   type UIKit,
   type UIKitMLAsset,
   Vector3,
@@ -59,7 +55,8 @@ import { ignoreRays } from './rays.js';
 import { buildRooftops } from './rooftops.js';
 import { classifyHop, HOP_COLORS, HOP_TAGS, type HopKind } from './network.js';
 import { mergeGeometries, mergeStatic } from './rooms/merge.js';
-import { District } from './diorama-components.js';
+import { BoardPeg, District } from './diorama-components.js';
+import { guideNote } from './guide.js';
 import { Peek } from './peek.js';
 import { isPaused } from './pause.js';
 import { dive, DIVE_SECONDS } from './transition.js';
@@ -99,16 +96,37 @@ const STREET_QUIET_MS = 700;
 const DOOR_STANDOFF = 0.012;
 const STREET_WALK_SPEED = 2.5;
 const UP = new Vector3(0, 1, 0);
-const BOARD_GRAB = {
-  rotate: true,
-  // Spin it like a lazy Susan, but never tip the city over.
-  rotateMin: [0, -Infinity, 0] as [number, number, number],
-  rotateMax: [0, Infinity, 0] as [number, number, number],
-  translate: true,
-  scale: true,
-  scaleMin: [0.5, 0.5, 0.5] as [number, number, number],
-  scaleMax: [3, 3, 3] as [number, number, number],
-};
+/**
+ * The city is turned and resized with four pegs at its corners, never by
+ * taking hold of the board itself: a pinch on or near a building only ever
+ * picks that building. (The whole desk moves with the grey bar.)
+ */
+const PEG_TURN_SPEED = 0.5; // radians a second while a peg is held: about a turn in 12 seconds
+const PEG_RADIUS = 0.008;
+const PEG_HEIGHT = 0.032;
+/** How far outside the board's corners the pegs stand. */
+const PEG_OUTSET = 0.014;
+const PEG_COLOR = '#7ee0ff';
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 3;
+/**
+ * Extra room around each building for a pointing ray to hit, so a hand ray
+ * that shakes a little still lands on it: about half the alley either side,
+ * and a little above the roof.
+ */
+const HIT_PAD_SIDE = 0.002;
+const HIT_PAD_TOP = 0.008;
+/**
+ * A pinch made with the fingertip right at a building picks it, though no
+ * ray was aimed: within this distance (metres) of its walls or roof.
+ */
+const NEAR_PICK_REACH = 0.04;
+/** A ray pick this soon after a near pick is the same pinch, seen twice. */
+const NEAR_PICK_QUIET_MS = 400;
+/** Invisible, but hit by rays (rays ignore material visibility; only the object's own visibility counts). */
+const HIT_MATERIAL = new MeshBasicMaterial({ visible: false });
+/** A unit cube standing on its base: buildings are this, scaled to size. */
+const UNIT_BOX = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
 /** Where the building's base ends up: the floor under a seated viewer. */
 const DIVE_FLOOR_BELOW_HEAD = 1.15;
 
@@ -148,14 +166,6 @@ const EDGE = 0.0012;
 const PLINTH_EDGE = 0.0008;
 /** Ignore a pinch on the Step inside chip this soon after the building was picked. */
 const CHIP_QUIET_MS = 500;
-/**
- * A pinch made right at the city takes hold of the board (a near grab), not
- * of a building. Held this briefly and moved this little, it was not a grab
- * at all: it picks the building the fingers closed on, within this reach.
- */
-const TAP_MS = 450;
-const TAP_SLIP = 0.02;
-const TAP_REACH = 0.05;
 const HOP_SECONDS = 1.3;
 const DWELL_SECONDS = 2.8;
 
@@ -295,6 +305,7 @@ export class DioramaSystem extends createSystem({
   sites: { required: [District] },
   hovered: { required: [District, Hovered] },
   pressed: { required: [District, Pressed] },
+  heldPegs: { required: [BoardPeg, Pressed] },
 }) {
   private layout!: DioramaLayout;
   private root!: Entity;
@@ -337,16 +348,24 @@ export class DioramaSystem extends createSystem({
 
   private headWorld = new Vector3();
   private scratch = new Vector3();
-  /** The diorama's size; two-hand grabs stretch one axis, we apply it to all. */
+  /** The diorama's size, the same on every axis. */
   private uniformScale = 1;
-  private grabStartScale = 1;
-  private wasGrabbed = false;
-  /** The start of the current hold on the board: when, which hand, where its fingertip was, and the board's pose. */
-  private tapAt = 0;
-  private tapHand: 'left' | 'right' | null = null;
-  private tapPoint = new Vector3();
-  private tapPose = { position: new Vector3(), quaternion: new Quaternion(), scale: 1 };
-  private tapBox = new Box3();
+  /** The corner pegs, and whether they are out (only at the desk, at rest). */
+  private pegs: { entity: Entity; mesh: Mesh; material: MeshStandardMaterial }[] = [];
+  private pegsShown = true;
+  /** Two pegs held: the distance between the hands, and the city's size, when the second was taken. */
+  private resize: { distance: number; scale: number } | null = null;
+  private handLeft = new Vector3();
+  private handRight = new Vector3();
+  private wasTurning = false;
+  /** A bare-hand pinch began this frame (which hand), to try as a near pick. */
+  private nearPinch: 'left' | 'right' | null = null;
+  /** The hand whose pinch or trigger went down last, and the peg each hand is holding (in VR). */
+  private lastSelectHand: 'left' | 'right' | null = null;
+  private pegHolds = new Map<'left' | 'right', { entity: Entity; mesh: Mesh; material: MeshStandardMaterial }>();
+  private nearPickAt = 0;
+  private nearTip = new Vector3();
+  private nearBox = new Box3();
   /** When the current building was picked, to tell a second pinch from a shaky first one. */
   private selectedAt = 0;
   /** Street view: whether the city is life size now, and the move between the two. */
@@ -389,6 +408,47 @@ export class DioramaSystem extends createSystem({
     this.buildDiorama();
     this.wireControls();
 
+    // Pinches and triggers, by hand: a bare-hand pinch may pick the building
+    // the fingertip is at (see nearPick), and a peg stays held until the
+    // pinch or trigger that took it lets go (see pegHolds).
+    const xr = this.world.renderer.xr;
+    const handOf = (event: Event): 'left' | 'right' | null => {
+      const side = (event as Event & { inputSource?: XRInputSource }).inputSource?.handedness;
+      return side === 'left' || side === 'right' ? side : null;
+    };
+    const onSelectStart = (event: Event) => {
+      const hand = handOf(event);
+      if (!hand) return;
+      this.lastSelectHand = hand;
+      if ((event as Event & { inputSource?: XRInputSource }).inputSource?.hand) this.nearPinch = hand;
+    };
+    const onSelectEnd = (event: Event) => {
+      const hand = handOf(event);
+      if (hand) this.pegHolds.delete(hand);
+    };
+    const onSessionStart = () => {
+      xr.getSession()?.addEventListener('selectstart', onSelectStart);
+      xr.getSession()?.addEventListener('selectend', onSelectEnd);
+    };
+    const onSessionEnd = () => this.pegHolds.clear();
+    xr.addEventListener('sessionstart', onSessionStart);
+    xr.addEventListener('sessionend', onSessionEnd);
+    this.cleanupFuncs.push(() => {
+      xr.removeEventListener('sessionstart', onSessionStart);
+      xr.removeEventListener('sessionend', onSessionEnd);
+      xr.getSession()?.removeEventListener('selectstart', onSelectStart);
+      xr.getSession()?.removeEventListener('selectend', onSelectEnd);
+    });
+    // A peg taken in VR belongs to the hand whose pinch just began. (Outside
+    // VR, with the mouse, the Pressed query alone says what is held.)
+    this.cleanupFuncs.push(
+      this.queries.heldPegs.subscribe('qualify', (entity) => {
+        if (!this.world.renderer.xr.isPresenting) return;
+        const peg = this.pegs.find((p) => p.entity === entity);
+        if (peg) this.pegHolds.set(this.lastSelectHand ?? 'right', peg);
+      }),
+    );
+
     this.cleanupFuncs.push(
       onChange(() => this.render()),
       this.queries.hovered.subscribe('qualify', (e) => this.setHovered(e, true)),
@@ -396,6 +456,8 @@ export class DioramaSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (e) => {
         if (app.mode !== 'table') return;
         const id = e.getValue(District, 'nodeId') as string;
+        // The same pinch already picked a building by touch (see nearPick).
+        if (performance.now() - this.nearPickAt < NEAR_PICK_QUIET_MS) return;
         if (app.street) {
           // Decided next frame, once the pinch's landing point is known.
           this.streetPressed = id;
@@ -421,45 +483,121 @@ export class DioramaSystem extends createSystem({
     }
   }
 
-  /** Remembers how a hold on the board began, in case it turns out to be a quick pinch on a building. */
-  private noteGrabStart(): void {
-    const obj = this.root.object3D!;
-    this.tapAt = performance.now();
-    this.tapPose.position.copy(obj.position);
-    this.tapPose.quaternion.copy(obj.quaternion);
-    this.tapPose.scale = this.uniformScale;
-    this.tapHand = this.world.getSystem(GrabSystem)?.getHolderHand(this.root) ?? null;
-    if (this.tapHand) this.player.indexTipSpaces[this.tapHand].getWorldPosition(this.tapPoint);
+  /**
+   * Four pegs just outside the board's corners. Right-hand pegs turn the city
+   * clockwise, left-hand ones the other way. They stand on the desk, not on
+   * the board: the city turns between them, so a held peg stays under the
+   * pointer (a peg turning with the city would slide out from under it).
+   */
+  private buildPegs(): void {
+    const desk = this.world.getSceneEntity('workspace');
+    const board = this.root.object3D!.position;
+    const geometry = new CylinderGeometry(PEG_RADIUS, PEG_RADIUS, PEG_HEIGHT, 16).translate(0, PEG_HEIGHT / 2, 0);
+    const hitGeometry = new CylinderGeometry(PEG_RADIUS * 2.6, PEG_RADIUS * 2.6, PEG_HEIGHT * 1.6, 8).translate(0, PEG_HEIGHT * 0.7, 0);
+    const halfW = this.layout.width / 2 + PEG_OUTSET;
+    const halfD = this.layout.depth / 2 + PEG_OUTSET;
+    for (const [x, z] of [[-halfW, -halfD], [halfW, -halfD], [-halfW, halfD], [halfW, halfD]]) {
+      const material = new MeshStandardMaterial({ color: PEG_COLOR, emissive: new Color(PEG_COLOR), emissiveIntensity: 0.6, roughness: 0.4 });
+      const mesh = new Mesh(geometry, material);
+      mesh.name = 'board-peg';
+      mesh.position.set(board.x + x, board.y, board.z + z);
+      // A wider invisible column around the peg, easy to point at.
+      mesh.add(new Mesh(hitGeometry, HIT_MATERIAL));
+      const entity = this.world.createTransformEntity(mesh, { parent: desk ?? this.root });
+      entity.addComponent(BoardPeg, { turn: x > 0 ? -1 : 1 });
+      entity.addComponent(RayInteractable);
+      this.entities.push(entity);
+      this.pegs.push({ entity, mesh, material });
+    }
+    this.pegsShown = true;
   }
 
   /**
-   * The board was let go. A hold that was short and went nowhere was a pinch
-   * on a building: put the board back exactly and pick the building nearest
-   * the fingertip.
+   * A pinch with the fingertip at a building picks it. The city takes no
+   * near grab (it is turned with its pegs), so without this a pinch made
+   * right on a building would do nothing: the pointing ray starts at the
+   * hand and is not aimed at what the fingers are touching.
    */
-  private tapPick(): void {
-    const obj = this.root.object3D!;
-    if (!this.tapHand || performance.now() - this.tapAt > TAP_MS) return;
-    if (obj.position.distanceTo(this.tapPose.position) > TAP_SLIP) return;
-    obj.position.copy(this.tapPose.position);
-    obj.quaternion.copy(this.tapPose.quaternion);
-    this.uniformScale = this.tapPose.scale;
-    obj.scale.setScalar(this.uniformScale);
-    obj.updateWorldMatrix(true, true);
+  private nearPick(hand: 'left' | 'right'): void {
+    this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
     let best: string | null = null;
-    let bestDistance = TAP_REACH;
+    let bestDistance = NEAR_PICK_REACH;
     for (const site of this.sitesById.values()) {
       // Buildings and outside towers, not the plinths under them.
       if (this.layout.districts.has(site.id) && !site.lot) continue;
-      const distance = this.tapBox.setFromObject(site.mesh).distanceToPoint(this.tapPoint);
+      const geometry = site.mesh.geometry;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      const distance = this.nearBox.copy(geometry.boundingBox!).applyMatrix4(site.mesh.matrixWorld).distanceToPoint(this.nearTip);
       if (distance < bestDistance) {
         bestDistance = distance;
         best = site.id;
       }
     }
-    if (import.meta.env.DEV) console.log(`[tap] ${best ?? 'nothing in reach'}`);
-    if (best && best !== app.selected) this.pick(best);
+    if (import.meta.env.DEV) console.log(`[near] ${best ?? 'nothing in reach'}`);
+    if (!best) return;
+    this.nearPickAt = performance.now();
+    this.pick(best);
   }
+
+  /** Pegs show only with the city at rest on the desk: not in the menu, a room, a dive or street view. */
+  private showPegs(shown: boolean): void {
+    if (shown === this.pegsShown) return;
+    this.pegsShown = shown;
+    for (const peg of this.pegs) {
+      peg.mesh.visible = shown;
+      if (shown && !peg.entity.hasComponent(RayInteractable)) peg.entity.addComponent(RayInteractable);
+      else if (!shown && peg.entity.hasComponent(RayInteractable)) peg.entity.removeComponent(RayInteractable);
+    }
+    if (!shown) {
+      this.resize = null;
+      this.pegHolds.clear();
+    }
+  }
+
+  /**
+   * One peg held: the city turns slowly until it is let go. Two held: pull
+   * the hands apart or together to resize it. Returns true while a peg is held.
+   */
+  private updatePegs(delta: number): boolean {
+    let held = 0;
+    let turn = 0;
+    if (this.world.renderer.xr.isPresenting) {
+      // Held until that hand lets go, even once its ray has slid off the peg
+      // (hands drift as they pull apart, and a held peg must not drop).
+      for (const peg of this.pegHolds.values()) {
+        held += 1;
+        turn = peg.entity.getValue(BoardPeg, 'turn') as number;
+      }
+    } else {
+      for (const entity of this.queries.heldPegs.entities) {
+        held += 1;
+        turn = entity.getValue(BoardPeg, 'turn') as number;
+      }
+    }
+    for (const peg of this.pegs) {
+      // Brighter when pointed at, brightest while held.
+      let holding = peg.entity.hasComponent(Pressed);
+      for (const held of this.pegHolds.values()) if (held === peg) holding = true;
+      peg.material.emissiveIntensity = holding ? 2.4 : peg.entity.hasComponent(Hovered) ? 1.5 : 0.6;
+    }
+    const obj = this.root.object3D!;
+    if (held >= 2) {
+      this.player.gripSpaces.left.getWorldPosition(this.handLeft);
+      this.player.gripSpaces.right.getWorldPosition(this.handRight);
+      const distance = Math.max(this.handLeft.distanceTo(this.handRight), 0.02);
+      if (!this.resize) this.resize = { distance, scale: this.uniformScale };
+      this.uniformScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, (this.resize.scale * distance) / this.resize.distance));
+      obj.scale.setScalar(this.uniformScale);
+    } else {
+      this.resize = null;
+      if (held === 1) obj.rotation.y += turn * PEG_TURN_SPEED * delta;
+    }
+    const turning = held > 0;
+    if (turning && !this.wasTurning) guideNote('turned');
+    this.wasTurning = turning;
+    return turning;
+  }
+
 
   // ---------------------------------------------------------------- build
 
@@ -524,22 +662,14 @@ export class DioramaSystem extends createSystem({
     );
 
     this.root = this.world.createTransformEntity(group, workspace ? { parent: workspace } : undefined);
-    this.root.addComponent(TwoHandsGrabbable, {
-      rotate: true,
-      // Spin it like a lazy Susan, but never tip the city over.
-      rotateMin: [0, -Infinity, 0],
-      rotateMax: [0, Infinity, 0],
-      translate: true,
-      scale: true,
-      scaleMin: [0.5, 0.5, 0.5],
-      scaleMax: [3, 3, 3],
-    });
     this.uniformScale = 1;
+    this.pegs = [];
+    this.buildPegs();
     this.streetShown = false;
     this.streetMoving = false;
     this.streetPressed = null;
 
-    const unitBox = new BoxGeometry(1, 1, 1).translate(0, 0.5, 0);
+    const unitBox = UNIT_BOX;
     const unitEdges = new EdgesGeometry(unitBox);
     const unitTower = new CylinderGeometry(0.5, 0.5, 1, 20).translate(0, 0.5, 0);
     const recentLine = new LineBasicMaterial({ color: '#3fb950' });
@@ -561,6 +691,14 @@ export class DioramaSystem extends createSystem({
       this.entities.push(entity);
       entity.addComponent(District, { nodeId: id });
       entity.addComponent(RayInteractable);
+      // A slightly larger invisible box around buildings and towers (not the
+      // plinths under them), so a ray that wavers still lands. The mesh is a
+      // unit shape scaled to size, so the padding is divided by that size.
+      if (!(this.layout.districts.has(id) && !lot)) {
+        const pad = new Mesh(UNIT_BOX, HIT_MATERIAL);
+        pad.scale.set(1 + (2 * HIT_PAD_SIDE) / Math.max(mesh.scale.x, 1e-3), 1 + HIT_PAD_TOP / Math.max(mesh.scale.y, 1e-3), 1 + (2 * HIT_PAD_SIDE) / Math.max(mesh.scale.z, 1e-3));
+        mesh.add(pad);
+      }
       // Remember where a pinch lands, for walking to that spot in street view.
       (mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void }).addEventListener(
         'pointerdown',
@@ -758,6 +896,10 @@ export class DioramaSystem extends createSystem({
     group.add(this.peek.group);
     const chip = makeChip('Step inside', 0.026);
     chip.visible = false;
+    // A wider invisible card behind the button, so a wavering ray still lands on it.
+    const chipPad = new Mesh(chip.geometry, HIT_MATERIAL);
+    chipPad.scale.set(1.4, 2, 1);
+    chip.add(chipPad);
     this.chip = this.world.createTransformEntity(chip, { parent: this.root });
     this.entities.push(this.chip);
     // Acted on next frame: walking in takes the button's ray target away,
@@ -992,7 +1134,6 @@ export class DioramaSystem extends createSystem({
     board.quaternion.identity();
     board.scale.setScalar(1);
     this.uniformScale = 1;
-    this.grabStartScale = 1;
   }
 
   private setText(panel: UIKitMLAsset | undefined, id: string, text: string): void {
@@ -1016,6 +1157,8 @@ export class DioramaSystem extends createSystem({
   private applyVisibility(): void {
     const onTable = (app.mode === 'table' && !this.surfaceFrom) || this.diveDir !== 0;
     this.root.object3D!.visible = onTable && !app.menu;
+    // The pegs stand on the desk, so they must be put away with the city.
+    this.showPegs(onTable && this.diveDir === 0 && !app.menu && !app.street && !this.streetShown && !this.streetMoving && !this.surfaceFrom);
     // Under the start menu only the desk shows.
     if (app.menu !== this.menuShown) {
       this.menuShown = app.menu;
@@ -1069,7 +1212,9 @@ export class DioramaSystem extends createSystem({
     this.diveFrom.copy(obj.position);
     this.diveFromScale = obj.scale.x;
     obj.updateWorldMatrix(true, true);
-    this.diveBox.setFromObject(site.mesh);
+    // From the shape itself: its invisible hit padding must not change the dive.
+    site.mesh.geometry.computeBoundingBox();
+    this.diveBox.copy(site.mesh.geometry.boundingBox!).applyMatrix4(site.mesh.matrixWorld);
     this.diveBox.getCenter(this.divePivot);
     this.divePivot.y = this.diveBox.min.y;
     this.diveBox.getSize(this.diveCentre);
@@ -1465,7 +1610,6 @@ export class DioramaSystem extends createSystem({
       this.mapPose.position.copy(obj.position);
       this.mapPose.yaw = move.fromYaw;
       this.mapPose.scale = obj.scale.x;
-      if (this.root.hasComponent(TwoHandsGrabbable)) this.root.removeComponent(TwoHandsGrabbable);
       // Arrive at the Internet gateway, like a request does.
       move.focus.set(this.gatePoint.x - 0.02, 0, this.gatePoint.z);
       move.from.copy(move.focus).multiplyScalar(move.fromScale).applyAxisAngle(UP, move.fromYaw).add(obj.position);
@@ -1502,7 +1646,6 @@ export class DioramaSystem extends createSystem({
     for (const label of this.labels) label.scale.setScalar(move.toStreet ? STREET_LABEL_SCALE : 1);
     if (!move.toStreet) {
       this.root.object3D!.position.copy(this.mapPose.position);
-      if (!this.root.hasComponent(TwoHandsGrabbable)) this.root.addComponent(TwoHandsGrabbable, BOARD_GRAB);
     }
     this.applyVisibility();
   }
@@ -1590,6 +1733,11 @@ export class DioramaSystem extends createSystem({
     this.updateDive(delta);
     if (app.mode !== 'table' || this.diveDir !== 0) return;
 
+    if (this.nearPinch) {
+      const hand = this.nearPinch;
+      this.nearPinch = null;
+      if (!app.street && !this.streetShown && !app.menu) this.nearPick(hand);
+    }
     if (this.chipHit) {
       this.chipHit = false;
       this.chipPressed();
@@ -1606,7 +1754,6 @@ export class DioramaSystem extends createSystem({
         // The menu opened from the street: put the city back on the desk at once.
         this.poseBoard(this.streetSpot.set(0, 0, 0), this.mapPose.position, this.mapPose.yaw, this.mapPose.scale);
         this.streetShown = false;
-        if (!this.root.hasComponent(TwoHandsGrabbable)) this.root.addComponent(TwoHandsGrabbable, BOARD_GRAB);
         this.applyVisibility();
       } else this.beginStreetMove(app.street);
     }
@@ -1617,26 +1764,9 @@ export class DioramaSystem extends createSystem({
     }
     if (this.streetShown && !this.streetMoving) this.updateStreetWalk(delta);
 
-    // Two-hand resizing changes the axis between the hands; keep the city in
-    // proportion by applying whichever axis changed most to all three.
-    // The grab rewrites the scale every frame from its value when the grab
-    // began, so measure the change against that, not against the last frame.
-    const grabbed = this.root.hasComponent(Grabbed);
-    if (grabbed && !this.wasGrabbed) {
-      this.grabStartScale = this.uniformScale;
-      this.noteGrabStart();
-    }
-    if (!grabbed && this.wasGrabbed) this.tapPick();
-    this.wasGrabbed = grabbed;
-    const scale = this.root.object3D!.scale;
-    if (scale.x !== scale.y || scale.y !== scale.z) {
-      const start = this.grabStartScale;
-      let next = scale.x;
-      if (Math.abs(scale.y - start) > Math.abs(next - start)) next = scale.y;
-      if (Math.abs(scale.z - start) > Math.abs(next - start)) next = scale.z;
-      this.uniformScale = Math.min(3, Math.max(0.5, next));
-      scale.setScalar(this.uniformScale);
-    }
+    // The corner pegs: hold one to turn the city, two to resize it.
+    this.showPegs(!app.menu && !app.street && !this.streetShown && !this.streetMoving && !this.surfaceFrom);
+    const grabbed = this.pegsShown && this.updatePegs(delta);
 
     // Controllers: the right thumbstick spins the city (left and right) and
     // resizes it (up and down), when it is not being held.
@@ -1658,7 +1788,8 @@ export class DioramaSystem extends createSystem({
     const chip = this.chip?.object3D;
     if (chip?.visible) {
       chip.lookAt(this.headWorld);
-      chip.scale.setScalar(1 + 0.05 * Math.sin(time * 4));
+      // Pointed at, it stands out and holds still, so the pinch is sure to land.
+      chip.scale.setScalar(this.chip!.hasComponent(Hovered) ? 1.25 : 1 + 0.05 * Math.sin(time * 4));
     }
 
     this.updateFlowDots(time);

@@ -1,4 +1,4 @@
 import { defineComponents } from '@iwsdk/core';
-import { Carryable, District, Pipe, Worker } from './diorama-components.js';
+import { BoardPeg, Carryable, District, Pipe, Worker } from './diorama-components.js';
 
-export default defineComponents([District, Worker, Carryable, Pipe]);
+export default defineComponents([District, Worker, Carryable, Pipe, BoardPeg]);

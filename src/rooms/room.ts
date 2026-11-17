@@ -107,6 +107,12 @@ interface WorkerState {
   scripted: boolean;
   /** Being pointed at: stands still, faces the visitor, ring at the feet. */
   hovered: boolean;
+  /**
+   * When the pointer last left (seconds, performance clock). The robot keeps
+   * still a moment longer: a hand ray flickers off as the fingers pinch, and
+   * a robot that set off again then would walk away from the pinch.
+   */
+  hoverLeft: number;
   ring: Mesh;
   /** What the worker is doing with their body, beyond walking and carrying. */
   mood: Mood;
@@ -117,6 +123,8 @@ interface WorkerState {
   speechToken: number;
 }
 
+/** A robot stays still this long (seconds) after the pointer leaves it. */
+const HOVER_LINGER = 0.6;
 /** How far to either side of straight ahead a robot may stand to talk, in radians. */
 const TALK_ARC = 0.25;
 const TALK_ARC_NARROW = 0.06;
@@ -142,6 +150,8 @@ interface Station {
 const WORKER_HITBOX = new CylinderGeometry(0.42, 0.42, 1.3, 12);
 const RING_GEOMETRY = new TorusGeometry(0.42, 0.018, 6, 40);
 const HITBOX_MATERIAL = new MeshBasicMaterial({ visible: false });
+/** Around each pipe's swirl (radius 0.4): the area a ray may hit to choose that pipe. */
+const PIPE_HIT = new CircleGeometry(0.62, 20);
 
 /** Side-by-side spacing of standing spots at a station. */
 const SPOT_SPACING = 0.85;
@@ -323,7 +333,10 @@ export class RoomSystem extends createSystem({
       }),
       this.queries.hoveredWorkers.subscribe('disqualify', (entity) => {
         const worker = this.workers.find((w) => w.entity === entity);
-        if (worker) worker.hovered = false;
+        if (worker) {
+          worker.hovered = false;
+          worker.hoverLeft = performance.now() / 1000;
+        }
       }),
       this.queries.pressedWorkers.subscribe('qualify', (entity) => {
         const worker = this.workers.find((w) => w.entity === entity);
@@ -569,6 +582,8 @@ export class RoomSystem extends createSystem({
       pipe.addComponent(Pipe, { nodeId: p.nodeId });
       pipe.addComponent(RayInteractable);
       this.pipeEntities.push(pipe);
+      // A wider invisible disc around the pipe's mouth: easy to hit from the chair.
+      p.hole.add(new Mesh(PIPE_HIT, HITBOX_MATERIAL));
     }
     const catchArea = new Mesh(
       new SphereGeometry(0.24, 12, 8),
@@ -626,6 +641,7 @@ export class RoomSystem extends createSystem({
         stations: [i, (i + 1) % this.stations.length] as [number, number],
         scripted: false,
         hovered: false,
+        hoverLeft: -Infinity,
         ring,
         mood: 'idle' as Mood,
         speech: null,
@@ -1764,6 +1780,13 @@ export class RoomSystem extends createSystem({
     if (packet?.group.visible) packet.group.rotation.y = time * 1.5;
     this.trail?.update(delta, packet?.flying ? packet.group.position : null);
     for (const swirl of this.swirls) swirl.rotateZ(delta * 1.2);
+    // Carrying the request, the pipe pointed at swells: that is where it will go.
+    // (Not otherwise: a pipe takes a pinch only while a request is carried.)
+    const carrying = this.offer?.carrying === true;
+    for (const pipe of this.pipeEntities) {
+      const hole = pipe.object3D;
+      if (hole) hole.scale.setScalar(carrying && pipe.hasComponent(Hovered) ? 1.3 : 1);
+    }
 
     // A flow step in another room (Follow off): keep the story moving.
     const step = currentStep();
@@ -1804,8 +1827,9 @@ export class RoomSystem extends createSystem({
 
   private updateWorker(w: WorkerState, delta: number): void {
     w.ring.visible = w.hovered && w !== this.talking;
-    // Pointed at (and not busy with a flow step): stop and look at the visitor.
-    if (w.hovered && !w.scripted) {
+    // Pointed at (or just now), and not busy with a flow step: stop and look at the visitor.
+    const held = w.hovered || performance.now() / 1000 - w.hoverLeft < HOVER_LINGER;
+    if (held && !w.scripted) {
       this.tmp2.set(0, 0, 0).sub(w.rig.root.position);
       this.turnToward(w, Math.atan2(this.tmp2.x, this.tmp2.z), delta);
       this.applyPose(w, false, delta);

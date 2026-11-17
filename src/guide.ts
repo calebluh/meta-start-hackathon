@@ -8,11 +8,13 @@ export const guideProgress = {
   asked: false,
   /** The visitor has dragged the desk with its grab bar. */
   moved: false,
+  /** The visitor has turned or resized the city with its corner pegs. */
+  turned: false,
   /** Development: start the guide over. */
   restart: false,
 };
 
-export function guideNote(event: 'talked' | 'asked' | 'moved'): void {
+export function guideNote(event: 'talked' | 'asked' | 'moved' | 'turned'): void {
   guideProgress[event] = true;
 }
 
@@ -20,5 +22,6 @@ export function restartGuide(): void {
   guideProgress.talked = false;
   guideProgress.asked = false;
   guideProgress.moved = false;
+  guideProgress.turned = false;
   guideProgress.restart = true;
 }

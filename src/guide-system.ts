@@ -3,14 +3,12 @@ import {
   ConeGeometry,
   createSystem,
   DoubleSide,
-  Grabbed,
   Group,
   Mesh,
   MeshBasicMaterial,
   type Object3D,
   RingGeometry,
   SphereGeometry,
-  TwoHandsGrabbable,
   Vector3,
 } from '@iwsdk/core';
 import { blip } from './audio/sound.js';
@@ -45,7 +43,7 @@ interface Step {
   title: string;
   text: (project: string) => string;
   /** True once the visitor has done this step (or something past it). */
-  done: (clock: number, grabbed: boolean) => boolean;
+  done: (clock: number) => boolean;
   target: Target;
   /** Show the animated pinch beside the card. */
   pinch: boolean;
@@ -118,8 +116,8 @@ const STEPS: Step[] = [
     text: () =>
       placement.gaze
         ? 'Every building, button and robot works the same way: look at it and pinch.'
-        : 'Pinch the board with both hands, then pull apart to resize it or twist to turn it.',
-    done: (clock, grabbed) => grabbed || clock > 15,
+        : 'Pinch and hold a glowing corner peg to turn the city. Hold two at once and pull your hands apart to resize it.',
+    done: (clock) => guideProgress.turned || clock > 15,
     target: null,
     pinch: true,
   },
@@ -157,7 +155,6 @@ const PINCH_SECONDS = 1.6;
 
 export class GuideSystem extends createSystem({
   sites: { required: [District] },
-  grabbedBoard: { required: [TwoHandsGrabbable, Grabbed] },
 }) {
   private holder = new Group();
   private card = new Bubble(CARD_WIDTH, ACCENT, 3);
@@ -271,9 +268,8 @@ export class GuideSystem extends createSystem({
 
     // Advance past every step already done; each change restarts the clock.
     this.clock += delta;
-    const grabbed = this.queries.grabbedBoard.entities.size > 0;
     let next = Math.max(this.index, 0);
-    while (next < STEPS.length && STEPS[next].done(next === this.index ? this.clock : 0, grabbed)) next += 1;
+    while (next < STEPS.length && STEPS[next].done(next === this.index ? this.clock : 0)) next += 1;
     if (next >= STEPS.length) {
       this.finish();
       return;

@@ -15,6 +15,11 @@ export const Pipe = createComponent('Pipe', {
   nodeId: { type: Types.String, default: '', label: 'Leads to node id' },
 });
 
+/** A peg at a corner of the city: hold a pinch on it to turn the city; hold two to resize it. */
+export const BoardPeg = createComponent('BoardPeg', {
+  turn: { type: Types.Int8, default: -1, label: 'Turn direction (-1 clockwise, 1 anticlockwise)' },
+});
+
 /** A worker inside a room; pinch one to talk to it. */
 export const Worker = createComponent('Worker', {
   nodeId: { type: Types.String, default: '', label: 'Floorplan node id' },
