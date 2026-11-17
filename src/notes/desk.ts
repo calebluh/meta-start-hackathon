@@ -36,6 +36,8 @@ export class NotesDesk {
   private savedTo: string | null = null;
   private saving = 0;
   readonly cleanup: (() => void)[] = [];
+  /** Notes taken back (undone or rewritten) since the file was last written. */
+  private takenBack: string[] = [];
 
   constructor(
     private world: World,
@@ -107,6 +109,7 @@ export class NotesDesk {
   reviseLast(text: string): Note {
     const last = this.notes[this.notes.length - 1];
     if (!last) return this.add(text, 'talk');
+    this.takenBack.push(last.text);
     last.text = text.trim();
     last.at = Date.now();
     last.how = 'talk';
@@ -117,7 +120,10 @@ export class NotesDesk {
 
   undo(): Note | undefined {
     const removed = this.notes.pop();
-    if (removed) this.changed();
+    if (removed) {
+      this.takenBack.push(removed.text);
+      this.changed();
+    }
     return removed;
   }
 
@@ -142,7 +148,9 @@ export class NotesDesk {
   private persist(): void {
     if (!this.graph) return;
     const run = ++this.saving;
-    void saveToProject(this.mapId, notesMarkdown(this.graph, this.notes)).then((path) => {
+    const takenBack = this.takenBack.splice(0);
+    void saveToProject(this.mapId, notesMarkdown(this.graph, this.notes), takenBack).then((path) => {
+      if (path === null) this.takenBack.unshift(...takenBack); // try again with the next save
       if (run !== this.saving) return;
       this.savedTo = path;
       this.renderStatus();

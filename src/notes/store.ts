@@ -53,12 +53,14 @@ export function storeMode(mode: NoteMode): void {
  * has this endpoint; anywhere else the answer is null and the notes stay in
  * the browser. Returns the file's path inside the project.
  */
-export async function saveToProject(mapId: string, markdown: string): Promise<string | null> {
+export async function saveToProject(mapId: string, markdown: string, removed: string[] = []): Promise<string | null> {
   try {
     const response = await fetch('/api/notes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, markdown }),
+      // `removed`: notes this device took back (undone, or rewritten), so the
+      // file drops them; lines from other devices stay.
+      body: JSON.stringify({ mapId, markdown, removed: removed.slice(-50) }),
       signal: AbortSignal.timeout(5000),
     });
     if (!response.ok) return null;

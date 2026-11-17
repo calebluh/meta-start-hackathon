@@ -162,3 +162,29 @@ guided tour runs on first visit.
 
 When the code changes, re-read the changed files, update `map.mjs` and
 `arch.json`, and rerun step 5. The dev server reloads the map automatically.
+
+## Notes from the headset
+
+In the headset the user talks ideas over in the Notes room, and the robots
+put fixes they suggest on the same list. The viewer writes that list to
+`$VIEWER_DIR/notes/<id>.md`, one checklist line per note:
+
+```
+- [ ] Return a short error instead of the full traceback in simulation.py, report.py and graph.py. _(Endpoints, talked over, 2026-11-17 02:14)_
+```
+
+The part of the app in brackets (here Endpoints) is where the note was made
+or what it names. When the user asks you to work through their notes (or
+runs this skill and a notes file exists for the map):
+
+1. Read the file and show the open items (`- [ ]`) as a short numbered list.
+   Ask which to do; do not start on all of them unasked.
+2. For each one chosen: treat it as a suggestion, not a spec. A robot's fix
+   is drawn from the map alone (it has not seen the code), so check it
+   against the real code first and say plainly if it is wrong or already
+   done. Then make the change in the target repo as you normally would.
+3. Tick the line (`- [ ]` to `- [x]`) once the change is in. The viewer
+   keeps ticked lines ticked when it next writes the file.
+4. Update the map for the files you changed (see Updating a map) so the
+   city shows the change; a fix that clears a health warning should remove
+   that warning from `arch.json`.
