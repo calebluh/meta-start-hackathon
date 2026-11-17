@@ -58,6 +58,8 @@ const TABLE_MIN_WIDTH = 0.5;
 const TABLE_MIN_DEPTH = 0.4;
 const TABLE_MIN_HEIGHT = 0.35;
 const TABLE_MAX_DISTANCE = 1.6;
+/** A table spot must lie roughly ahead: the cosine between the head's forward direction and the way to the spot (seen from above). */
+const TABLE_MIN_AHEAD = 0.4;
 /**
  * What has to fit on the table, measured from the desk's origin: half the
  * tray's width, how far the tray reaches away from the visitor, and how far
@@ -165,6 +167,7 @@ export class WorkspaceSystem extends createSystem({}) {
   private planeMatrix = new Matrix4();
   private planeInverse = new Matrix4();
   private spot = new Vector3();
+  private headAhead = new Vector3();
   private best = new Vector3();
 
   init(): void {
@@ -598,6 +601,12 @@ export class WorkspaceSystem extends createSystem({}) {
     const planes = frame?.detectedPlanes;
     if (!frame || !space || !planes || planes.size === 0 || !this.workspace) return false;
     this.player.head.getWorldPosition(this.head);
+    // Where the visitor is facing, level: a table behind or beside them is never used.
+    this.player.head.getWorldQuaternion(this.headQuat);
+    this.headAhead.set(0, 0, -1).applyQuaternion(this.headQuat).setY(0);
+    const level = this.headAhead.length();
+    if (level < 1e-3) return false; // looking straight up or down: try again in a moment
+    this.headAhead.divideScalar(level);
     const want = this.workspace.position;
     const facing = Math.atan2(this.head.x - want.x, this.head.z - want.z);
     let bestScore = Infinity;
@@ -658,7 +667,10 @@ export class WorkspaceSystem extends createSystem({}) {
         fit(this.spot.z, minZ + reachBackZ, maxZ - reachZ),
       );
       this.spot.applyMatrix4(this.planeMatrix);
-      if (Math.hypot(this.spot.x - this.head.x, this.spot.z - this.head.z) > TABLE_MAX_DISTANCE) continue;
+      const away = Math.hypot(this.spot.x - this.head.x, this.spot.z - this.head.z);
+      if (away > TABLE_MAX_DISTANCE) continue;
+      const ahead = away > 1e-3 ? ((this.spot.x - this.head.x) * this.headAhead.x + (this.spot.z - this.head.z) * this.headAhead.z) / away : 0;
+      if (ahead < TABLE_MIN_AHEAD) continue;
       // Nearest wins; a surface the headset calls a table beats an unnamed one.
       const named = label === 'table' || label === 'desk';
       const score = Math.hypot(this.spot.x - want.x, this.spot.z - want.z) + (named ? 0 : 1);

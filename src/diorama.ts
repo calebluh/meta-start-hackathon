@@ -27,6 +27,7 @@ import {
   Ray,
   Quaternion,
   QuadraticBezierCurve3,
+  PokeInteractable,
   RayInteractable,
   SphereGeometry,
   SRGBColorSpace,
@@ -211,6 +212,11 @@ const EDGE = 0.0012;
 const PLINTH_EDGE = 0.0008;
 /** Ignore a pinch on the Step inside chip this soon after the building was picked. */
 const CHIP_QUIET_MS = 500;
+/** The Step inside chip's height, and the invisible catcher's around it, in metres (at the city's own size). */
+const CHIP_HEIGHT = 0.04;
+const CHIP_CATCH = 0.06;
+/** A fingertip this close to the chip, when pinching, presses it. */
+const CHIP_PINCH_REACH = 0.03;
 const HOP_SECONDS = 1.3;
 const DWELL_SECONDS = 2.8;
 
@@ -415,6 +421,9 @@ export class DioramaSystem extends createSystem({
   /** The Step inside button over the open building. */
   private chip: Entity | null = null;
   private chipHit = false;
+  /** Each fingertip's last depth in front of the chip (Infinity: not over it), to see it pushed through. */
+  private chipTipZ = { left: Infinity, right: Infinity };
+  private chipLocal = new Vector3();
   /** Mixed reality: the tray's shadow on the real table. */
   private shadow: Mesh | null = null;
 
@@ -680,6 +689,13 @@ export class DioramaSystem extends createSystem({
   private handPinch(hand: 'left' | 'right'): void {
     const now = performance.now();
     if (import.meta.env.DEV) console.log(`[pinch] ${hand} begins (aim ${this.handAim[hand].kind} ${Math.round(now - this.handAim[hand].at)} ms ago)`);
+    // Fingers closed right at the Step inside button: that button.
+    const chip = this.chip?.object3D;
+    if (chip?.visible && this.tipOverChip(chip, hand, CHIP_PINCH_REACH) && Math.abs(this.chipLocal.z) < CHIP_PINCH_REACH) {
+      this.chipHit = true;
+      this.pinchTakenAt = now;
+      return;
+    }
     if (this.pegsShown) {
       this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
       let best: Peg | null = null;
@@ -1275,12 +1291,12 @@ export class DioramaSystem extends createSystem({
 
     // The lifted roof of the picked building, and the Step inside button over it.
     group.add(this.peek.group);
-    const chip = makeChip('Step inside', 0.026);
+    const chip = makeChip('Step inside', CHIP_HEIGHT);
     chip.name = 'step-inside';
     chip.visible = false;
-    // A wider invisible card behind the button, so a wavering ray still lands on it.
+    // A wider invisible card behind the button (60 mm tall), so a wavering ray still lands on it.
     const chipPad = new Mesh(chip.geometry, HIT_MATERIAL);
-    chipPad.scale.set(1.4, 2, 1);
+    chipPad.scale.set(1.25, CHIP_CATCH / CHIP_HEIGHT, 1);
     chip.add(chipPad);
     this.chip = this.world.createTransformEntity(chip, { parent: this.root });
     this.entities.push(this.chip);
@@ -1416,7 +1432,7 @@ export class DioramaSystem extends createSystem({
     );
     // The name and the button move up, clear of the lid.
     site.label.position.y = site.roof.y + this.peek.clearance + 0.012;
-    this.chip?.object3D?.position.set(site.roof.x, site.roof.y + this.peek.clearance + 0.044, site.roof.z);
+    this.chip?.object3D?.position.set(site.roof.x, site.roof.y + this.peek.clearance + 0.052, site.roof.z);
   }
 
   /** Puts the roof back at once and clears the room under it. */
@@ -1440,6 +1456,39 @@ export class DioramaSystem extends createSystem({
     object.visible = shown;
     if (shown && !chip.hasComponent(RayInteractable)) chip.addComponent(RayInteractable);
     else if (!shown && chip.hasComponent(RayInteractable)) chip.removeComponent(RayInteractable);
+    if (shown && !chip.hasComponent(PokeInteractable)) chip.addComponent(PokeInteractable);
+    else if (!shown && chip.hasComponent(PokeInteractable)) chip.removeComponent(PokeInteractable);
+  }
+
+  /**
+   * Where a fingertip is in the chip's own space (its front faces the viewer, +z),
+   * into chipLocal, and whether it is over the button or its catcher.
+   */
+  private tipOverChip(chip: Object3D, hand: 'left' | 'right', margin: number): boolean {
+    this.player.indexTipSpaces[hand].getWorldPosition(this.chipLocal);
+    chip.worldToLocal(this.chipLocal);
+    const geometry = (chip as Mesh).geometry;
+    if (!geometry.boundingBox) geometry.computeBoundingBox();
+    const box = geometry.boundingBox!;
+    return (
+      Math.abs(this.chipLocal.x) < box.max.x + margin &&
+      Math.abs(this.chipLocal.y) < Math.max(box.max.y, CHIP_CATCH / 2) + margin
+    );
+  }
+
+  /** A fingertip pushed through the front of the chip presses it, as on the desk buttons. */
+  private chipPoke(chip: Object3D): void {
+    if (!this.world.renderer.xr.isPresenting) return;
+    for (const hand of HANDS) {
+      const over = this.tipOverChip(chip, hand, 0.005);
+      const z = this.chipLocal.z;
+      const before = this.chipTipZ[hand];
+      this.chipTipZ[hand] = over ? z : Infinity;
+      if (over && before > 0 && before < 0.05 && z <= 0.004 && z > -0.04) {
+        if (import.meta.env.DEV) console.log(`[chip] ${hand} fingertip tapped Step inside`);
+        this.chipHit = true;
+      }
+    }
   }
 
   private chipPressed(): void {
@@ -2362,6 +2411,9 @@ export class DioramaSystem extends createSystem({
       chip.lookAt(this.headWorld);
       // Pointed at, it stands out and holds still, so the pinch is sure to land.
       chip.scale.setScalar(this.chip!.hasComponent(Hovered) ? 1.25 : 1 + 0.05 * Math.sin(time * 4));
+      this.chipPoke(chip);
+    } else {
+      this.chipTipZ.left = this.chipTipZ.right = Infinity;
     }
 
     this.updateFlowDots(time);

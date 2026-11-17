@@ -1,5 +1,5 @@
 import { resolveRef } from '../layout.js';
-import type { GraphData } from '../maps/types.js';
+import type { GraphData, HealthIssue } from '../maps/types.js';
 
 /**
  * What each room's worker knows, and how it talks. Pure (no DOM, no Three.js),
@@ -384,9 +384,28 @@ export function validateActions(
   return actions.filter((a, i) => (leavesRoom(a) ? i === leave : true));
 }
 
-/** The visitor asked how to fix, improve or solve something. */
+/**
+ * The visitor plainly asked for a fix: "how would I fix the warning?", "fix
+ * this", "what's the fix?", "log a fix". Ordinary questions that only use the
+ * words ("what does Payments deal with?", "does this resolve the address?")
+ * are not, so they never put a note on the list.
+ */
 export const asksForFix = (question: string): boolean =>
-  /\b(fix|fixed|fixing|solve|repair|improve|patch|resolve|deal with|get rid of|clean (it |this |that )?up|make (it|this|that) better)\b/i.test(question);
+  /\bhow (do|would|can|should|could|might) (i|we|you) (go about )?(fix|solve|repair)(ing)?\b|\bhow to (fix|solve|repair)\b|\b(fix|solve|repair) (this|that|it|them)\b|\bfix the (warning|bug|problem|issue|error)s?\b|\bwhat(?:'|’)?s the fix\b|\bwhat is the fix\b|\b(log|add|note) (a|the) fix\b/i.test(
+    question,
+  );
+
+/** The health warning on one of this room's files, if it has one. */
+export function roomWarning(graph: GraphData, nodeId: string): HealthIssue | undefined {
+  return (graph.health?.issues ?? []).find((issue) => (issue.locations ?? []).some((loc) => resolveRef(graph, loc.file) === nodeId));
+}
+
+/** A fix note made from the room's warning alone, for when the model cannot be reached. */
+export function warningFixNote(issue: HealthIssue): string {
+  const loc = issue.locations?.[0];
+  const where = loc ? ` (${loc.file}${loc.line ? `:${loc.line}` : ''})` : '';
+  return `Fix: ${issue.title}${where}. Suggested from the map; check it against the code.`;
+}
 
 /** Sentences that are about the note or the map, not the fix itself. */
 const ABOUT_THE_NOTE = /suggestion from the map|can'?t see the code|cannot see the code|notes? list|coding agent|put (it|that) on|added (it|that)/i;

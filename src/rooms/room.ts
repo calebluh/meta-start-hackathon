@@ -280,6 +280,8 @@ export class RoomSystem extends createSystem({
   private fadeTarget = 0;
   /** True while a room's props are loading behind the fade. */
   private preparing = false;
+  /** Notes room: the latest idea said while the last one was still being thought over. */
+  private nextNote: string | null = null;
   /** The building whose props were last fetched ahead of stepping inside. */
   private prefetched: string | null = null;
 
@@ -789,6 +791,8 @@ export class RoomSystem extends createSystem({
       },
       onPartial: (text) => {
         const w = this.talking;
+        // In the notes room the mic stays open while an idea is thought over: show the next one on the desk.
+        if (w && this.waiting && this.builtNode === NOTES_ROOM && !this.isEcho(text)) this.notesDesk.live(text);
         if (!w || this.waiting || this.isEcho(text)) return;
         // The visitor is cutting in: stop talking and listen.
         if (w.mood === 'talking') {
@@ -954,7 +958,14 @@ export class RoomSystem extends createSystem({
   private async takeNote(said: string): Promise<void> {
     const w = this.talking;
     const desk = this.notesDesk;
-    if (!w || !this.theme || this.waiting) return;
+    if (!w || !this.theme) return;
+    if (this.waiting) {
+      // Still thinking the last one over: keep this one (the latest wins) and take it next.
+      this.nextNote = said;
+      desk.live(`Next: ${said}`);
+      if (import.meta.env.DEV) console.log(`[notes] held while thinking: ${said}`);
+      return;
+    }
     desk.live('');
     if (said.trim().split(/\s+/).length <= 10 && asksToLeave(said)) {
       this.endConversation();
@@ -999,7 +1010,7 @@ export class RoomSystem extends createSystem({
       // Nobody to talk it over with (no server, no key, too slow): the idea is still kept.
       desk.add(said, 'exact');
       this.noteWritten(w, said);
-      void this.say(w, 'I could not think that one over just now, so I wrote it down exactly as you said it.', this.titleFor(w, ' (offline)'));
+      void this.say(w, 'I could not think that one over just now, so I wrote it down exactly as you said it.', this.titleFor(w, ' (offline)')).then(() => this.takeNextNote());
       return;
     }
     // A reply with no note line at all keeps the visitor's own words.
@@ -1011,7 +1022,15 @@ export class RoomSystem extends createSystem({
     }
     this.history.push({ role: 'user', content: said }, { role: 'assistant', content: reply.say });
     this.history = this.history.slice(-6);
-    void this.say(w, reply.say || 'Noted.', this.titleFor(w));
+    // The next idea, if one was said meanwhile, once this reply has been heard.
+    void this.say(w, reply.say || 'Noted.', this.titleFor(w)).then(() => this.takeNextNote());
+  }
+
+  /** An idea said while the last was being thought over: taken now, so nothing said is lost. */
+  private takeNextNote(): void {
+    const next = this.nextNote;
+    this.nextNote = null;
+    if (next && this.builtNode === NOTES_ROOM && this.talking) void this.takeNote(next);
   }
 
   /** A note went down: a small sound and a nod, and in dictation the words in the bubble. */
@@ -1494,6 +1513,7 @@ export class RoomSystem extends createSystem({
     const w = this.talking;
     this.talking = null;
     this.waiting = false;
+    this.nextNote = null;
     this.conversation += 1;
     if (!w) return;
     this.hush(w);
@@ -1788,7 +1808,8 @@ export class RoomSystem extends createSystem({
 
     // The mic stays open while the worker talks, so the visitor can cut in
     // (see isEcho); it is only closed while the answer is being worked out.
-    if (this.talking && this.mic) this.mic.muted = this.waiting;
+    // In the notes room it stays open: an idea said meanwhile is kept for next (see takeNote).
+    if (this.talking && this.mic) this.mic.muted = this.waiting && this.builtNode !== NOTES_ROOM;
 
     const packet = this.packet;
     if (packet?.flying) {
@@ -1854,12 +1875,26 @@ export class RoomSystem extends createSystem({
       if (this.builtNode) this.teardown();
       if (desired) {
         this.preparing = true;
-        void loadProps(propsForTheme(pickTheme(app.graph, desired))).then(() => {
-          this.preparing = false;
-          const now = this.desiredNode();
-          if (now) this.build(now);
-          this.fadeTarget = 0;
-        });
+        // Whatever goes wrong, the view fades back in: a room that fails to
+        // build sends the visitor back to the city rather than leaving them in the dark.
+        void loadProps(propsForTheme(pickTheme(app.graph, desired)))
+          .then(() => {
+            const now = this.desiredNode();
+            if (now) this.build(now);
+          })
+          .catch((error: unknown) => {
+            console.error('[room] could not build the room, back to the city:', error);
+            try {
+              this.teardown();
+            } catch {
+              // half built: nothing more to undo
+            }
+            leaveRoom();
+          })
+          .finally(() => {
+            this.preparing = false;
+            this.fadeTarget = 0;
+          });
       } else this.fadeTarget = 0;
     }
     const step = delta / FADE_SECONDS;

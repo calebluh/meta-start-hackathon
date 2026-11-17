@@ -1,4 +1,14 @@
-import { offlineAnswer, plainRequest, suggestedQuestions, type AgentAction, type ChatTurn, type Persona } from './prompt.js';
+import {
+  asksForFix,
+  offlineAnswer,
+  plainRequest,
+  roomWarning,
+  suggestedQuestions,
+  warningFixNote,
+  type AgentAction,
+  type ChatTurn,
+  type Persona,
+} from './prompt.js';
 import type { GraphData } from '../maps/types.js';
 
 /**
@@ -48,6 +58,12 @@ export async function ask(
         answer = `Watch closely. Here is ${graph.flows.find((f) => f.id === act.flowId)?.title ?? 'the flow'}, from start to finish.`;
       }
       return { answer, followups: [], actions: [act], offline: true };
+    }
+    // Asked for a fix with no model: the room's warning still goes on the notes list.
+    const warning = asksForFix(question) ? roomWarning(graph, nodeId) : undefined;
+    if (warning) {
+      const answer = `I can't think it through right now, but here is what the map flags: ${warning.title}. I've put it on your notes list as a fix to check against the code.`;
+      return { answer, followups: others, actions: [{ type: 'add_note', text: warningFixNote(warning) }], offline: true };
     }
     return { answer: offlineAnswer(graph, nodeId, question, persona), followups: others, actions: [], offline: true };
   }

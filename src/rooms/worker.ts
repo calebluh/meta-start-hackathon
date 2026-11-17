@@ -53,6 +53,7 @@ export class Bubble {
     }
     if (line) lines.push(line);
     const shown = lines.slice(0, this.maxLines);
+    if (import.meta.env.DEV && lines.length > this.maxLines) console.warn(`[bubble] ${lines.length} lines, only ${this.maxLines} shown: ${text.slice(0, 60)}`);
     const top = title ? 70 : 32;
     const h = top + shown.length * 44 + 30;
     const resized = this.canvas.height !== h;
