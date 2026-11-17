@@ -60,7 +60,7 @@ const RESTORE_SECONDS = 4;
 /** Last visit's spot is used only within this distance of where the visitor now sits. */
 const RESTORE_MAX_DISTANCE = 1.8;
 /** How long "Back where you left it" shows. */
-const CUE_SECONDS = 5;
+const CUE_SECONDS = 6;
 /** A real table must be at least this big, this high off the floor, and this near, to take the city. */
 const TABLE_MIN_WIDTH = 0.5;
 const TABLE_MIN_DEPTH = 0.4;
@@ -189,7 +189,8 @@ export class WorkspaceSystem extends createSystem({}) {
   private anchorScale = new Vector3();
   /** "Back where you left it", shown for a moment when the city returns to its spot. */
   private cue: Mesh | undefined;
-  private cueTime = 0;
+  /** When the cue goes (performance.now(), ms): a wall clock, as the first frames of a session can be long. */
+  private cueUntil = 0;
   private cuePending = false;
 
   init(): void {
@@ -633,8 +634,7 @@ export class WorkspaceSystem extends createSystem({}) {
       this.showCue();
     }
     if (this.cue?.visible) {
-      this.cueTime -= delta;
-      if (this.cueTime <= 0 || app.mode !== 'table' || app.menu) this.cue.visible = false;
+      if (performance.now() > this.cueUntil || app.mode !== 'table' || app.menu) this.cue.visible = false;
     }
     const frame = this.world.xrFrame;
     const space = this.world.xrReferenceSpace;
@@ -711,7 +711,7 @@ export class WorkspaceSystem extends createSystem({}) {
       this.workspace.add(this.cue);
     }
     this.cue.visible = true;
-    this.cueTime = CUE_SECONDS;
+    this.cueUntil = performance.now() + CUE_SECONDS * 1000;
   }
 
   /** Development: say what the headset knows of the room when no table was found. */

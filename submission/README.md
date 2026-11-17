@@ -66,7 +66,7 @@ emulator. This is the most important step left.
      reality, drag the city by its grab bar to another spot on the desk.
      Leave (Quest menu, Exit), pinch Mixed reality again: the city should
      come back to that exact spot, with "Back where you left it" over it for
-     five seconds. If mixed reality will not start, try the link with
+     six seconds. If mixed reality will not start, try the link with
      `?noanchor` on the end and tell Claude. If it misbehaves, roll back
      (see the end of this file).
    - **The roof.** Pinch a building: the roof lifts, small robots stand
