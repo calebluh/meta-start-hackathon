@@ -134,6 +134,12 @@ const CHARS_PER_SECOND = 16;
 const ACK_GRACE_MS = 1500;
 /** The shortest time a flow step's note stays up, even if the voice was cut off. */
 const MIN_NOTE_SECONDS = 2.5;
+/**
+ * The longest a flow step may sit in a room without moving on: reading the
+ * note (up to 16 s), the request held out (10 s) and carried to a pipe
+ * (20 s) all fit inside it, with time to spare.
+ */
+const STEP_STALL_SECONDS = import.meta.env.DEV ? 90 : 60;
 
 interface Station {
   point: Vector3;
@@ -233,6 +239,9 @@ export class RoomSystem extends createSystem({
   private packet: Packet | null = null;
   private handledStep = -1;
   private offRoomClock = 0;
+  /** The flow step this room last saw, and how long it has gone without moving on (see update). */
+  private stallStep = -1;
+  private stallClock = 0;
 
   // Conversation with one worker.
   private askPanel: UIKitMLAsset | undefined;
@@ -1498,6 +1507,7 @@ export class RoomSystem extends createSystem({
   /** If the current flow step happens in this room, script its handling. */
   private maybeHandleStep(): void {
     const step = currentStep();
+    if (import.meta.env.DEV && step) console.log(`[step] ${app.stepIndex} in ${step.nodeId}; built ${this.builtNode}; handled ${this.handledStep}; lead talking ${this.workers[0] === this.talking}`);
     if (!step || !this.builtNode || step.nodeId !== this.builtNode || this.handledStep === app.stepIndex) return;
     this.handledStep = app.stepIndex;
     const index = app.stepIndex;
@@ -1813,6 +1823,27 @@ export class RoomSystem extends createSystem({
         nextStep();
       }
     } else this.offRoomClock = 0;
+
+    // A flow step in this room must never sit still (one stalled for minutes
+    // in a test, cause not reproduced). A step this room missed (it arrived
+    // mid-fade, say) is taken up now; one that makes no progress for
+    // STEP_STALL_SECONDS moves on, as the lead would have done itself.
+    if (step && step.nodeId === this.builtNode && this.fadeLevel === 0) {
+      if (this.handledStep !== app.stepIndex) this.maybeHandleStep();
+      const carrying = this.offer?.carrying === true || this.packet?.flying === true;
+      if (app.stepIndex === this.stallStep && !carrying && !this.talking) {
+        this.stallClock += delta;
+        if (this.stallClock > STEP_STALL_SECONDS) {
+          if (import.meta.env.DEV) console.warn(`[step] ${app.stepIndex} made no progress for ${STEP_STALL_SECONDS} s: moving on`);
+          this.stallClock = 0;
+          this.endOffer();
+          nextStep();
+        }
+      } else {
+        this.stallStep = app.stepIndex;
+        this.stallClock = 0;
+      }
+    } else this.stallClock = 0;
   }
 
   private updateFade(delta: number): void {

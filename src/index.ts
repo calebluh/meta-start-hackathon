@@ -98,6 +98,8 @@ World.create(
       if (e.key === 'h') select('shared');
       if (e.key === 'a') select('admin');
       if (e.key === 'w') world.getSystem(RoomSystem)?.debugTalk();
+      // `: talk to the lead robot (the one that carries a flow's request), as pinching it would.
+      if (e.key === '`') world.getSystem(RoomSystem)?.debugTalk(0);
       if (e.key === 'q') world.getSystem(RoomSystem)?.debugAsk(0);
       if (e.key === 'e') world.getSystem(RoomSystem)?.debugAsk(2);
       if (e.key === 'g') world.getSystem(RoomSystem)?.debugAskText('Can you take me to billing day?');
