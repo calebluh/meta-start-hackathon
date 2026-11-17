@@ -139,9 +139,13 @@ desk.
   it. It also remembers that spot between visits: the headset keeps a
   spatial anchor where the city stands, so tomorrow, in the same room, the
   city goes straight back to that place on your desk ("Back where you left
-  it"), even if you sit down a little to one side.
+  it").
   `[FILL IN after trying it on a Quest 3 or 3S: keep the table sentences
-  only if the city landed on your real desk. So far this was verified in the
+  only if the city landed on your real desk, and the anchor sentences ("It
+  also remembers...", the "Remembering the spot" bullet, the end of
+  "Passthrough with a purpose", testing step 11 and "WebXR Anchors" under
+  Built with) only if the city came back to its spot after leaving and
+  re-entering. The anchor was verified only in the emulator (17 Nov). So far this was verified in the
   IWSDK emulator's furnished room, where the emulated headset's desk, side
   table, couch and walls are reported the same way.]`
 - **Robots that help you change the code.** Ask a robot how to fix

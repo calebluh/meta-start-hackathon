@@ -144,3 +144,16 @@ git push
 Or, without git: in Vercel, open the project, Deployments, find the
 deployment of commit `c17d434`, and choose **Promote to Production** (instant
 rollback).
+
+If you roll back, also take the anchor out of `devpost.md` before pasting it:
+testing step 11, the sentences from "It also remembers that spot" to "Back
+where you left it", the "Remembering the spot" bullet, the last clause of
+"Passthrough with a purpose" ("and it is anchored there..."), and "WebXR
+Anchors (persistent)" under Built with. In `video-script.md`, put back the
+2:32 row: Menu, the "This app" card, then its city. Voice-over: "It maps any
+repository. This one is the diorama's own source code."
+
+If mixed reality starts but the city does not come back to its spot, try
+once more after a few seconds in the room (the headset can be slow to find an
+anchor) before rolling back. The anchor is optional: the rest of the app
+works the same either way.
