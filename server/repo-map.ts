@@ -2,7 +2,7 @@ import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { MAPS } from '../src/maps/index.js';
 import { allowAll, createLimiter } from './rate-limit.js';
-import type { Flow, GraphData, GraphFile, GraphLink, GraphNode, NodeKind } from '../src/maps/types.js';
+import type { Flow, GraphData, GraphFile, GraphLink, GraphNode, HealthIssue, NodeKind } from '../src/maps/types.js';
 
 /**
  * Builds a city from any public GitHub repository, on the server.
@@ -213,7 +213,20 @@ interface FileInfo {
   uses: Set<string>;
   /** Outside packages it imports (bare names). */
   packages: Set<string>;
+  /** Top-level function and class names with their line, e.g. "create_app L19" (identifiers only). */
+  exports: string[];
+  /** Lines with a TODO, FIXME or HACK note. */
+  todos: number[];
 }
+
+/** Top-level definitions, by language: the name is the first capture group. */
+const DEFS: Record<string, RegExp> = {
+  js: /^(?:export\s+(?:default\s+)?)?(?:async\s+)?(?:function\*?|class)\s+([A-Za-z_$][\w$]{0,60})|^export\s+const\s+([A-Za-z_$][\w$]{0,60})\s*=/,
+  py: /^(?:async\s+)?(?:def|class)\s+([A-Za-z_]\w{0,60})/,
+  go: /^func\s+(?:\([^)]*\)\s*)?([A-Za-z_]\w{0,60})|^type\s+([A-Za-z_]\w{0,60})\s+struct/,
+  rs: /^pub\s+(?:async\s+)?(?:fn|struct|enum|trait)\s+([A-Za-z_]\w{0,60})/,
+};
+const DEF_FOR: Record<string, string> = { ts: 'js', tsx: 'js', js: 'js', jsx: 'js', mjs: 'js', cjs: 'js', py: 'py', go: 'go', rs: 'rs' };
 
 const LANG: Record<string, string> = {
   ts: 'TypeScript', tsx: 'TypeScript', js: 'JavaScript', jsx: 'JavaScript', mjs: 'JavaScript', cjs: 'JavaScript', vue: 'Vue', svelte: 'Svelte', py: 'Python',
@@ -270,7 +283,20 @@ function readCode(raw: RawFile[]): FileInfo[] {
         else packages.add(mod.split('.')[0]);
       }
     }
-    return { path, loc, lang: LANG[ext] ?? ext.toUpperCase(), uses, packages };
+    const exports: string[] = [];
+    const todos: number[] = [];
+    const def = DEFS[DEF_FOR[ext] ?? ''];
+    const lines = text.split('\n');
+    for (let i = 0; i < lines.length; i += 1) {
+      const line = lines[i];
+      if (def && exports.length < 10) {
+        const m = def.exec(line);
+        const name = m?.[1] ?? m?.[2];
+        if (name) exports.push(`${name} L${i + 1}`);
+      }
+      if (/\b(TODO|FIXME|HACK)\b/.test(line)) todos.push(i + 1);
+    }
+    return { path, loc, lang: LANG[ext] ?? ext.toUpperCase(), uses, packages, exports, todos };
   });
 }
 
@@ -516,7 +542,7 @@ function plainMap(owner: string, name: string, commit: string, infos: FileInfo[]
   for (const p of parts) {
     const share = Math.max(2, Math.round((MAX_LISTED_FILES * p.loc) / Math.max(totalLoc, 1)));
     for (const f of [...p.files].sort((a, b) => b.loc - a.loc).slice(0, share)) {
-      files.push({ p: f.path, n: p.id, name: humanFile(f.path), d: `${f.lang}, ${f.loc.toLocaleString('en-US')} lines.`, loc: f.loc });
+      files.push({ p: f.path, n: p.id, name: humanFile(f.path), d: `${f.lang}, ${f.loc.toLocaleString('en-US')} lines.`, loc: f.loc, ...(f.exports.length ? { exports: f.exports } : {}) });
     }
   }
   files.sort((a, b) => b.loc - a.loc);
@@ -556,8 +582,46 @@ function plainMap(owner: string, name: string, commit: string, infos: FileInfo[]
     files,
     links,
     flows: plainFlows(parts, links),
+    health: { issues: healthOf(infos, new Set(files.map((f) => f.p))) },
   };
   return { graph, parts, readme };
+}
+
+/** Files at least this long get a warning. */
+const BIG_FILE = 900;
+/** A file with at least this many TODO / FIXME / HACK notes. */
+const TODO_CLUSTER = 5;
+
+/**
+ * Warnings the code itself shows, written by us (no text quoted from the
+ * repo): very long files, and files with a cluster of TODO notes. Only files
+ * on the map, at most four, so the beacons point at buildings that exist.
+ */
+function healthOf(infos: FileInfo[], listed: Set<string>): HealthIssue[] {
+  const issues: HealthIssue[] = [];
+  // Long test files and docs are normal: only the real code is warned about.
+  const real = (i: FileInfo) => !auxiliary(i.path.includes('/') ? i.path.slice(0, i.path.lastIndexOf('/')) : '') && !/(^|\/)test_|\.(test|spec)\.\w+$/.test(i.path);
+  for (const f of [...infos].filter((i) => listed.has(i.path) && real(i) && i.loc >= BIG_FILE).sort((a, b) => b.loc - a.loc).slice(0, 2)) {
+    issues.push({
+      id: `big-${issues.length}`,
+      kind: 'size',
+      severity: f.loc >= BIG_FILE * 2 ? 'high' : 'medium',
+      title: `${humanFile(f.path)} is ${f.loc.toLocaleString('en-US')} lines long`,
+      detail: `${f.path} holds ${f.loc.toLocaleString('en-US')} lines in one file. Files this long are hard to read and risky to change; splitting it by job would help.`,
+      locations: [{ file: f.path, line: 1 }],
+    });
+  }
+  for (const f of [...infos].filter((i) => listed.has(i.path) && i.todos.length >= TODO_CLUSTER).sort((a, b) => b.todos.length - a.todos.length).slice(0, 2)) {
+    issues.push({
+      id: `todo-${issues.length}`,
+      kind: 'todo',
+      severity: 'low',
+      title: `${f.todos.length} open TODO notes in ${humanFile(f.path)}`,
+      detail: `${f.path} has ${f.todos.length} TODO, FIXME or HACK notes, the first at line ${f.todos[0]}: work its authors meant to come back to.`,
+      locations: [{ file: f.path, line: f.todos[0] }],
+    });
+  }
+  return issues.slice(0, 4);
 }
 
 function topLang(files: FileInfo[]): string {
