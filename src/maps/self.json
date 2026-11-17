@@ -6,7 +6,7 @@
  },
  "source": {
   "repo": "https://github.com/calebluh/meta-start-hackathon",
-  "commit": "80947659a8e20b500aa8851591ab45cdc487ff97"
+  "commit": "04201dd2ff5e091f65bb77e474088228640fc58e"
  },
  "nodes": [
   {
@@ -16,8 +16,8 @@
    "kind": "feature",
    "summary": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",
    "stats": {
-    "files": 7,
-    "loc": 1276
+    "files": 11,
+    "loc": 3487
    }
   },
   {
@@ -27,8 +27,8 @@
    "kind": "ui",
    "summary": "The desk itself and what sits around it: the card that describes whatever you picked, the row of buttons for playing journeys and stepping inside, and the glowing floor and distant skyline that set the scene.",
    "stats": {
-    "files": 8,
-    "loc": 555
+    "files": 11,
+    "loc": 1361
    }
   },
   {
@@ -39,7 +39,7 @@
    "summary": "Where a visit begins: it starts the app, shows the start menu, and walks first-time visitors through a short hands-on tour. It also quiets everything when the headset comes off.",
    "stats": {
     "files": 10,
-    "loc": 1028
+    "loc": 1150
    }
   },
   {
@@ -61,7 +61,7 @@
    "summary": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
    "stats": {
     "files": 3,
-    "loc": 1433
+    "loc": 2271
    }
   },
   {
@@ -72,7 +72,7 @@
    "summary": "Decides what kind of workplace each room becomes, such as a warehouse, a post office or a lab, and keeps the catalog of furniture and photo-scanned props that fill it.",
    "stats": {
     "files": 3,
-    "loc": 882
+    "loc": 894
    }
   },
   {
@@ -83,7 +83,7 @@
    "summary": "The robot crew shared by every room: how they walk, wave and move their mouths in time with their voice, plus their speech bubbles and the small things they say while thinking.",
    "stats": {
     "files": 3,
-    "loc": 388
+    "loc": 401
    }
   },
   {
@@ -104,8 +104,19 @@
    "kind": "service",
    "summary": "Gets a robot's answer to your question. It writes a briefing from the map so the AI only talks about this code, sends the question to Meta's AI, and tidies the reply. If the AI cannot be reached, the robot answers from the map's own descriptions.",
    "stats": {
+    "files": 5,
+    "loc": 1226
+   }
+  },
+  {
+   "id": "talk.notes",
+   "parent": "talk",
+   "label": "Notes room",
+   "kind": "feature",
+   "summary": "A room for thinking out loud: say an idea and a note taker writes it down, word for word or after talking it over, and the robots add the fixes they suggest. The list is saved into the project for a coding agent to work through.",
+   "stats": {
     "files": 4,
-    "loc": 533
+    "loc": 545
    }
   },
   {
@@ -127,7 +138,7 @@
    "summary": "Everything you hear: each robot's speaking voice, button clicks, whooshing packets and each room's background hum. The audio comes from wherever its maker is standing, so sounds have a place in the room.",
    "stats": {
     "files": 3,
-    "loc": 483
+    "loc": 523
    }
   },
   {
@@ -138,7 +149,7 @@
    "summary": "The one door between the headset and the outside AI services. It passes on questions, voice and speech requests, keeps the secret keys out of the headset, and limits how often any one visitor may call.",
    "stats": {
     "files": 6,
-    "loc": 262
+    "loc": 327
    }
   },
   {
@@ -181,8 +192,8 @@
    "kind": "script",
    "summary": "Two chores for the people who look after the project: one prepares the public edition that the Claude Code plugin installs, the other downloads the photo-scanned furniture and writes its credits.",
    "stats": {
-    "files": 2,
-    "loc": 200
+    "files": 3,
+    "loc": 283
    }
   },
   {
@@ -264,7 +275,7 @@
    "n": "table.welcome",
    "name": "Web page shell",
    "d": "The page the browser opens first. It shows the title straight away and holds the 3D view once the app has loaded.",
-   "loc": 196
+   "loc": 216
   },
   {
    "p": "plugins/codebase-diorama/skills/map/scripts/check-map.mjs",
@@ -278,14 +289,14 @@
    "n": "talk.answers",
    "name": "Question card",
    "d": "The card that appears when you talk to a robot: four suggested questions, a microphone button and Done.",
-   "loc": 81
+   "loc": 105
   },
   {
    "p": "public/ui/controls.uikitml",
    "n": "table.desk",
    "name": "Button row",
    "d": "The row of buttons at the desk: play a journey, next step, change journey, change map, step inside and recenter.",
-   "loc": 54
+   "loc": 66
   },
   {
    "p": "public/ui/inspector.uikitml",
@@ -302,6 +313,13 @@
    "loc": 150
   },
   {
+   "p": "public/ui/notes.uikitml",
+   "n": "talk.notes",
+   "name": "Notes card",
+   "d": "The layout of the notes panel: its heading, the words being heard, the three newest notes and the buttons.",
+   "loc": 110
+  },
+  {
    "p": "scripts/build-map.mjs",
    "n": "maps.builder",
    "name": "Map maker",
@@ -313,7 +331,7 @@
    "n": "maps.upkeep",
    "name": "Public edition maker",
    "d": "Copies the app into the public edition that people install, leaving out everything made only for the competition and checking that none of it slips through.",
-   "loc": 135
+   "loc": 149
   },
   {
    "p": "scripts/fetch-props.mjs",
@@ -323,11 +341,18 @@
    "loc": 65
   },
   {
+   "p": "scripts/sync-skills.mjs",
+   "n": "maps.upkeep",
+   "name": "Skill copier",
+   "d": "Keeps the second copy of the mapping skill, for coding agents other than Claude, the same as the first.",
+   "loc": 69
+  },
+  {
    "p": "server/agent-core.ts",
    "n": "talk.answers",
    "name": "Answer service",
    "d": "Checks that a question is short and about a real room, writes the robot's briefing from the map, asks Meta's AI, and returns the answer with any actions such as pointing to another room.",
-   "loc": 207
+   "loc": 374
   },
   {
    "p": "server/asr-relay.ts",
@@ -362,7 +387,7 @@
    "n": "talk.answers",
    "name": "Question sender",
    "d": "Sends your question to the server and waits up to 15 seconds; if no answer comes, it answers from the map's own descriptions instead.",
-   "loc": 42
+   "loc": 83
   },
   {
    "p": "src/agent/live-mic.ts",
@@ -376,7 +401,14 @@
    "n": "talk.answers",
    "name": "Robot briefing",
    "d": "Writes what a robot knows about its room, lists the actions it may take, suggests questions you could ask, and tidies up the AI's reply.",
-   "loc": 203
+   "loc": 429
+  },
+  {
+   "p": "src/agent/quiz.ts",
+   "n": "talk.answers",
+   "name": "Quiz master",
+   "d": "Makes the quiz a robot gives you on its room: questions and answers drawn from the map, and the rules for marking an answer you say in your own words.",
+   "loc": 235
   },
   {
    "p": "src/agent/recorder.ts",
@@ -390,28 +422,35 @@
    "n": "talk.voices",
    "name": "Robot voices",
    "d": "Speaks a robot's line in its own voice from where it stands, starting with the first sentence so speech begins quickly, and falls back to the browser's voice when needed.",
-   "loc": 202
+   "loc": 239
   },
   {
    "p": "src/assets.ts",
    "n": "table.welcome",
    "name": "Loading list",
    "d": "Lists what the app loads when it starts: the floor, the desk, the four cards and menus, and the robot.",
-   "loc": 19
+   "loc": 20
   },
   {
    "p": "src/atmosphere.ts",
    "n": "table.desk",
    "name": "Floor and skyline",
    "d": "Sets the scene around the desk: a rippling floor, a distant skyline shaped by the biggest files, drifting dust, and cards that pop open.",
-   "loc": 225
+   "loc": 226
   },
   {
    "p": "src/audio/sound.ts",
    "n": "talk.voices",
    "name": "Sound effects",
    "d": "Makes every sound from scratch with no recordings: clicks, whooshes, an arrival chord and a background hum for each kind of room, each coming from its own place in the scene.",
-   "loc": 228
+   "loc": 231
+  },
+  {
+   "p": "src/city-style.ts",
+   "n": "table.city",
+   "name": "City look",
+   "d": "The look of the little city: dark glass buildings with lit windows, neon edges, pools of light and a circuit-board tray.",
+   "loc": 349
   },
   {
    "p": "src/colors.ts",
@@ -428,18 +467,25 @@
    "loc": 3
   },
   {
+   "p": "src/desktop-controls.ts",
+   "n": "table.desk",
+   "name": "Desktop controls",
+   "d": "Lets you walk and look around with the keyboard and mouse in the flat browser preview, without a headset.",
+   "loc": 116
+  },
+  {
    "p": "src/diorama-components.ts",
    "n": "table.city",
    "name": "Building and robot tags",
    "d": "Defines the tags that mark an object as a building standing for one part of the code, or as a robot you can talk to.",
-   "loc": 10
+   "loc": 22
   },
   {
    "p": "src/diorama.ts",
    "n": "table.city",
    "name": "City on the desk",
    "d": "Draws the miniature city, lets you pick, grab and resize it, plays journeys as lights between buildings, fills in the cards, and grows the city around you when you step inside.",
-   "loc": 855
+   "loc": 2241
   },
   {
    "p": "src/edition.ts",
@@ -453,28 +499,28 @@
    "n": "table.welcome",
    "name": "First-visit tour",
    "d": "Leads a new visitor through the basics with a floating card and an arrow, moving on only when they actually do each step.",
-   "loc": 314
+   "loc": 343
   },
   {
    "p": "src/guide.ts",
    "n": "table.welcome",
    "name": "Tour notes",
    "d": "Keeps note of whether you have talked to a robot and heard an answer yet, so the tour knows when to move on.",
-   "loc": 19
+   "loc": 25
   },
   {
    "p": "src/index.ts",
    "n": "table.welcome",
    "name": "App start-up",
    "d": "Starts everything: it switches on each part of the app, opens the map named in the web address, and pauses sound and speech when the headset comes off.",
-   "loc": 113
+   "loc": 157
   },
   {
    "p": "src/landing.ts",
    "n": "table.welcome",
    "name": "Front page",
    "d": "The flat web page you see before putting the headset to work: a title while things load, then a large Enter VR button and a prompt to allow the microphone.",
-   "loc": 94
+   "loc": 116
   },
   {
    "p": "src/layout.ts",
@@ -512,11 +558,46 @@
    "loc": 71
   },
   {
+   "p": "src/network.ts",
+   "n": "table.city",
+   "name": "Trip types",
+   "d": "Tells what each step of a journey costs: crossing the network, touching stored data, or the code working on its own.",
+   "loc": 65
+  },
+  {
+   "p": "src/notes/desk.ts",
+   "n": "talk.notes",
+   "name": "Notes panel",
+   "d": "The panel in the notes room: your newest notes, word-for-word or talk-it-over mode, and undo, read back, microphone and done buttons.",
+   "loc": 180
+  },
+  {
+   "p": "src/notes/scribe.ts",
+   "n": "talk.notes",
+   "name": "Note taker",
+   "d": "Everything the note taker knows: its instructions to the AI, how to read a reply into what to say and what to write, the spoken commands like \"scratch that\", and how the list is written out.",
+   "loc": 157
+  },
+  {
+   "p": "src/notes/store.ts",
+   "n": "talk.notes",
+   "name": "Notes keeper",
+   "d": "Keeps your notes on the device and sends them to the project folder, and asks the server to talk an idea over.",
+   "loc": 98
+  },
+  {
    "p": "src/panels.ts",
    "n": "table.desk",
    "name": "Card show and hide",
    "d": "Shows or hides a floating card, and makes sure a hidden card cannot be pressed by accident.",
    "loc": 18
+  },
+  {
+   "p": "src/passthrough.ts",
+   "n": "table.desk",
+   "name": "Mixed reality check",
+   "d": "Says whether the headset is showing your real room around the city.",
+   "loc": 9
   },
   {
    "p": "src/pause.ts",
@@ -526,39 +607,60 @@
    "loc": 32
   },
   {
+   "p": "src/peek.ts",
+   "n": "table.city",
+   "name": "Roof lift",
+   "d": "Lifts the roof off the building you pick, like a lid, to show a lit miniature of the room and robots inside.",
+   "loc": 241
+  },
+  {
    "p": "src/placement.ts",
    "n": "table.desk",
    "name": "Near or far desk",
    "d": "Decides how far away the desk sits: within reach on a Quest headset, further back on Meta VR Glasses so everything fits their narrower view.",
-   "loc": 16
+   "loc": 42
   },
   {
    "p": "src/rays.ts",
    "n": "table.desk",
    "name": "Pointer pass-through",
    "d": "Stops decorations such as thin outlines from getting in the way of your pointing hand.",
-   "loc": 14
+   "loc": 24
+  },
+  {
+   "p": "src/reach.ts",
+   "n": "table.desk",
+   "name": "Within reach",
+   "d": "Brings the side panels and the start menu within arm's reach when you use your hands, so their buttons can be tapped with a fingertip.",
+   "loc": 65
+  },
+  {
+   "p": "src/rooftops.ts",
+   "n": "table.city",
+   "name": "Rooftop details",
+   "d": "Puts a telling feature on every roof (an antenna, chimneys, a dome, a billboard) so the kind of each part reads at a glance.",
+   "loc": 136
   },
   {
    "p": "src/rooms/character.ts",
    "n": "rooms.robots",
    "name": "Robot body",
    "d": "Brings the robot to life: it walks, waves, gives a thumbs up, carries things, and moves its mouth in time with its voice.",
-   "loc": 264
+   "loc": 262
   },
   {
    "p": "src/rooms/dressing.ts",
    "n": "rooms.builder",
    "name": "Room finishing touches",
    "d": "Adds the details every room has: ceiling and lights, floor markings, wall columns, swirling tube mouths and the light trail behind a flying packet.",
-   "loc": 173
+   "loc": 241
   },
   {
    "p": "src/rooms/lines.ts",
    "n": "rooms.robots",
    "name": "Thinking lines",
    "d": "Quick things a robot says straight away, such as \"let me check\", so the wait for the real answer feels like someone thinking.",
-   "loc": 38
+   "loc": 53
   },
   {
    "p": "src/rooms/merge.ts",
@@ -579,21 +681,21 @@
    "n": "rooms.builder",
    "name": "Room director",
    "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question.",
-   "loc": 1145
+   "loc": 1915
   },
   {
    "p": "src/rooms/stations.ts",
    "n": "rooms.themes",
    "name": "Furniture arranger",
    "d": "Builds each work spot and decoration from photo-scanned furniture where a good piece exists, and otherwise leaves it to simple built-in shapes.",
-   "loc": 209
+   "loc": 217
   },
   {
    "p": "src/rooms/themes.ts",
    "n": "rooms.themes",
    "name": "Room themes",
    "d": "Picks a workplace for each room from the part's name and description, such as a warehouse, a post office or a lab, and sets the robots' jobs, work spots and decorations there.",
-   "loc": 593
+   "loc": 597
   },
   {
    "p": "src/rooms/worker.ts",
@@ -614,7 +716,7 @@
    "n": "table.city",
    "name": "Visit tracker",
    "d": "Keeps track of which map is open, what you have picked, which journey is playing and whether you are at the desk or in a room, and tells every other part when that changes.",
-   "loc": 147
+   "loc": 169
   },
   {
    "p": "src/transition.ts",
@@ -628,14 +730,14 @@
    "n": "table.desk",
    "name": "Desk placement",
    "d": "Puts the desk in front of you at a comfortable height when you enter virtual reality, and again when you press Recenter.",
-   "loc": 88
+   "loc": 655
   },
   {
    "p": "vite.config.ts",
    "n": "talk.server",
    "name": "Local server",
    "d": "Runs the app on your own computer and answers the headset's requests for answers, voices and speech, reading the secret keys from a private file that never reaches the headset.",
-   "loc": 137
+   "loc": 202
   }
  ],
  "links": [
@@ -695,7 +797,19 @@
   },
   {
    "a": "f:server/agent-core.ts",
+   "b": "f:src/agent/quiz.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:server/agent-core.ts",
    "b": "f:src/maps/index.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:server/agent-core.ts",
+   "b": "f:src/notes/scribe.ts",
    "k": "import",
    "w": 1
   },
@@ -772,6 +886,18 @@
    "w": 1
   },
   {
+   "a": "f:src/agent/quiz.ts",
+   "b": "f:src/layout.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/agent/quiz.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/agent/voice.ts",
    "b": "f:src/audio/sound.ts",
    "k": "import",
@@ -803,12 +929,42 @@
   },
   {
    "a": "f:src/atmosphere.ts",
+   "b": "f:src/passthrough.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/atmosphere.ts",
    "b": "f:src/state.ts",
    "k": "import",
    "w": 1
   },
   {
    "a": "f:src/audio/sound.ts",
+   "b": "f:src/rooms/themes.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/city-style.ts",
+   "b": "f:src/layout.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/city-style.ts",
+   "b": "f:src/rays.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/city-style.ts",
+   "b": "f:src/rooms/merge.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/city-style.ts",
    "b": "f:src/rooms/themes.ts",
    "k": "import",
    "w": 1
@@ -826,8 +982,20 @@
    "w": 1
   },
   {
+   "a": "f:src/desktop-controls.ts",
+   "b": "f:src/state.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/diorama.ts",
    "b": "f:src/audio/sound.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/city-style.ts",
    "k": "import",
    "w": 1
   },
@@ -845,6 +1013,18 @@
   },
   {
    "a": "f:src/diorama.ts",
+   "b": "f:src/passthrough.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/placement.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
    "b": "f:src/panels.ts",
    "k": "import",
    "w": 1
@@ -857,6 +1037,18 @@
   },
   {
    "a": "f:src/diorama.ts",
+   "b": "f:src/rooftops.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/network.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
    "b": "f:src/rooms/merge.ts",
    "k": "import",
    "w": 1
@@ -864,6 +1056,18 @@
   {
    "a": "f:src/diorama.ts",
    "b": "f:src/diorama-components.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/guide.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/peek.ts",
    "k": "import",
    "w": 1
   },
@@ -894,6 +1098,24 @@
   {
    "a": "f:src/diorama.ts",
    "b": "f:src/rooms/themes.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/reach.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/diorama.ts",
+   "b": "f:src/notes/store.ts",
    "k": "import",
    "w": 1
   },
@@ -953,6 +1175,12 @@
   },
   {
    "a": "f:src/guide-system.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/guide-system.ts",
    "b": "f:src/edition.ts",
    "k": "import",
    "w": 1
@@ -996,6 +1224,12 @@
   {
    "a": "f:src/index.ts",
    "b": "f:src/maps/index.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/index.ts",
+   "b": "f:src/notes/scribe.ts",
    "k": "import",
    "w": 1
   },
@@ -1072,6 +1306,12 @@
    "w": 1
   },
   {
+   "a": "f:src/index.ts",
+   "b": "f:src/desktop-controls.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/landing.ts",
    "b": "f:src/agent/recorder.ts",
    "k": "import",
@@ -1138,10 +1378,130 @@
    "w": 1
   },
   {
+   "a": "f:src/network.ts",
+   "b": "f:src/layout.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/network.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/desk.ts",
+   "b": "f:src/audio/sound.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/desk.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/desk.ts",
+   "b": "f:src/panels.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/desk.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/desk.ts",
+   "b": "f:src/notes/store.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/scribe.ts",
+   "b": "f:src/agent/prompt.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/scribe.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/store.ts",
+   "b": "f:src/agent/prompt.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/store.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/notes/store.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/peek.ts",
+   "b": "f:src/city-style.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/peek.ts",
+   "b": "f:src/rays.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/peek.ts",
+   "b": "f:src/rooms/merge.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooftops.ts",
+   "b": "f:src/colors.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooftops.ts",
+   "b": "f:src/layout.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooftops.ts",
+   "b": "f:src/rays.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooftops.ts",
+   "b": "f:src/rooms/merge.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/rooms/dressing.ts",
    "b": "f:src/rooms/themes.ts",
    "k": "import",
    "w": 2
+  },
+  {
+   "a": "f:src/rooms/lines.ts",
+   "b": "f:src/agent/prompt.ts",
+   "k": "import",
+   "w": 1
   },
   {
    "a": "f:src/rooms/lines.ts",
@@ -1170,6 +1530,30 @@
   {
    "a": "f:src/rooms/room.ts",
    "b": "f:src/agent/prompt.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/notes/desk.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/notes/store.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/agent/quiz.ts",
    "k": "import",
    "w": 1
   },
@@ -1224,6 +1608,12 @@
   {
    "a": "f:src/rooms/room.ts",
    "b": "f:src/rooms/dressing.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/colors.ts",
    "k": "import",
    "w": 1
   },
@@ -1300,6 +1690,12 @@
    "w": 1
   },
   {
+   "a": "f:src/rooms/themes.ts",
+   "b": "f:src/notes/scribe.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/rooms/worker.ts",
    "b": "f:src/rays.ts",
    "k": "import",
@@ -1331,7 +1727,37 @@
   },
   {
    "a": "f:src/workspace.ts",
+   "b": "f:src/guide.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
+   "b": "f:src/passthrough.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
    "b": "f:src/placement.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
+   "b": "f:src/reach.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
+   "b": "f:src/state.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/workspace.ts",
+   "b": "f:src/transition.ts",
    "k": "import",
    "w": 1
   },
@@ -1647,6 +2073,51 @@
    "labels": [
     "the map you chose"
    ]
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:src/notes/store.ts",
+   "k": "call",
+   "w": 1,
+   "labels": [
+    "your idea"
+   ]
+  },
+  {
+   "a": "f:src/notes/store.ts",
+   "b": "f:api/agent.ts",
+   "k": "http",
+   "w": 1,
+   "labels": [
+    "an idea to talk over"
+   ]
+  },
+  {
+   "a": "f:src/notes/store.ts",
+   "b": "f:vite.config.ts",
+   "k": "http",
+   "w": 1,
+   "labels": [
+    "the notes list"
+   ]
+  },
+  {
+   "a": "f:src/rooms/room.ts",
+   "b": "f:public/ui/notes.uikitml",
+   "k": "call",
+   "w": 1,
+   "labels": [
+    "your notes"
+   ]
+  },
+  {
+   "a": "f:vite.config.ts",
+   "b": "n:claude-code",
+   "k": "data",
+   "w": 1,
+   "labels": [
+    "notes to work through"
+   ]
   }
  ],
  "flows": [
@@ -1801,6 +2272,41 @@
      "note": "The city is rebuilt: more code means a bigger plot and a taller building."
     }
    ]
+  },
+  {
+   "id": "take-a-note",
+   "title": "Taking a note",
+   "description": "From an idea said out loud to a line your coding agent can act on.",
+   "steps": [
+    {
+     "ref": "f:src/agent/live-mic.ts",
+     "note": "You say your idea out loud in the notes room."
+    },
+    {
+     "ref": "f:src/rooms/room.ts",
+     "note": "The note taker hears it and decides whether to talk it over."
+    },
+    {
+     "ref": "f:src/notes/store.ts",
+     "note": "The idea goes to the server to be talked over."
+    },
+    {
+     "ref": "f:server/agent-core.ts",
+     "note": "The AI answers, and writes the idea down as one tight note."
+    },
+    {
+     "ref": "f:src/notes/desk.ts",
+     "note": "The note appears on the panel and on the wall."
+    },
+    {
+     "ref": "f:vite.config.ts",
+     "note": "The list is saved into the project as a checklist."
+    },
+    {
+     "ref": "n:claude-code",
+     "note": "Your coding agent works through the list and updates the map."
+    }
+   ]
   }
  ],
  "health": {
@@ -1814,7 +2320,7 @@
     "locations": [
      {
       "file": "server/agent-core.ts",
-      "line": 73
+      "line": 99
      }
     ]
    },
@@ -1853,7 +2359,7 @@
     "locations": [
      {
       "file": "src/index.ts",
-      "line": 68
+      "line": 92
      }
     ]
    }

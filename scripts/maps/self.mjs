@@ -7,7 +7,7 @@ export default {
   summary: 'A virtual reality app that shows a software project as a miniature city on a desk, with rooms you can step into and robots you can ask.',
   source: {
     repo: 'https://github.com/calebluh/meta-start-hackathon',
-    commit: '80947659a8e20b500aa8851591ab45cdc487ff97',
+    commit: '04201dd2ff5e091f65bb77e474088228640fc58e',
   },
 
   // The build script has no exclude list, so these globs are kept narrow on
@@ -35,6 +35,14 @@ export default {
     'src/workspace.ts',
     'src/placement.ts',
     'src/agent/*.ts',
+    'src/reach.ts',
+    'src/peek.ts',
+    'src/rooftops.ts',
+    'src/city-style.ts',
+    'src/network.ts',
+    'src/desktop-controls.ts',
+    'src/passthrough.ts',
+    'src/notes/*.ts',
     'src/audio/*.ts',
     'src/rooms/*.ts',
     'src/scene-assets/*.ts',
@@ -104,6 +112,12 @@ export default {
     { from: 'f:src/diorama.ts', to: 'f:public/ui/inspector.uikitml', kind: 'call', label: "a building's facts" },
     { from: 'f:src/workspace.ts', to: 'f:public/ui/controls.uikitml', kind: 'call', label: 'button presses' },
     { from: 'f:src/menu.ts', to: 'f:public/ui/menu.uikitml', kind: 'call', label: 'the map you chose' },
+    // The notes room: your idea goes in, a tidy note comes out, and lands in the project.
+    { from: 'f:src/rooms/room.ts', to: 'f:src/notes/store.ts', kind: 'call', label: 'your idea' },
+    { from: 'f:src/notes/store.ts', to: 'f:api/agent.ts', kind: 'http', label: 'an idea to talk over' },
+    { from: 'f:src/notes/store.ts', to: 'f:vite.config.ts', kind: 'http', label: 'the notes list' },
+    { from: 'f:src/rooms/room.ts', to: 'f:public/ui/notes.uikitml', kind: 'call', label: 'your notes' },
+    { from: 'f:vite.config.ts', to: 'n:claude-code', kind: 'data', label: 'notes to work through' },
   ],
 
   nodes: [
@@ -121,6 +135,10 @@ export default {
         'src/colors.ts',
         'src/diorama-components.ts',
         'src/components.ts',
+        'src/peek.ts',
+        'src/rooftops.ts',
+        'src/city-style.ts',
+        'src/network.ts',
       ],
     },
     {
@@ -131,6 +149,9 @@ export default {
       paths: [
         'src/workspace.ts',
         'src/placement.ts',
+        'src/reach.ts',
+        'src/desktop-controls.ts',
+        'src/passthrough.ts',
         'src/atmosphere.ts',
         'src/panels.ts',
         'src/rays.ts',
@@ -189,7 +210,14 @@ export default {
       parent: 'talk',
       label: 'AI answers',
       kind: 'service',
-      paths: ['src/agent/client.ts', 'src/agent/prompt.ts', 'server/agent-core.ts', 'public/ui/ask.uikitml'],
+      paths: ['src/agent/client.ts', 'src/agent/prompt.ts', 'src/agent/quiz.ts', 'server/agent-core.ts', 'public/ui/ask.uikitml'],
+    },
+    {
+      id: 'talk.notes',
+      parent: 'talk',
+      label: 'Notes room',
+      kind: 'feature',
+      paths: ['src/notes/*.ts', 'public/ui/notes.uikitml'],
     },
     {
       id: 'talk.listening',
@@ -234,7 +262,7 @@ export default {
       parent: 'maps',
       label: 'Project housekeeping',
       kind: 'script',
-      paths: ['scripts/export-personal.mjs', 'scripts/fetch-props.mjs'],
+      paths: ['scripts/export-personal.mjs', 'scripts/fetch-props.mjs', 'scripts/sync-skills.mjs'],
     },
     { id: 'maps', label: 'Maps and upkeep', kind: 'script' },
 

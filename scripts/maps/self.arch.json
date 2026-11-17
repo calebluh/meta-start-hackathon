@@ -20,7 +20,8 @@
     "maps.upkeep": "Two chores for the people who look after the project: one prepares the public edition that the Claude Code plugin installs, the other downloads the photo-scanned furniture and writes its credits.",
     "meta": "Meta's AI service. It writes the robots' answers and turns your spoken words into text.",
     "openai": "An optional outside service that gives each robot a natural speaking voice. Without it, the browser's built-in voice is used.",
-    "claude-code": "The AI coding assistant the map-making plugin works inside. It reads a project and writes the descriptions that become a new city."
+    "claude-code": "The AI coding assistant the map-making plugin works inside. It reads a project and writes the descriptions that become a new city.",
+    "talk.notes": "A room for thinking out loud: say an idea and a note taker writes it down, word for word or after talking it over, and the robots add the fixes they suggest. The list is saved into the project for a coding agent to work through."
   },
   "files": {
     "api/agent.ts": {
@@ -254,6 +255,58 @@
     "index.html": {
       "name": "Web page shell",
       "d": "The page the browser opens first. It shows the title straight away and holds the 3D view once the app has loaded."
+    },
+    "src/notes/scribe.ts": {
+      "name": "Note taker",
+      "d": "Everything the note taker knows: its instructions to the AI, how to read a reply into what to say and what to write, the spoken commands like \"scratch that\", and how the list is written out."
+    },
+    "src/notes/store.ts": {
+      "name": "Notes keeper",
+      "d": "Keeps your notes on the device and sends them to the project folder, and asks the server to talk an idea over."
+    },
+    "src/notes/desk.ts": {
+      "name": "Notes panel",
+      "d": "The panel in the notes room: your newest notes, word-for-word or talk-it-over mode, and undo, read back, microphone and done buttons."
+    },
+    "public/ui/notes.uikitml": {
+      "name": "Notes card",
+      "d": "The layout of the notes panel: its heading, the words being heard, the three newest notes and the buttons."
+    },
+    "src/reach.ts": {
+      "name": "Within reach",
+      "d": "Brings the side panels and the start menu within arm's reach when you use your hands, so their buttons can be tapped with a fingertip."
+    },
+    "src/peek.ts": {
+      "name": "Roof lift",
+      "d": "Lifts the roof off the building you pick, like a lid, to show a lit miniature of the room and robots inside."
+    },
+    "src/rooftops.ts": {
+      "name": "Rooftop details",
+      "d": "Puts a telling feature on every roof (an antenna, chimneys, a dome, a billboard) so the kind of each part reads at a glance."
+    },
+    "src/city-style.ts": {
+      "name": "City look",
+      "d": "The look of the little city: dark glass buildings with lit windows, neon edges, pools of light and a circuit-board tray."
+    },
+    "src/network.ts": {
+      "name": "Trip types",
+      "d": "Tells what each step of a journey costs: crossing the network, touching stored data, or the code working on its own."
+    },
+    "src/desktop-controls.ts": {
+      "name": "Desktop controls",
+      "d": "Lets you walk and look around with the keyboard and mouse in the flat browser preview, without a headset."
+    },
+    "src/passthrough.ts": {
+      "name": "Mixed reality check",
+      "d": "Says whether the headset is showing your real room around the city."
+    },
+    "scripts/sync-skills.mjs": {
+      "name": "Skill copier",
+      "d": "Keeps the second copy of the mapping skill, for coding agents other than Claude, the same as the first."
+    },
+    "src/agent/quiz.ts": {
+      "name": "Quiz master",
+      "d": "Makes the quiz a robot gives you on its room: questions and answers drawn from the map, and the rules for marking an answer you say in your own words."
     }
   },
   "flows": [
@@ -408,6 +461,41 @@
           "note": "The city is rebuilt: more code means a bigger plot and a taller building."
         }
       ]
+    },
+    {
+      "id": "take-a-note",
+      "title": "Taking a note",
+      "description": "From an idea said out loud to a line your coding agent can act on.",
+      "steps": [
+        {
+          "ref": "f:src/agent/live-mic.ts",
+          "note": "You say your idea out loud in the notes room."
+        },
+        {
+          "ref": "f:src/rooms/room.ts",
+          "note": "The note taker hears it and decides whether to talk it over."
+        },
+        {
+          "ref": "f:src/notes/store.ts",
+          "note": "The idea goes to the server to be talked over."
+        },
+        {
+          "ref": "f:server/agent-core.ts",
+          "note": "The AI answers, and writes the idea down as one tight note."
+        },
+        {
+          "ref": "f:src/notes/desk.ts",
+          "note": "The note appears on the panel and on the wall."
+        },
+        {
+          "ref": "f:vite.config.ts",
+          "note": "The list is saved into the project as a checklist."
+        },
+        {
+          "ref": "n:claude-code",
+          "note": "Your coding agent works through the list and updates the map."
+        }
+      ]
     }
   ],
   "health": [
@@ -418,7 +506,7 @@
       "title": "Online robots cannot answer about your own maps",
       "detail": "Maps made from your own code are only loaded on your own computer. When the app is hosted online, the answer service does not know them and turns the question away, so the robots there can only read out the map's descriptions.",
       "file": "server/agent-core.ts",
-      "line": 73
+      "line": 99
     },
     {
       "id": "limits-forget-on-restart",
@@ -445,7 +533,7 @@
       "title": "Test shortcuts only fit the sample shop",
       "detail": "The keyboard shortcuts used for testing without a headset jump to rooms by the sample shop's names, so on any other map those keys do nothing useful.",
       "file": "src/index.ts",
-      "line": 68
+      "line": 92
     }
   ],
   "routes": [
