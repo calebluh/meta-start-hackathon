@@ -126,8 +126,20 @@ export function parseScribe(text: string): ScribeReply {
   let revise = false;
   let marked = false;
   const spoken: string[] = [];
-  for (const line of lines) {
-    const match = /^\s*[*_`>-]*\s*(NOTE|REVISE)\s*[*_`]*\s*:\s*(.*)$/i.exec(line);
+  for (const raw of lines) {
+    let line = raw;
+    let match = /^\s*[*_`>-]*\s*(NOTE|REVISE)\s*[*_`]*\s*:\s*(.*)$/i.exec(line);
+    if (!match) {
+      // The fast model sometimes runs the marker onto the end of its speech
+      // ("...for customers. NOTE: cache the menu"). Only a capitalised marker
+      // after a sentence counts, so "a note: ..." in plain speech is left alone.
+      const inline = /([.!?:]["')\]]?)\s+[*_`]*(NOTE|REVISE)[*_`]*\s*:\s*(.*)$/.exec(line);
+      if (inline) {
+        spoken.push(line.slice(0, inline.index + inline[1].length));
+        line = '';
+        match = ['', inline[2], inline[3]] as unknown as RegExpExecArray;
+      }
+    }
     if (!match) {
       spoken.push(line);
       continue;
