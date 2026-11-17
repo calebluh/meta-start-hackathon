@@ -31,6 +31,13 @@ const UP = new Vector3(0, 1, 0);
 const HANDLE_REST = new Vector3(0, -0.012, 0.385);
 const HANDLE_IDLE = '#8b95a5';
 const HANDLE_LIVE = '#7ee0ff';
+/**
+ * The button strip's own grip, just past the strip's right-hand end
+ * (the strip is about 1.24 m wide), measured from the strip's centre in
+ * the desk's space. Apart from the desk's bar under the middle of the
+ * strip and from the city's corner pegs, so one is never taken for another.
+ */
+const STRIP_GRIP_OFFSET = new Vector3(0.665, 0.006, 0);
 const GRAB = { movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false };
 /** Mixed reality: keep looking for a real table this long after the desk is placed (the room's surfaces arrive a little after the session starts). */
 const TABLE_SEARCH_SECONDS = 5;
@@ -109,6 +116,12 @@ export class WorkspaceSystem extends createSystem({}) {
   private handlePos = new Vector3();
   private offset = new Vector3();
   private wasGrabbed = false;
+  /** The button strip, where the scene put it, and its grip (see STRIP_GRIP_OFFSET). */
+  private strip: Object3D | undefined;
+  private stripHome = new Vector3();
+  private stripGrip: Entity | undefined;
+  private stripGripMaterial = new MeshBasicMaterial({ color: HANDLE_IDLE });
+  private stripGripPos = new Vector3();
   private floor: Object3D | undefined;
   private passthrough = false;
   /** Seconds left to keep looking for a real table. */
@@ -160,6 +173,11 @@ export class WorkspaceSystem extends createSystem({}) {
     this.cleanupFuncs.push(() => xr.removeEventListener('sessionstart', onSessionStart));
 
     this.buildHandle();
+    this.strip = this.world.getSceneObject('controls-panel');
+    if (this.strip) {
+      this.stripHome.copy(this.strip.position);
+      this.buildStripGrip();
+    }
     placement.recentre = () => {
       if (this.immersive) this.placeInFrontOfHead();
     };
@@ -203,6 +221,7 @@ export class WorkspaceSystem extends createSystem({}) {
       else if (this.tableSearch <= 0 && import.meta.env.DEV) this.reportPlanes();
     }
     this.updateHandle();
+    this.updateStripGrip();
     // Mixed reality: the real floor is the floor.
     const passthrough = this.immersive && inPassthrough(this.world);
     if (passthrough !== this.passthrough) {
@@ -210,6 +229,51 @@ export class WorkspaceSystem extends createSystem({}) {
       placement.mixed = passthrough;
       if (this.floor) this.floor.visible = !passthrough;
     }
+  }
+
+  /** A short pill at the strip's right end, inside a larger invisible catch area. */
+  private buildStripGrip(): void {
+    const group = new Group();
+    group.name = 'strip-grip';
+    const pill = new Mesh(new CapsuleGeometry(0.01, 0.05, 4, 12), this.stripGripMaterial);
+    pill.rotation.x = Math.PI / 2;
+    group.add(pill);
+    const catcher = new Mesh(new CapsuleGeometry(0.03, 0.07, 2, 8), new MeshBasicMaterial({ visible: false }));
+    catcher.rotation.x = Math.PI / 2;
+    group.add(catcher);
+    group.visible = false;
+    this.stripGrip = this.world.createTransformEntity(group, { persistent: true });
+  }
+
+  /**
+   * The button strip moves on its own: drag its grip and the strip follows,
+   * keeping its tilt, while the city and desk stay put. Recenter puts it
+   * back along the desk's front edge.
+   */
+  private updateStripGrip(): void {
+    const grip = this.stripGrip;
+    const object = grip?.object3D;
+    if (!grip || !object || !this.strip || !this.workspace) return;
+    const usable = this.immersive && app.mode === 'table' && !app.menu && !dive.active && !app.street;
+    if (usable !== object.visible) {
+      object.visible = usable;
+      if (usable && !grip.hasComponent(DistanceGrabbable)) grip.addComponent(DistanceGrabbable, GRAB);
+      else if (!usable && grip.hasComponent(DistanceGrabbable)) grip.removeComponent(DistanceGrabbable);
+    }
+    if (!usable) return;
+    const grabbed = grip.hasComponent(Grabbed);
+    this.stripGripMaterial.color.set(grabbed || grip.hasComponent(Hovered) ? HANDLE_LIVE : HANDLE_IDLE);
+    if (grabbed) {
+      object.getWorldPosition(this.stripGripPos);
+      this.workspace.worldToLocal(this.stripGripPos);
+      this.strip.position.copy(this.stripGripPos).sub(STRIP_GRIP_OFFSET);
+      // Not below the desk top's level by much, nor up in the visitor's face.
+      this.strip.position.y = Math.min(Math.max(this.strip.position.y, -0.15), 0.45);
+      return;
+    }
+    object.position.copy(this.strip.position).add(STRIP_GRIP_OFFSET);
+    this.workspace.localToWorld(object.position);
+    object.rotation.set(0, this.workspace.rotation.y, 0);
   }
 
   /** A pill-shaped bar, inside a larger invisible catch area so it is easy to hit. */
@@ -316,6 +380,8 @@ export class WorkspaceSystem extends createSystem({}) {
     if (!this.workspace) return;
     // Recentred on purpose (inside a room too): that is where the desk goes now.
     this.saved = null;
+    // And the button strip goes back along the desk's front edge.
+    this.strip?.position.copy(this.stripHome);
     // A session that was granted gaze tracking is running on glasses.
     const gaze = this.world.session?.enabledFeatures?.includes('gaze-tracking') ?? false;
     const { reach, drop } = gaze ? FAR : NEAR;
