@@ -26,11 +26,11 @@ import { app } from './state.js';
  */
 
 /** Width of the picture, in metres. */
-const SCREEN_WIDTH = 0.9;
-/** Centre of the picture's bottom edge, in the workspace's space (behind the board, clear of the tallest towers). */
-const SCREEN_X = 0;
-const SCREEN_BOTTOM = 0.16;
-const SCREEN_Z = -0.62;
+const SCREEN_WIDTH = 0.85;
+/** Centre of the picture's bottom edge, in the workspace's space (behind the board and above the guide card, a little left of the info panel). */
+const SCREEN_X = -0.06;
+const SCREEN_BOTTOM = 0.3;
+const SCREEN_Z = -0.74;
 const BEZEL = 0.018;
 /** Try the socket again this long after it closes. */
 const RETRY_MS = 3000;

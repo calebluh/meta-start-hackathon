@@ -163,6 +163,7 @@ export function replaceMap(id: string, graph: GraphData): void {
   for (const node of graph.nodes) {
     if (partPrint(old, node.id) !== partPrint(graph, node.id)) freshParts.set(node.id, now);
   }
+  if (import.meta.env.DEV) console.log(`[live] changed parts: ${[...freshParts.keys()].join(', ') || 'none'}`);
   app.graph = graph;
   const has = (n: string | null) => n !== null && graph.nodes.some((x) => x.id === n);
   if (app.selected && !has(app.selected)) app.selected = null;
