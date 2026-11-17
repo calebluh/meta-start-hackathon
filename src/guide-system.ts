@@ -100,7 +100,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Ask anything',
-    text: () => `${pressWord()} a question on the left, or just say yours out loud.`,
+    text: () => `Just say your question out loud, or ${pressWord().toLowerCase()} Questions on the left for ideas.`,
     done: () => guideProgress.asked,
     target: null,
     pinch: false,

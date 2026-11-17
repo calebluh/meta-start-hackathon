@@ -238,6 +238,8 @@ export class RoomSystem extends createSystem({
   private mic!: LiveMic;
   /** The visitor turned the mic off for this conversation. */
   private micOff = false;
+  /** The visitor opened the question list while the mic is on (it is folded away otherwise). */
+  private askOpen = false;
   private fileCard: Bubble | null = null;
   /** The notes room: the project's notes and their panel, and the newest notes pinned to the far wall. */
   private notesDesk!: NotesDesk;
@@ -736,6 +738,11 @@ export class RoomSystem extends createSystem({
     });
     on('btn-done', () => this.endConversation());
     on('btn-mic', () => this.toggleMic());
+    on('btn-expand', () => {
+      click();
+      this.askOpen = !this.askOpen;
+      this.layoutAsk();
+    });
     if (!canRecord()) panel.getElementById('btn-mic')?.setProperties({ display: 'none' });
     this.mic = new LiveMic({
       onSpeechStart: () => {
@@ -793,6 +800,7 @@ export class RoomSystem extends createSystem({
       this.askPanel?.getElementById(`q-${i}`)?.setProperties({ display: q ? 'flex' : 'none' });
       if (q) this.setAskText(`q-label-${i}`, q);
     }
+    this.layoutAsk();
   }
 
   /**
@@ -841,6 +849,7 @@ export class RoomSystem extends createSystem({
     const node = notesRoom ? NOTES_NODE : app.graph.nodes.find((n) => n.id === this.builtNode)!;
     this.talking = w;
     this.history = [];
+    this.askOpen = false;
     this.questions = suggestedQuestions(app.graph, this.builtNode);
 
     // Come within comfortable talking distance, in front of the viewer and
@@ -1072,6 +1081,7 @@ export class RoomSystem extends createSystem({
       this.askPanel?.getElementById(`q-${i}`)?.setProperties({ display: i < 3 ? 'flex' : 'none' });
       if (i < 3) this.setAskText(`q-label-${i}`, question.answers[quiz.order[i]]);
     }
+    this.layoutAsk();
     void this.say(w, lead + question.prompt, this.titleFor(w, ' | quiz'));
   }
 
@@ -1380,6 +1390,19 @@ export class RoomSystem extends createSystem({
     const label = this.micOff || !this.mic?.active ? 'Mic off' : 'Mic on - just talk';
     this.setAskText('mic-label', label);
     this.notesDesk?.setMicLabel(this.micOff || !this.mic?.active ? 'Mic off' : 'Mic on');
+    this.layoutAsk();
+  }
+
+  /**
+   * Talking out loud, the visitor needs no list of questions in the way: it
+   * folds away to a Questions button. A quiz always shows its three answers.
+   */
+  private layoutAsk(): void {
+    const voice = !this.micOff && !!this.mic?.active;
+    const folded = voice && !this.askOpen && !this.quiz;
+    this.askPanel?.getElementById('ask-list')?.setProperties({ display: folded ? 'none' : 'flex' });
+    this.askPanel?.getElementById('btn-expand')?.setProperties({ display: voice && !this.quiz ? 'flex' : 'none' });
+    this.setAskText('expand-label', this.askOpen ? 'Hide' : 'Questions');
   }
 
   /** Words to help recognition: room names in the building and this room's files. */
