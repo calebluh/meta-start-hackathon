@@ -305,9 +305,10 @@ Development was done with Claude Code as a pair programmer.
 
 ### Target launch date
 
-`[FILL IN. Suggestion: "January 2027 as a free web app at the public link,
-with mapping of your own code through the Claude Code plugin available
-today."]`
+Out now as a public beta, from 17 November 2026: free in the Quest Browser
+at the public link, with mapping of your own code through the Claude Code
+plugin. The beta grows into a full release, with the items above, through
+2027.
 
 ### Credits
 

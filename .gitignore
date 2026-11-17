@@ -58,3 +58,6 @@ maps-src/
 .vercel
 .env*
 .playwright-mcp/
+
+# Emulator video clips (large; kept local)
+submission/video-clips/*.mp4
