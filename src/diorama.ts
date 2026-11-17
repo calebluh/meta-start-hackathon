@@ -5,8 +5,10 @@ import {
   CanvasTexture,
   Color,
   createSystem,
+  CircleGeometry,
   CylinderGeometry,
   EdgesGeometry,
+  Euler,
   type Entity,
   InputComponent,
   Group,
@@ -21,6 +23,7 @@ import {
   OctahedronGeometry,
   PlaneGeometry,
   Pressed,
+  Quaternion,
   QuadraticBezierCurve3,
   RayInteractable,
   SphereGeometry,
@@ -95,6 +98,15 @@ const STREET_QUIET_MS = 700;
 /** How far outside a building's front wall the visitor stands, in board units (the middle of the alley). */
 const DOOR_STANDOFF = 0.012;
 const STREET_WALK_SPEED = 2.5;
+/** Each turn in street view (a Turn button, or the right stick flicked aside), in radians. */
+const STREET_TURN = Math.PI / 6;
+/** Street view waypoints: discs on the ground at each door, this radius on the board (about 0.4 m at life size). */
+const WAYPOINT_RADIUS = 0.0027;
+const WAYPOINT_COLOR = '#7ee0ff';
+/** The Turn buttons float this far out to either side, low, and this far below the eyes (metres). */
+const TURN_BUTTON_OUT = 0.55;
+const TURN_BUTTON_DROP = 0.18;
+const TURN_BUTTON_ANGLE = 0.95;
 const UP = new Vector3(0, 1, 0);
 /**
  * The city is turned and resized with four pegs at its corners, never by
@@ -102,8 +114,8 @@ const UP = new Vector3(0, 1, 0);
  * picks that building. (The whole desk moves with the grey bar.)
  */
 const PEG_TURN_SPEED = 0.5; // radians a second while a peg is held: about a turn in 12 seconds
-const PEG_RADIUS = 0.008;
-const PEG_HEIGHT = 0.032;
+const PEG_RADIUS = 0.013;
+const PEG_HEIGHT = 0.05;
 /** How far outside the board's corners the pegs stand. */
 const PEG_OUTSET = 0.014;
 const PEG_COLOR = '#7ee0ff';
@@ -243,6 +255,45 @@ function makeLabel(text: string, height: number, accent: string): Mesh {
 }
 
 /** The "Step inside" button that floats over a picked building: a bright pill, `height` meters tall. */
+/** A round button with a curved arrow, for turning left (-1) or right (1) in street view. */
+function makeTurnButton(dir: -1 | 1): Mesh {
+  const size = 160;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = 'rgba(13, 17, 23, 0.85)';
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size / 2 - 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.strokeStyle = '#7ee0ff';
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  // A curved arrow round the middle, pointing the way it turns.
+  ctx.lineWidth = 12;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  const r = size * 0.27;
+  const start = dir > 0 ? Math.PI * 1.15 : Math.PI * 1.85;
+  const end = dir > 0 ? Math.PI * 1.85 : Math.PI * 1.15;
+  ctx.arc(size / 2, size / 2 + 10, r, start, end, dir < 0);
+  ctx.stroke();
+  const tipX = size / 2 + Math.cos(end) * r;
+  const tipY = size / 2 + 10 + Math.sin(end) * r;
+  ctx.fillStyle = '#7ee0ff';
+  ctx.beginPath();
+  ctx.moveTo(tipX + dir * 22, tipY + 4);
+  ctx.lineTo(tipX - dir * 8, tipY - 20);
+  ctx.lineTo(tipX - dir * 8, tipY + 22);
+  ctx.closePath();
+  ctx.fill();
+  ctx.font = '700 26px Inter, "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Turn', size / 2, size * 0.8);
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return new Mesh(new PlaneGeometry(0.11, 0.11), new MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }));
+}
+
 function makeChip(text: string, height: number): Mesh {
   const canvas = document.createElement('canvas');
   const measure = canvas.getContext('2d')!;
@@ -382,6 +433,20 @@ export class DioramaSystem extends createSystem({
   private hitPoint = new Vector3();
   private hitAt = 0;
   private streetPressed: string | null = null;
+  /**
+   * Street view from a chair: discs on the ground at every door (one
+   * instanced mesh), and where each stands on the board; two Turn buttons
+   * low to either side; and the right stick's last state, for snap turns.
+   */
+  private waypoints: InstancedMesh | null = null;
+  private waypointSpots: Vector3[] = [];
+  private waypointHit: Vector3 | null = null;
+  private turnButtons: { entity: Entity; mesh: Mesh; dir: 1 | -1 }[] = [];
+  private turnHit: 1 | -1 | 0 = 0;
+  private stickTurned = false;
+  private streetExtrasShown = false;
+  private headQuat = new Quaternion();
+  private headEuler = new Euler();
 
   // The dive into a building (see transition.ts). The board scales up about
   // the building's base while that base slides under the viewer.
@@ -407,6 +472,7 @@ export class DioramaSystem extends createSystem({
     this.controls = this.world.getSceneObject<UIKitMLAsset>('controls-panel');
     this.buildDiorama();
     this.wireControls();
+    this.buildTurnButtons();
 
     // Pinches and triggers, by hand: a bare-hand pinch may pick the building
     // the fingertip is at (see nearPick), and a peg stays held until the
@@ -497,7 +563,7 @@ export class DioramaSystem extends createSystem({
     const halfW = this.layout.width / 2 + PEG_OUTSET;
     const halfD = this.layout.depth / 2 + PEG_OUTSET;
     for (const [x, z] of [[-halfW, -halfD], [halfW, -halfD], [-halfW, halfD], [halfW, halfD]]) {
-      const material = new MeshStandardMaterial({ color: PEG_COLOR, emissive: new Color(PEG_COLOR), emissiveIntensity: 0.6, roughness: 0.4 });
+      const material = new MeshStandardMaterial({ color: PEG_COLOR, emissive: new Color(PEG_COLOR), emissiveIntensity: 1, roughness: 0.4 });
       const mesh = new Mesh(geometry, material);
       mesh.name = 'board-peg';
       mesh.position.set(board.x + x, board.y, board.z + z);
@@ -578,7 +644,7 @@ export class DioramaSystem extends createSystem({
       // Brighter when pointed at, brightest while held.
       let holding = peg.entity.hasComponent(Pressed);
       for (const held of this.pegHolds.values()) if (held === peg) holding = true;
-      peg.material.emissiveIntensity = holding ? 2.4 : peg.entity.hasComponent(Hovered) ? 1.5 : 0.6;
+      peg.material.emissiveIntensity = holding ? 2.4 : peg.entity.hasComponent(Hovered) ? 1.8 : 1;
     }
     const obj = this.root.object3D!;
     if (held >= 2) {
@@ -908,6 +974,8 @@ export class DioramaSystem extends createSystem({
       this.chipHit = true;
     });
 
+    this.buildWaypoints(group);
+
     // The pulse that travels along a flow.
     this.pulse = new Mesh(new SphereGeometry(0.0055, 16, 12), new MeshBasicMaterial({ color: '#ffffff' }));
     this.pulse.visible = false;
@@ -1157,6 +1225,8 @@ export class DioramaSystem extends createSystem({
   private applyVisibility(): void {
     const onTable = (app.mode === 'table' && !this.surfaceFrom) || this.diveDir !== 0;
     this.root.object3D!.visible = onTable && !app.menu;
+    // So do the street's discs and Turn buttons (in the air, not on the board), when a dive starts.
+    this.showStreetExtras(app.mode === 'table' && this.diveDir === 0 && this.streetShown && !this.streetMoving && !app.menu);
     // The pegs stand on the desk, so they must be put away with the city.
     this.showPegs(onTable && this.diveDir === 0 && !app.menu && !app.street && !this.streetShown && !this.streetMoving && !this.surfaceFrom);
     // Under the start menu only the desk shows.
@@ -1701,6 +1771,137 @@ export class DioramaSystem extends createSystem({
     this.standAt(this.streetSpot);
   }
 
+  /** Discs on the ground at every building's door: pinch one to stand there. */
+  private buildWaypoints(group: Group): void {
+    this.waypointSpots = [];
+    for (const d of this.layout.districts.values()) {
+      if (!d.isLeaf) continue;
+      this.waypointSpots.push(new Vector3(d.rect.x + d.rect.w / 2, d.base + 0.0003, d.rect.z + d.rect.d + DOOR_STANDOFF));
+    }
+    const disc = new CircleGeometry(WAYPOINT_RADIUS, 24).rotateX(-Math.PI / 2);
+    const mesh = new InstancedMesh(disc, new MeshBasicMaterial({ color: WAYPOINT_COLOR, transparent: true, opacity: 0.55, depthWrite: false }), this.waypointSpots.length);
+    this.waypointSpots.forEach((spot, i) => {
+      this.dotMatrix.makeTranslation(spot.x, spot.y, spot.z);
+      mesh.setMatrixAt(i, this.dotMatrix);
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    mesh.computeBoundingSphere();
+    mesh.visible = false;
+    mesh.name = 'street-waypoints';
+    group.add(mesh);
+    const entity = this.world.createTransformEntity(mesh, { parent: this.root });
+    this.entities.push(entity);
+    this.waypoints = mesh;
+    // Which disc: the one nearest where the pinch landed. Acted on next frame.
+    (mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void }).addEventListener('pointerdown', (e) => {
+      if (e.point) this.waypointHit = e.point.clone();
+    });
+    this.streetExtrasShown = true;
+    this.showStreetExtras(false);
+  }
+
+  /** Two buttons, low to the left and right, that turn the view 30 degrees: for hands, with no thumbstick. */
+  private buildTurnButtons(): void {
+    for (const dir of [-1, 1] as const) {
+      const mesh = makeTurnButton(dir);
+      mesh.name = dir < 0 ? 'turn-left' : 'turn-right';
+      mesh.visible = false;
+      const entity = this.world.createTransformEntity(mesh, { persistent: true });
+      (mesh as unknown as { addEventListener(type: string, fn: () => void): void }).addEventListener('pointerdown', () => {
+        this.turnHit = dir;
+      });
+      this.turnButtons.push({ entity, mesh, dir });
+    }
+  }
+
+  /** The discs and Turn buttons show only while standing in the street, and only then take a pinch. */
+  private showStreetExtras(shown: boolean): void {
+    if (shown === this.streetExtrasShown) return;
+    this.streetExtrasShown = shown;
+    if (this.waypoints) this.waypoints.visible = shown;
+    // Development: where the nearest discs are, for automated tests to aim at.
+    if (import.meta.env.DEV && shown && this.waypoints) {
+      const obj = this.root.object3D!;
+      obj.updateWorldMatrix(true, false);
+      this.world.camera.getWorldPosition(this.headWorld);
+      const near = this.waypointSpots
+        .map((s) => obj.localToWorld(s.clone()))
+        .sort((a, b) => a.distanceTo(this.headWorld) - b.distanceTo(this.headWorld))
+        .slice(0, 3);
+      console.log(`[street] discs ${near.map((p) => `${p.x.toFixed(2)},${p.y.toFixed(2)},${p.z.toFixed(2)}`).join(' | ')}`);
+    }
+    const discs = this.entities.find((e) => e.object3D === this.waypoints);
+    for (const target of [discs, ...this.turnButtons.map((b) => b.entity)]) {
+      if (!target) continue;
+      if (shown && !target.hasComponent(RayInteractable)) target.addComponent(RayInteractable);
+      else if (!shown && target.hasComponent(RayInteractable)) target.removeComponent(RayInteractable);
+    }
+    // Point and pinch (a fingertip tap did not register on these head-facing buttons in testing).
+    for (const b of this.turnButtons) b.mesh.visible = shown;
+  }
+
+  /** Keeps the Turn buttons low to either side of wherever the visitor faces. */
+  private placeTurnButtons(): void {
+    this.world.camera.getWorldPosition(this.headWorld);
+    this.world.camera.getWorldQuaternion(this.headQuat);
+    this.headEuler.setFromQuaternion(this.headQuat, 'YXZ');
+    for (const b of this.turnButtons) {
+      const a = this.headEuler.y - b.dir * TURN_BUTTON_ANGLE;
+      b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - TURN_BUTTON_DROP, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
+      b.mesh.lookAt(this.headWorld);
+      b.mesh.scale.setScalar(b.entity.hasComponent(Hovered) ? 1.15 : 1);
+    }
+  }
+
+  /**
+   * Turning in street view without standing up: a Turn button, or the right
+   * stick flicked left or right, swings the city 30 degrees round the visitor.
+   * A pinched waypoint disc walks there.
+   */
+  private updateStreetTurn(): void {
+    const now = performance.now();
+    const quiet = now - this.streetMovedAt < STREET_QUIET_MS;
+    let dir: number = this.turnHit;
+    this.turnHit = 0;
+    const stick = this.input.xr.gamepads.right?.getAxesValues(InputComponent.Thumbstick);
+    if (stick) {
+      if (Math.abs(stick.x) > 0.7 && !this.stickTurned) {
+        this.stickTurned = true;
+        dir = stick.x > 0 ? 1 : -1;
+      } else if (Math.abs(stick.x) < 0.3) this.stickTurned = false;
+    }
+    if (dir !== 0) {
+      // Turning to the right swings the world the other way round the visitor.
+      const obj = this.root.object3D!;
+      obj.updateWorldMatrix(true, false);
+      this.floorUnderHead(this.streetAt);
+      obj.parent!.localToWorld(this.streetSpot.copy(this.streetAt));
+      obj.worldToLocal(this.streetSpot);
+      this.poseBoard(this.streetSpot, this.streetAt, this.boardYaw() + dir * STREET_TURN, obj.scale.x);
+      this.streetMovedAt = now;
+      click();
+      return;
+    }
+    const hit = this.waypointHit;
+    this.waypointHit = null;
+    if (!hit || quiet) return;
+    const obj = this.root.object3D!;
+    obj.updateWorldMatrix(true, false);
+    obj.worldToLocal(hit);
+    let best: Vector3 | null = null;
+    let bestDistance = Infinity;
+    for (const spot of this.waypointSpots) {
+      const distance = (spot.x - hit.x) ** 2 + (spot.z - hit.z) ** 2;
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = spot;
+      }
+    }
+    if (!best) return;
+    if (import.meta.env.DEV) console.log(`[street] walked to the disc at ${best.x.toFixed(3)}, ${best.z.toFixed(3)} (board)`);
+    this.standAt(this.streetSpot.copy(best));
+  }
+
   /** Controllers and keyboard: the left thumbstick walks the streets. */
   private updateStreetWalk(delta: number): void {
     const stick = this.input.xr.gamepads.left?.getAxesValues(InputComponent.Thumbstick);
@@ -1762,7 +1963,12 @@ export class DioramaSystem extends createSystem({
       this.streetPressed = null;
       if (this.streetShown && !this.streetMoving) this.streetPress(id);
     }
-    if (this.streetShown && !this.streetMoving) this.updateStreetWalk(delta);
+    if (this.streetShown && !this.streetMoving) {
+      this.updateStreetWalk(delta);
+      this.updateStreetTurn();
+    }
+    this.showStreetExtras(this.streetShown && !this.streetMoving && !app.menu);
+    if (this.streetExtrasShown) this.placeTurnButtons();
 
     // The corner pegs: hold one to turn the city, two to resize it.
     this.showPegs(!app.menu && !app.street && !this.streetShown && !this.streetMoving && !this.surfaceFrom);
