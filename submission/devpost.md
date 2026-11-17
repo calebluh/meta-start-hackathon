@@ -140,7 +140,10 @@ desk.
 - **Robots that help you change the code.** Ask a robot how to fix
   something, such as the warning on its building, and it works out a
   concrete fix from what it knows about its room, names the files, and puts
-  the fix on your notes list.
+  the fix on your notes list. In the demo maps, which were built from the
+  code, the robots cite the function names and the warning's line from the
+  code itself, and hand you a card with the flagged lines. If the AI cannot
+  be reached, the warning itself still goes on the list.
 - **The notes room.** Tap **Notes** and step into a room for thinking out
   loud. Say an idea and the note taker writes it down, either word for word
   or after talking it over with you in a sentence or two. "Scratch that"
@@ -309,7 +312,8 @@ today."]`
 ### Credits
 
 - Demo codebase: MiroFish (github.com/666ghj/MiroFish, AGPL-3.0), mapped from
-  a read-only snapshot.
+  a read-only snapshot. Its map quotes the few lines of code around each
+  warning, and the names of its functions.
 - Map format: Floorplan (github.com/haydenschmitty/floorplan, MIT).
 - Robot model: "RobotExpressive" by Tomás Laulhé (Quaternius), CC0.
 - Props: Poly Haven, CC0.
