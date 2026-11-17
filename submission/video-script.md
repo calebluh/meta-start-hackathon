@@ -41,7 +41,7 @@ code.** Every shot below serves that line; cut anything that does not.
 | 0:45 to 0:58 | Pinch Step inside, floating over the open building. The building grows around you. Look across the room at the robots working. | "Then step inside. Each room is the real-world place that does the same job. Payments is a cashier's office." |
 | 0:58 to 1:18 | Point at a robot and pinch. It walks over and greets you; the question panel folds away while you talk. Ask out loud: "What happens in this room?" It answers aloud. | (No voice-over. Let the conversation play.) |
 | 1:18 to 1:30 | Say: "Take me to the kitchen." The robot says it is handing you over, the view cuts to the kitchen, and that robot greets you, already knowing what you asked. | "The robots don't just answer. They act: they move you, play a flow, hand you on to a colleague who knows the thread." |
-| 1:30 to 1:55 | Tap Demos, open **MiroFish**, step into **Endpoints** (its building has a red warning). Ask its robot: "How would I fix the warning?" It suggests a concrete fix, naming the files, and says it has put it on your notes list. | "And they help you change the code. Ask how to fix something, and the robot works out a fix from what it knows, and puts it on your list." |
+| 1:30 to 1:55 | Tap Demos, open **MiroFish**, step into **Endpoints** (its building has a red warning). Ask its robot: "How would I fix the warning?" It names the line (119 in simulation.py) and the change, and says it has put it on your notes list. Then ask "Show me the line." A card opens beside the robot with the real code, line 119 lit. Hold on the card for two seconds. | "And they help you change the code. Ask how to fix something, and the robot points you to the exact line, and puts the fix on your list." |
 | 1:55 to 2:15 | Tap **Notes** on the desk. The note taker greets you; the robot's fix is already on the wall. Say an idea of your own, e.g. "We should show people how long their report will take." The note taker talks it over in a sentence and writes it down tight; it appears on the panel. | "The notes room is for thinking out loud. Talk an idea over, or just dictate. Everything lands in one list, in your project." |
 | 2:15 to 2:32 | Still in the headset, back at the table: your PC's terminal is on the monitor behind the city. Claude Code (typed beforehand: "work through my diorama notes") lists the notes, makes the first change, ticks it off, rebuilds the map. The building it changed glows on the desk in front of you. | "Your coding agent picks up the same list, makes the change, and updates the map. You watch it from inside: the city changes in front of you. The plugin works with Claude Code, Codex, Cursor and Gemini." |
 | 2:32 to 2:40 | Menu: the "This app" card, then its city. | "It maps any repository. This one is the diorama's own source code." |
@@ -60,6 +60,9 @@ It fits in place of the corner-peg shot.
   building, for example "Take me to Payments."
 - A robot does not offer a fix: ask "How would I fix the warning in here?"
   in a room whose building shows the red warning.
+- The code card does not open: ask "Where exactly is the problem? Show me the
+  line." In Endpoints, asking about the thread count lights line 499 instead
+  of 119; either is fine on camera.
 - Hand tracking drops: bring your hands up into view and keep them apart.
 - The coding-agent shot needs the local viewer (the live link has no
   monitor): run the dev server, open its network address on the Quest, and
