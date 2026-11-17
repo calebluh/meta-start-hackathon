@@ -23,7 +23,7 @@ import { Bubble } from './rooms/worker.js';
 import { app } from './state.js';
 import { HACKATHON } from './edition.js';
 import { isPaused } from './pause.js';
-import { aimWord, placement } from './placement.js';
+import { aimWord, placement, pressWord } from './placement.js';
 import { dive } from './transition.js';
 
 /**
@@ -82,10 +82,13 @@ const STEPS: Step[] = [
   },
   {
     title: 'Step inside',
-    text: () => 'The roof lifts: that is its team. Pinch Step inside, over the building, to visit them.',
+    text: () =>
+      placement.gaze
+        ? 'The roof lifts: that is its team. Pinch Step inside, over the building, to visit them.'
+        : 'The roof lifts: that is its team. Tap Step inside on the desk with a fingertip to visit them.',
     done: () => app.mode === 'room' || guideProgress.asked,
     target: null,
-    pinch: true,
+    pinch: false,
   },
   {
     title: 'Meet the team',
@@ -97,7 +100,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Ask anything',
-    text: () => 'Pinch a question on the left, or just say yours out loud.',
+    text: () => `${pressWord()} a question on the left, or just say yours out loud.`,
     done: () => guideProgress.asked,
     target: null,
     pinch: false,
@@ -105,10 +108,10 @@ const STEPS: Step[] = [
   },
   {
     title: 'Back to the city',
-    text: () => 'Pinch Back to table, or just ask a robot to take you back to the city.',
+    text: () => `${pressWord()} Back to table, or just ask a robot to take you back to the city.`,
     done: () => app.mode === 'table',
     target: null,
-    pinch: true,
+    pinch: false,
   },
   {
     title: 'Make it yours',
@@ -122,7 +125,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'You are set',
-    text: () => 'Pinch Street view to walk the city at life size, or Play flow to watch a request travel through the code. Have fun!',
+    text: () => `${pressWord()} Street view to walk the city at life size, Play flow to watch a request travel through the code, or Notes to talk your ideas over. Have fun!`,
     done: (clock) => clock > 7,
     target: null,
     pinch: false,

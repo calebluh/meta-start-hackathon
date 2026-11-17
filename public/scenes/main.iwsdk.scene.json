@@ -93,7 +93,8 @@
             "scale": 0.1
           },
           "components": {
-            "RayInteractable": {}
+            "RayInteractable": {},
+            "PokeInteractable": {}
           }
         },
         {
@@ -127,6 +128,31 @@
           "content": {
             "type": "asset",
             "asset": "ask"
+          },
+          "transform": {
+            "position": [
+              -0.5,
+              0.22,
+              0
+            ],
+            "rotationDeg": [
+              0,
+              32,
+              0
+            ],
+            "scale": 0.1
+          },
+          "components": {
+            "RayInteractable": {},
+            "PokeInteractable": {}
+          }
+        },
+        {
+          "id": "notes-panel",
+          "name": "Notes Panel",
+          "content": {
+            "type": "asset",
+            "asset": "notes"
           },
           "transform": {
             "position": [

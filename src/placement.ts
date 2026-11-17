@@ -30,5 +30,8 @@ export const placement: {
   recentre: () => undefined,
 };
 
+/** How a button is pressed: tapped with a fingertip by hand, pinched where the eyes do the aiming. */
+export const pressWord = (): string => (placement.gaze ? 'Pinch' : 'Tap');
+
 /** "Point at" for hands on a Quest, "Look at" where the eyes do the aiming. */
 export const aimWord = (): string => (placement.gaze ? 'Look at' : 'Point at');

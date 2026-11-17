@@ -12,6 +12,7 @@ import {
 } from '../src/agent/prompt.js';
 import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
+import { MAX_NOTE, MAX_SAID, NOTES_IN_PROMPT, parseScribe, scribePrompt, type ScribeReply } from '../src/notes/scribe.js';
 import { createLimiter } from './rate-limit.js';
 
 /**
@@ -132,6 +133,58 @@ export async function markAnswer(req: AgentRequest, apiKey: string | undefined, 
   // The fact is always said, even if the model only wrote the verdict.
   const say = verdict.say || (verdict.right ? "That's right." : `Not quite. ${question.explain}`);
   return { answer: say, followups: [], actions: [], right: verdict.right };
+}
+
+/** One idea said in the notes room, to be talked over and written down. */
+export interface ScribeRequest {
+  mapId: string;
+  persona: Persona;
+  said: string;
+  /** The notes written so far, newest last. */
+  notes: string[];
+  history: ChatTurn[];
+}
+
+/**
+ * Like `validate`, for the notes room. The visitor's own words are the one
+ * thing that must come from the page; they are length-capped, and the prompt
+ * around them is still built here from the bundled map.
+ */
+export function validateScribe(body: unknown): ScribeRequest {
+  const b = body as Record<string, unknown>;
+  const mapId = str(b.mapId, 40, 'mapId');
+  if (!MAPS[mapId]) throw new AgentError(404, `Unknown map "${mapId}"`);
+  const p = (b.persona ?? {}) as Record<string, unknown>;
+  const persona = { name: phrase(p.name, 30, 'persona.name'), role: phrase(p.role, 40, 'persona.role'), place: phrase(p.place, 40, 'persona.place') };
+  const notes = (Array.isArray(b.notes) ? b.notes : [])
+    .filter((n): n is string => typeof n === 'string' && n.trim().length > 0)
+    .slice(-NOTES_IN_PROMPT)
+    .map((n) => n.trim().slice(0, MAX_NOTE));
+  const history: ChatTurn[] = [];
+  if (Array.isArray(b.history)) {
+    for (const t of b.history.slice(-4)) {
+      const turn = t as Record<string, unknown>;
+      if ((turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string') {
+        history.push({ role: turn.role, content: turn.content.slice(0, MAX_SAID) });
+      }
+    }
+  }
+  return { mapId, persona, said: str(b.said, MAX_SAID, 'said'), notes, history };
+}
+
+/** Talks one idea over and returns what to say and what to write down. */
+export async function talkOver(req: ScribeRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<ScribeReply> {
+  if (!apiKey) throw new AgentError(503, 'MODEL_API_KEY is not set on the server');
+  const reply = await complete(
+    [{ role: 'system', content: scribePrompt(MAPS[req.mapId], req.persona, req.notes) }, ...req.history, { role: 'user', content: req.said }],
+    apiKey,
+    model,
+    UPSTREAM_TIMEOUT_MS,
+    false,
+  );
+  const parsed = parseScribe(reply.text);
+  if (!parsed.say && !parsed.note) throw new AgentError(502, 'Model API returned an empty answer');
+  return parsed;
 }
 
 export async function askAgent(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
@@ -312,10 +365,15 @@ export async function handleAgent(
   address = 'local',
 ): Promise<{ status: number; json: unknown }> {
   try {
-    const req = validate(body);
+    // The notes room sends an idea to talk over instead of a question about a room.
+    const scribe = !!body && typeof body === 'object' && (body as Record<string, unknown>).scribe === true;
+    const idea = scribe ? validateScribe(body) : null;
+    const req = idea ? null : validate(body);
     if (apiKey && !(perMinute.allow(address) && perHour.allow(address) && everyone.allow('all'))) {
       throw new AgentError(429, 'Too many questions; try again in a minute');
     }
+    if (idea) return { status: 200, json: await talkOver(idea, apiKey, model || undefined) };
+    if (!req) throw new AgentError(400, 'Expected a JSON body');
     const reply = await (req.quiz ? markAnswer(req, apiKey, model || undefined) : askAgent(req, apiKey, model || undefined));
     return { status: 200, json: reply };
   } catch (e) {

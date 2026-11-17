@@ -11,6 +11,7 @@ import {
 } from '@iwsdk/core';
 import { KIND_COLORS } from '../colors.js';
 import type { GraphData, GraphNode } from '../maps/types.js';
+import { NOTES_ROOM } from '../notes/scribe.js';
 
 /**
  * Room themes: each part of the app becomes a place that does the same job in
@@ -139,6 +140,9 @@ export const THEMES: Record<Exclude<ThemeId, 'office'>, Theme> = {
   workshop: T('workshop', 'Workshop', 'maker', '#3fb950', 'gear', ['workbench', 'toolWall', 'workbench'], ['crateStack', 'wetFloor', 'clock', 'chair'], '#302c28', '#26272b'),
 };
 
+/** The notes room: a study with a whiteboard, where a note taker writes down what the visitor says. */
+const NOTES_THEME: Theme = { ...THEMES.thinktank, place: 'Notes room', role: 'note taker', accent: '#f0b429', item: 'folder', stations: ['readingDesk', 'whiteboard', 'filingCabinet'] };
+
 /** Keyword rules, in priority order. Checked against a part's label, then its summary. */
 const RULES: [RegExp, Exclude<ThemeId, 'office'>][] = [
   [/payment|billing|invoice|refund|charge|stripe|paypal|wallet|bank|ledger|accounting|tax|payout/i, 'finance'],
@@ -237,6 +241,7 @@ function proceduralOffice(node: GraphNode): Theme {
  * seeded procedural office.
  */
 export function pickTheme(graph: GraphData, id: string): Theme {
+  if (id === NOTES_ROOM) return NOTES_THEME;
   const node = graph.nodes.find((n) => n.id === id);
   if (!node) return THEMES.workshop;
   const base = (): Theme => {

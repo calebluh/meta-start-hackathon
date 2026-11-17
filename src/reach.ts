@@ -1,0 +1,56 @@
+import { type Object3D, Quaternion, Vector3, type World } from '@iwsdk/core';
+
+/**
+ * Tapping instead of pinching. A button can be pressed with a fingertip only
+ * if the hand can get to it, and the panels beside and above the desk are
+ * authored a little out of reach: fine for pointing at from a distance, as
+ * the mouse, a controller or the eyes do, but too far to touch.
+ *
+ * When bare hands are in use (a Quest, not Meta VR Glasses, which are aimed
+ * with the eyes) the panels move in to about half a metre from the head, so
+ * every button on them can be tapped. Pointing and pinching still works.
+ *
+ * Positions are in the workspace's space, where the seated head is at about
+ * (0, 0.42, 0.7): the desk top is the origin and +Z comes toward the visitor.
+ */
+interface Pose {
+  position: [number, number, number];
+  /** Turn about the vertical axis, in degrees. Omitted: keep the authored rotation. */
+  yawDeg?: number;
+  scale?: number;
+}
+
+const WITHIN_REACH: Record<string, Pose> = {
+  // Left and right of the city, clear of the buttons along the desk's front edge, facing straight
+  // ahead: turned in toward the head, the panel is met side-on by a fingertip and taps miss.
+  'ask-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
+  'notes-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
+  'inspector-panel': { position: [0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
+  // The start menu is three wide cards: a little smaller, and much nearer.
+  'menu-panel': { position: [0, 0.27, 0.14], scale: 0.085 },
+};
+
+const authored = new Map<string, { position: Vector3; quaternion: Quaternion; scale: Vector3 }>();
+const UP = new Vector3(0, 1, 0);
+
+/** Moves the tappable panels within arm's reach, or back to where the scene has them. */
+export function setPanelsWithinReach(world: World, near: boolean): void {
+  for (const [id, pose] of Object.entries(WITHIN_REACH)) {
+    const panel = world.getSceneObject<Object3D>(id);
+    if (!panel) continue;
+    let home = authored.get(id);
+    if (!home) {
+      home = { position: panel.position.clone(), quaternion: panel.quaternion.clone(), scale: panel.scale.clone() };
+      authored.set(id, home);
+    }
+    if (!near) {
+      panel.position.copy(home.position);
+      panel.quaternion.copy(home.quaternion);
+      panel.scale.copy(home.scale);
+      continue;
+    }
+    panel.position.set(...pose.position);
+    if (pose.yawDeg !== undefined) panel.quaternion.setFromAxisAngle(UP, (pose.yawDeg * Math.PI) / 180);
+    if (pose.scale !== undefined) panel.scale.setScalar(pose.scale);
+  }
+}

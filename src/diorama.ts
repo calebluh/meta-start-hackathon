@@ -66,6 +66,8 @@ import { dive, DIVE_SECONDS } from './transition.js';
 import { buildLayout, resolveRef, type DioramaLayout, type District as Lot, type Rect } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
 import { hashString, pickTheme } from './rooms/themes.js';
+import { NOTES_NODE, NOTES_ROOM } from './notes/scribe.js';
+import { loadNotes } from './notes/store.js';
 import {
   app,
   currentFlow,
@@ -973,6 +975,14 @@ export class DioramaSystem extends createSystem({
     // desk itself is moved by WorkspaceSystem).
     on('btn-recenter', () => this.resetBoard());
     on('btn-street', () => setStreet(!app.street), 800);
+    // The notes room belongs to the whole project, so it is on the desk, not in a building.
+    on('btn-notes', () => {
+      if (app.mode === 'room' && app.roomNode === NOTES_ROOM) leaveRoom();
+      else {
+        if (app.stepIndex >= 0) stopFlow(false);
+        enterRoom(NOTES_ROOM);
+      }
+    }, 800);
   }
 
   private resetBoard(): void {
@@ -1137,6 +1147,7 @@ export class DioramaSystem extends createSystem({
     this.setText(this.controls, 'flow-label', flow ? flow.title : 'No flows');
     this.setText(this.controls, 'play-label', app.stepIndex >= 0 ? 'Stop' : 'Play flow');
     this.setText(this.controls, 'street-label', app.street ? 'Map view' : 'Street view');
+    this.setText(this.controls, 'notes-label', app.mode === 'room' && app.roomNode === NOTES_ROOM ? 'Close notes' : 'Notes');
     this.setText(
       this.controls,
       'inside-label',
@@ -1167,6 +1178,7 @@ export class DioramaSystem extends createSystem({
 
     if (app.quiz && app.mode === 'room' && app.roomNode) this.showQuizCard(app.roomNode);
     else if (step) this.showStep();
+    else if (app.mode === 'room' && app.roomNode === NOTES_ROOM) this.showNotesRoom();
     else if (app.mode === 'room' && app.roomNode) this.showNode(app.roomNode);
     else if (app.selected) this.showNode(app.selected);
     else this.showOverview();
@@ -1200,6 +1212,22 @@ export class DioramaSystem extends createSystem({
     this.setShown('insp-recent-box', !!task);
     if (task) this.setText(this.inspector, 'insp-recent', `Just changed: ${task.title}. ${task.summary}`);
     this.setShown('insp-files', false);
+  }
+
+  /** The side panel in the notes room: what the room is for and how to use it. */
+  private showNotesRoom(): void {
+    const count = loadNotes(app.mapId).length;
+    this.setText(this.inspector, 'insp-kind', 'NOTES ROOM');
+    this.setText(this.inspector, 'insp-title', `Notes for ${app.graph.project.name}`);
+    this.setText(this.inspector, 'insp-summary', NOTES_NODE.summary);
+    this.setText(
+      this.inspector,
+      'insp-stats',
+      `${count} note${count === 1 ? '' : 's'} so far | say "scratch that" to take one back, "read them back" to hear them`,
+    );
+    this.setShown('insp-alert-box', false);
+    this.setShown('insp-recent-box', false);
+    for (let i = 0; i < 4; i += 1) this.inspector?.getElementById(`file-${i}`)?.setProperties({ display: 'none' });
   }
 
   private showNode(id: string): void {

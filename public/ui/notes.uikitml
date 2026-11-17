@@ -1,0 +1,119 @@
+<!--
+  Notes panel, shown in the notes room. Designed for a scene scale of 0.1
+  (1px = 1 mm) and to sit within arm's reach, so every button can be tapped
+  with a fingertip as well as pointed at. NotesDesk fills in the text.
+-->
+<style>
+  .root {
+    flex-direction: column;
+    width: 330px;
+  }
+
+  .content {
+    flex-direction: column;
+    gap: 8px;
+    padding: 16px;
+  }
+
+  .eyebrow {
+    color: #4fd1c5;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+  }
+
+  .title {
+    color: #fafaf7;
+    font-size: 20px;
+    font-weight: 700;
+    width: 298px;
+  }
+
+  .live {
+    color: #f0b429;
+    font-size: 15px;
+    line-height: 1.3;
+    width: 298px;
+  }
+
+  .list {
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 9px;
+    padding-bottom: 9px;
+    padding-left: 12px;
+    padding-right: 12px;
+    border-radius: 10px;
+    background-color: #1c2430;
+  }
+
+  .note {
+    color: #dddfe3;
+    font-size: 14px;
+    line-height: 1.3;
+    width: 274px;
+  }
+
+  .status {
+    color: #9aa3ad;
+    font-size: 13px;
+    width: 298px;
+  }
+
+  .wide {
+    justify-content: flex-start;
+    width: 298px;
+  }
+
+  .row {
+    flex-direction: row;
+    gap: 8px;
+  }
+</style>
+<Panel class="root">
+  <div class="content">
+    <span id="notes-eyebrow" class="eyebrow">NOTES</span>
+    <span id="notes-title" class="title">Talking it over</span>
+    <span id="notes-live" class="live">Just say your idea.</span>
+    <div class="list">
+      <span id="note-0" class="note">No notes yet.</span>
+      <span id="note-1" class="note">...</span>
+      <span id="note-2" class="note">...</span>
+    </div>
+    <span id="notes-status" class="status">Kept on this device.</span>
+    <Button id="btn-notes-mode" class="wide">
+      <ButtonIcon>
+        <PenLine></PenLine>
+      </ButtonIcon>
+      <ButtonLabel id="notes-mode-label">Switch to word for word</ButtonLabel>
+    </Button>
+    <div class="row">
+      <Button id="btn-notes-undo">
+        <ButtonIcon>
+          <Undo2></Undo2>
+        </ButtonIcon>
+        <ButtonLabel>Undo last</ButtonLabel>
+      </Button>
+      <Button id="btn-notes-read">
+        <ButtonIcon>
+          <Volume2></Volume2>
+        </ButtonIcon>
+        <ButtonLabel>Read back</ButtonLabel>
+      </Button>
+    </div>
+    <div class="row">
+      <Button id="btn-notes-mic">
+        <ButtonIcon>
+          <Mic></Mic>
+        </ButtonIcon>
+        <ButtonLabel id="notes-mic-label">Mic on</ButtonLabel>
+      </Button>
+      <Button id="btn-notes-done">
+        <ButtonIcon>
+          <X></X>
+        </ButtonIcon>
+        <ButtonLabel>Done</ButtonLabel>
+      </Button>
+    </div>
+  </div>
+</Panel>

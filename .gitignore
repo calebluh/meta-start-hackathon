@@ -6,6 +6,9 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Notes spoken in the notes room (written by the local dev server)
+/notes/
+
 # Environment files
 .env
 .env.local

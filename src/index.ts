@@ -4,6 +4,7 @@ import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
 import { MAPS } from './maps/index.js';
+import { NOTES_ROOM } from './notes/scribe.js';
 import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, setStreet, startFlow } from './state.js';
 import { stopSpeaking } from './agent/client.js';
 import { warmVoice } from './agent/voice.js';
@@ -148,6 +149,13 @@ World.create(
       if (e.key === 'x') world.getSystem(RoomSystem)?.debugQuizAnswer(false);
       if (e.key === 'c') world.getSystem(RoomSystem)?.debugHear('I think it takes the card payments and gives refunds');
       if (e.key === 'd') world.getSystem(RoomSystem)?.debugHear('ok quiz me');
+      // Notes room: = goes in, ; says an idea, ' takes the last note back.
+      if (e.key === '=') enterRoom(NOTES_ROOM);
+      if (e.key === ';') world.getSystem(RoomSystem)?.debugHear('We should let people pause a meal kit for a week instead of cancelling.');
+      if (e.key === "'") world.getSystem(RoomSystem)?.debugHear('scratch that');
+      if (e.key === '[') world.getSystem(RoomSystem)?.debugHear('word for word');
+      if (e.key === ']') world.getSystem(RoomSystem)?.debugHear('talk it over');
+      if (e.key === ',') world.getSystem(RoomSystem)?.debugHear('Actually make it two weeks, and only for people on the yearly plan.');
     });
   }
 }).catch((error) => {

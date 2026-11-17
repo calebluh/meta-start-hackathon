@@ -17,6 +17,7 @@ export default defineAssets({
   controls: uikitml('controls.uikitml', 'Controls Panel'),
   ask: uikitml('ask.uikitml', 'Ask Panel'),
   menu: uikitml('menu.uikitml', 'Menu Panel'),
+  notes: uikitml('notes.uikitml', 'Notes Panel'),
   // CC0 RobotExpressive by Tomás Laulhé (Quaternius), via the three.js examples.
   'worker-robot': { url: publicAssetUrl('models/robot-expressive.glb'), type: AssetType.GLTF, name: 'Worker robot' },
 });

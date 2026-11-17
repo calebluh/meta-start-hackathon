@@ -84,6 +84,36 @@ function agentApi(): Plugin {
           await send(await m.handleTts(body, env.OPENAI_API_KEY, req.socket.remoteAddress ?? 'local'));
         });
       });
+      // Notes spoken in the notes room are written into this folder, so the
+      // owner (and their coding agent) can pick them up: notes/<map>.md. Only
+      // this local server does that; the hosted site has no such endpoint.
+      server.middlewares.use('/api/notes', (req, res) => {
+        const send = (status: number, json: unknown) => {
+          res.statusCode = status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(json));
+        };
+        if (req.method !== 'POST') return send(405, { error: 'POST only' });
+        let raw = '';
+        req.on('data', (chunk) => {
+          if (raw.length < 300_000) raw += chunk;
+        });
+        req.on('end', async () => {
+          try {
+            const body = JSON.parse(raw) as { mapId?: unknown; markdown?: unknown };
+            // The map id becomes a file name: plain names only, never a path.
+            if (typeof body.mapId !== 'string' || !/^[\w-]{1,40}$/.test(body.mapId)) return send(400, { error: 'Bad map id' });
+            if (typeof body.markdown !== 'string' || body.markdown.length > 200_000) return send(400, { error: 'Bad notes' });
+            const { mkdir, writeFile } = await import('node:fs/promises');
+            const { join } = await import('node:path');
+            await mkdir(join(process.cwd(), 'notes'), { recursive: true });
+            await writeFile(join(process.cwd(), 'notes', `${body.mapId}.md`), body.markdown, 'utf8');
+            send(200, { path: `notes/${body.mapId}.md` });
+          } catch {
+            send(400, { error: 'Could not save the notes' });
+          }
+        });
+      });
       server.middlewares.use('/api/transcribe', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;
@@ -106,7 +136,8 @@ function agentApi(): Plugin {
 
 export default defineConfig({
   plugins: [iwsdkDev(), agentApi()],
-  server: { host: '0.0.0.0', port: 8081, open: false },
+  // PORT lets a second copy (another worktree) run beside the first.
+  server: { host: '0.0.0.0', port: Number(process.env.PORT) || 8081, open: false },
   build: {
     outDir: 'dist',
     sourcemap: process.env.NODE_ENV !== 'production',

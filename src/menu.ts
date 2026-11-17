@@ -27,7 +27,7 @@ export class MenuSystem extends createSystem({}) {
         text('custom-name', graph.project.name.slice(0, 22));
         const summary = graph.project.summary.split(/(?<=[.!?])\s/)[0] ?? '';
         text('custom-pitch', summary.length > 110 ? `${summary.slice(0, 107)}...` : summary);
-        text('custom-go', custom.length > 1 ? `Pinch to start (+${custom.length - 1} more via ?map=)` : 'Pinch to start');
+        text('custom-go', custom.length > 1 ? `Tap to start (+${custom.length - 1} more via ?map=)` : 'Tap to start');
       }
       for (const id of [...Object.keys(MAPS).filter((m) => !CUSTOM_MAPS[m] && m !== 'self'), third]) {
         const card = cardFor(id);
@@ -57,7 +57,7 @@ export class MenuSystem extends createSystem({}) {
           hint.setProperties({
             text: gaze
               ? 'Look at a card, then tap your thumb and finger together.'
-              : 'Point at a card and pinch your thumb and finger, or tap it with a fingertip.',
+              : 'Tap a card with a fingertip, or point at it and pinch your thumb and finger.',
           });
         }),
       );

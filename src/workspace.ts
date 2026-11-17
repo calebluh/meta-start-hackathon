@@ -20,6 +20,7 @@ import {
 import { guideNote } from './guide.js';
 import { inPassthrough } from './passthrough.js';
 import { FAR, NEAR, placement } from './placement.js';
+import { setPanelsWithinReach } from './reach.js';
 import { app } from './state.js';
 import { dive } from './transition.js';
 
@@ -129,6 +130,7 @@ export class WorkspaceSystem extends createSystem({}) {
           placement.gaze = false;
           placement.onTable = false;
           this.tableSearch = 0;
+          setPanelsWithinReach(this.world, false);
           this.workspace!.position.copy(this.homePosition);
           this.workspace!.rotation.set(0, this.homeYaw, 0);
         } else if (state === VisibilityState.Visible && !this.immersive) {
@@ -258,6 +260,8 @@ export class WorkspaceSystem extends createSystem({}) {
     placement.reach = reach;
     placement.drop = drop;
     placement.gaze = gaze;
+    // Bare hands tap buttons, so the panels come within reach; eyes aim from afar.
+    setPanelsWithinReach(this.world, !gaze);
     const head = this.player.head;
     head.getWorldPosition(this.head);
     head.getWorldQuaternion(this.headQuat);
