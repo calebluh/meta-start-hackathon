@@ -17,7 +17,7 @@
    "summary": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",
    "stats": {
     "files": 12,
-    "loc": 3620
+    "loc": 3630
    }
   },
   {
@@ -650,7 +650,7 @@
    "n": "table.city",
    "name": "City on the desk",
    "d": "Draws the miniature city, lets you pick, grab and resize it, plays journeys as lights between buildings, fills in the cards, and grows the city around you when you step inside.",
-   "loc": 2316,
+   "loc": 2320,
    "exports": [
     "makeLabel L263",
     "makeTurnButton L298",
@@ -1086,7 +1086,7 @@
    "n": "table.city",
    "name": "Visit tracker",
    "d": "Keeps track of which map is open, what you have picked, which journey is playing and whether you are at the desk or in a room, and tells every other part when that changes.",
-   "loc": 211,
+   "loc": 217,
    "exports": [
     "app L15",
     "onChange L52",

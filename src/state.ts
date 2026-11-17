@@ -106,7 +106,7 @@ export function nextStep(): void {
     return;
   }
   app.stepIndex += 1;
-  if (app.mode === 'room' && app.follow) app.roomNode = app.flowSteps[app.stepIndex].nodeId;
+  if (app.mode === 'room' && app.follow && !app.roomNode?.startsWith('~')) app.roomNode = app.flowSteps[app.stepIndex].nodeId;
   emit();
 }
 
@@ -216,6 +216,12 @@ export function enterRoom(id: string): void {
   app.menu = false;
   app.mode = 'room';
   app.roomNode = id;
+  // A room that is not part of the code (the notes room) ends a flow that is playing,
+  // or the flow's next step would carry the visitor straight out of it.
+  if (id.startsWith('~')) {
+    app.playing = false;
+    app.stepIndex = -1;
+  }
   emit();
 }
 

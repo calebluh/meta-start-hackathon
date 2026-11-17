@@ -693,6 +693,7 @@ export class DioramaSystem extends createSystem({
     const chip = this.chip?.object3D;
     if (chip?.visible && this.tipOverChip(chip, hand, CHIP_PINCH_REACH) && Math.abs(this.chipLocal.z) < CHIP_PINCH_REACH) {
       this.chipHit = true;
+      if (import.meta.env.DEV) console.log(`[chip] ${hand} pinch at Step inside (${this.chipLocal.x.toFixed(3)}, ${this.chipLocal.y.toFixed(3)}, ${this.chipLocal.z.toFixed(3)})`);
       this.pinchTakenAt = now;
       return;
     }
@@ -1297,6 +1298,9 @@ export class DioramaSystem extends createSystem({
     // A wider invisible card behind the button (60 mm tall), so a wavering ray still lands on it.
     const chipPad = new Mesh(chip.geometry, HIT_MATERIAL);
     chipPad.scale.set(1.25, CHIP_CATCH / CHIP_HEIGHT, 1);
+    // For pointing only: to a fingertip it would make the button far bigger than it looks, and a hand
+    // reaching for the building next door would brush it and walk in.
+    (chipPad as Mesh & { pointerEventsType?: unknown }).pointerEventsType = { deny: 'touch' };
     chip.add(chipPad);
     this.chip = this.world.createTransformEntity(chip, { parent: this.root });
     this.entities.push(this.chip);
