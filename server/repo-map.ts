@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
-import { gunzipSync } from 'node:zlib';
+import { Readable } from 'node:stream';
+import { createGunzip } from 'node:zlib';
 import { MAPS } from '../src/maps/index.js';
 import { allowAll, createLimiter } from './rate-limit.js';
 import type { Flow, GraphData, GraphFile, GraphLink, GraphNode, HealthIssue, NodeKind } from '../src/maps/types.js';
@@ -25,16 +26,16 @@ import type { Flow, GraphData, GraphFile, GraphLink, GraphNode, HealthIssue, Nod
  * produced, never from text a visitor wrote.
  */
 
-const MAX_TARBALL_BYTES = 30 * 1024 * 1024;
-const MAX_UNPACKED_BYTES = 200 * 1024 * 1024;
+const MAX_TARBALL_BYTES = 110 * 1024 * 1024;
+const MAX_UNPACKED_BYTES = 1500 * 1024 * 1024;
 const MAX_FILE_BYTES = 300 * 1024;
-const MAX_SCANNED_FILES = 6000;
+const MAX_SCANNED_FILES = 12000;
 /** Keep within what the city has been measured with (MiroFish: 15 parts, 87 files). */
 const MAX_PARTS = 14;
 const MAX_LISTED_FILES = 87;
 const MAX_EXTERNALS = 4;
 const MAX_MAP_CHARS = 160_000;
-const DOWNLOAD_TIMEOUT_MS = 20_000;
+const DOWNLOAD_TIMEOUT_MS = 35_000;
 const MODEL_TIMEOUT_MS = 22_000;
 
 export class RepoMapError extends Error {
@@ -107,72 +108,126 @@ function octal(buf: Buffer, start: number, length: number): number {
   return text ? parseInt(text, 8) : 0;
 }
 
-/** Reads the text files we care about out of a GitHub tar.gz. */
-function untar(gz: Buffer): { files: RawFile[]; meta: RawFile[]; commit: string } {
-  let tar: Buffer;
-  try {
-    tar = gunzipSync(gz, { maxOutputLength: MAX_UNPACKED_BYTES });
-  } catch {
-    throw new RepoMapError(413, 'That repository is too big to map here');
-  }
-  const files: RawFile[] = [];
-  const meta: RawFile[] = [];
-  let commit = '';
-  let longName: string | null = null;
-  let offset = 0;
-  let scanned = 0;
-  while (offset + 512 <= tar.length) {
-    const header = tar.subarray(offset, offset + 512);
-    if (header.every((b) => b === 0)) break;
-    const size = octal(header, 124, 12);
-    const type = String.fromCharCode(header[156] || 48);
-    const prefix = header.toString('utf8', 345, 500).replace(/\0.*$/, '');
-    let name = header.toString('utf8', 0, 100).replace(/\0.*$/, '');
-    if (prefix) name = `${prefix}/${name}`;
-    const body = tar.subarray(offset + 512, offset + 512 + size);
-    offset += 512 + Math.ceil(size / 512) * 512;
-    if (type === 'g') {
-      // GitHub's global header carries the commit id.
-      const c = /comment=([0-9a-f]{40})/.exec(body.toString('utf8'));
-      if (c) commit = c[1];
-      continue;
-    }
-    if (type === 'x') {
-      const p = /\d+ path=([^\n]+)\n/.exec(body.toString('utf8'));
-      longName = p ? p[1] : null;
-      continue;
-    }
-    if (type === 'L') {
-      longName = body.toString('utf8').replace(/\0.*$/, '');
-      continue;
-    }
-    if (longName) {
-      name = longName;
-      longName = null;
-    }
-    if (type !== '0' && type !== '\0' && type !== '7') continue;
-    // Drop GitHub's "<repo>-<sha>/" folder.
-    const path = name.split('/').slice(1).join('/');
-    if (!path || !SAFE_PATH.test(path)) continue;
-    const parts = path.split('/');
-    if (parts.slice(0, -1).some((d) => SKIP_DIRS.has(d) || d.startsWith('.'))) continue;
-    const base = parts[parts.length - 1];
-    if (parts.length <= 3 && META_FILES.test(base) && size < 200_000) {
-      meta.push({ path, text: body.toString('utf8') });
-      if (/^readme/i.test(base) || /\.json$|\.toml$|\.txt$|\.mod$/.test(base)) {
-        // Readmes and manifests are not code; fall through only for code files.
-        continue;
-      }
-    }
-    const ext = base.includes('.') ? base.slice(base.lastIndexOf('.') + 1).toLowerCase() : '';
-    if (!CODE_EXT.has(ext) || size > MAX_FILE_BYTES || /\.min\.(js|css)$/.test(base) || /\.d\.ts$/.test(base)) continue;
-    if (++scanned > MAX_SCANNED_FILES) break;
-    files.push({ path, text: body.toString('utf8') });
-  }
-  return { files, meta, commit };
+interface Untarred {
+  files: RawFile[];
+  meta: RawFile[];
+  commit: string;
 }
 
-async function download(owner: string, name: string): Promise<Buffer> {
+/** Which tar entries are worth keeping: code files we can read, and readmes or manifests near the top. */
+function wanted(path: string, size: number): 'code' | 'meta' | null {
+  if (!path || !SAFE_PATH.test(path)) return null;
+  const parts = path.split('/');
+  if (parts.slice(0, -1).some((d) => SKIP_DIRS.has(d) || d.startsWith('.'))) return null;
+  const base = parts[parts.length - 1];
+  if (parts.length <= 3 && META_FILES.test(base) && size < 200_000) return 'meta';
+  const ext = base.includes('.') ? base.slice(base.lastIndexOf('.') + 1).toLowerCase() : '';
+  if (!CODE_EXT.has(ext) || size > MAX_FILE_BYTES || /\.min\.(js|css)$/.test(base) || /\.d\.ts$/.test(base)) return null;
+  return 'code';
+}
+
+/**
+ * Reads a GitHub tar.gz as it downloads, keeping only the files we want and
+ * skipping the rest without holding them, so big repositories fit in memory.
+ */
+async function untarStream(body: ReadableStream<Uint8Array>): Promise<Untarred> {
+  const out: Untarred = { files: [], meta: [], commit: '' };
+  const gunzip = createGunzip();
+  const source = Readable.fromWeb(body as unknown as import('node:stream/web').ReadableStream<Uint8Array>);
+  source.on('error', (e) => gunzip.destroy(e));
+  source.pipe(gunzip);
+  let buf: Buffer = Buffer.alloc(0);
+  let unpacked = 0;
+  let mode: 'header' | 'body' | 'skip' = 'header';
+  let skipLeft = 0;
+  let entry: { type: string; path: string; size: number; padded: number; keep: 'code' | 'meta' | 'special' } | null = null;
+  let longName: string | null = null;
+  let done = false;
+  try {
+    for await (const chunk of gunzip as AsyncIterable<Buffer>) {
+      unpacked += chunk.length;
+      if (unpacked > MAX_UNPACKED_BYTES) throw new RepoMapError(413, 'That repository is too big to map here');
+      buf = buf.length ? Buffer.concat([buf, chunk]) : chunk;
+      for (;;) {
+        if (mode === 'skip') {
+          const n = Math.min(skipLeft, buf.length);
+          skipLeft -= n;
+          buf = buf.subarray(n);
+          if (skipLeft > 0) break;
+          mode = 'header';
+          continue;
+        }
+        if (mode === 'body') {
+          if (!entry || buf.length < entry.padded) break;
+          const data = buf.subarray(0, entry.size);
+          buf = buf.subarray(entry.padded);
+          mode = 'header';
+          if (entry.type === 'g') {
+            const c = /comment=([0-9a-f]{40})/.exec(data.toString('utf8'));
+            if (c) out.commit = c[1];
+          } else if (entry.type === 'x') {
+            const p = /\d+ path=([^\n]+)\n/.exec(data.toString('utf8'));
+            longName = p ? p[1] : null;
+          } else if (entry.type === 'L') {
+            longName = data.toString('utf8').replace(/\0.*$/, '');
+          } else if (entry.keep === 'meta') {
+            out.meta.push({ path: entry.path, text: data.toString('utf8') });
+          } else if (entry.keep === 'code') {
+            out.files.push({ path: entry.path, text: data.toString('utf8') });
+            if (out.files.length >= MAX_SCANNED_FILES) done = true;
+          }
+          entry = null;
+          if (done) break;
+          continue;
+        }
+        // A header.
+        if (buf.length < 512) break;
+        const header = buf.subarray(0, 512);
+        buf = buf.subarray(512);
+        if (header.every((b) => b === 0)) {
+          done = true;
+          break;
+        }
+        const size = octal(header, 124, 12);
+        const padded = Math.ceil(size / 512) * 512;
+        const type = String.fromCharCode(header[156] || 48);
+        if (type === 'g' || type === 'x' || type === 'L') {
+          entry = { type, path: '', size, padded, keep: 'special' };
+          mode = 'body';
+          continue;
+        }
+        const prefix = header.toString('utf8', 345, 500).replace(/\0.*$/, '');
+        let name = header.toString('utf8', 0, 100).replace(/\0.*$/, '');
+        if (prefix) name = `${prefix}/${name}`;
+        if (longName) {
+          name = longName;
+          longName = null;
+        }
+        // Drop GitHub's "<repo>-<sha>/" folder.
+        const path = name.split('/').slice(1).join('/');
+        const keep = type === '0' || type === '\0' || type === '7' ? wanted(path, size) : null;
+        if (keep) {
+          entry = { type, path, size, padded, keep };
+          mode = 'body';
+        } else {
+          skipLeft = padded;
+          mode = 'skip';
+        }
+      }
+      if (done) break;
+    }
+  } catch (e) {
+    if (e instanceof RepoMapError) throw e;
+    if ((e as Error)?.name === 'TimeoutError' || (e as Error)?.name === 'AbortError') throw new RepoMapError(504, 'GitHub took too long to send the code');
+    throw new RepoMapError(502, 'The code could not be unpacked');
+  } finally {
+    source.destroy();
+    gunzip.destroy();
+  }
+  return out;
+}
+
+async function download(owner: string, name: string): Promise<Untarred> {
   // codeload serves the default branch as one tarball, with no API quota.
   let response: Response;
   try {
@@ -187,20 +242,7 @@ async function download(owner: string, name: string): Promise<Buffer> {
   if (!response.ok || !response.body) throw new RepoMapError(502, `GitHub answered ${response.status}`);
   const declared = Number(response.headers.get('content-length') ?? 0);
   if (declared > MAX_TARBALL_BYTES) throw new RepoMapError(413, 'That repository is too big to map here');
-  const chunks: Buffer[] = [];
-  let total = 0;
-  const reader = response.body.getReader();
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    total += value.byteLength;
-    if (total > MAX_TARBALL_BYTES) {
-      await reader.cancel().catch(() => undefined);
-      throw new RepoMapError(413, 'That repository is too big to map here');
-    }
-    chunks.push(Buffer.from(value));
-  }
-  return Buffer.concat(chunks);
+  return untarStream(response.body);
 }
 
 // ------------------------------------------------------------- reading the code
@@ -801,8 +843,7 @@ export async function buildRepoMap(repoInput: unknown, secret: string | undefine
   const repo = parseRepo(repoInput);
   if (!repo) throw new RepoMapError(400, 'Give a public GitHub repository, like owner/name or its github.com link');
   if (!secret) throw new RepoMapError(503, 'The server has no key to sign maps with');
-  const gz = await download(repo.owner, repo.name);
-  const { files, meta, commit } = untar(gz);
+  const { files, meta, commit } = await download(repo.owner, repo.name);
   const draft = plainMap(repo.owner, repo.name, commit, readCode(files), meta);
   await decorate(draft, apiKey, model);
   const map = JSON.stringify(draft.graph);
