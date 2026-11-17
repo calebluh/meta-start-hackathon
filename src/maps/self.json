@@ -61,7 +61,7 @@
    "summary": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
    "stats": {
     "files": 3,
-    "loc": 2316
+    "loc": 2322
    }
   },
   {
@@ -83,7 +83,7 @@
    "summary": "The robot crew shared by every room: how they walk, wave and move their mouths in time with their voice, plus their speech bubbles and the small things they say while thinking.",
    "stats": {
     "files": 3,
-    "loc": 467
+    "loc": 489
    }
   },
   {
@@ -105,7 +105,7 @@
    "summary": "Gets a robot's answer to your question. It writes a briefing from the map so the AI only talks about this code, sends the question to Meta's AI, and tidies the reply. If the AI cannot be reached, the robot answers from the map's own descriptions.",
    "stats": {
     "files": 5,
-    "loc": 1317
+    "loc": 1330
    }
   },
   {
@@ -381,7 +381,7 @@
    "n": "talk.answers",
    "name": "Answer service",
    "d": "Checks that a question is short and about a real room, writes the robot's briefing from the map, asks Meta's AI, and returns the answer with any actions such as pointing to another room.",
-   "loc": 374,
+   "loc": 384,
    "exports": [
     "MODEL_API_BASE L30",
     "AgentError L67",
@@ -393,7 +393,7 @@
     "dropLeadIn L279",
     "complete L295",
     "extractLeakedCalls L345",
-    "handleAgent L374"
+    "handleAgent L384"
    ]
   },
   {
@@ -475,7 +475,7 @@
    "n": "talk.answers",
    "name": "Robot briefing",
    "d": "Writes what a robot knows about its room, lists the actions it may take, suggests questions you could ask, and tidies up the AI's reply.",
-   "loc": 504,
+   "loc": 507,
    "exports": [
     "roomFacts L21",
     "codeFacts L79",
@@ -1003,7 +1003,7 @@
    "n": "rooms.builder",
    "name": "Room director",
    "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question.",
-   "loc": 1960,
+   "loc": 1966,
    "exports": [
     "RoomSystem L220"
    ]
@@ -1051,10 +1051,11 @@
    "n": "rooms.robots",
    "name": "Speech bubble",
    "d": "Draws the floating bubble that shows what a robot is saying, growing taller as the text gets longer; the tour's card uses it too.",
-   "loc": 152,
+   "loc": 174,
    "exports": [
-    "codeBlock L25",
-    "Bubble L46"
+    "codeBlock L26",
+    "warningTalkedAbout L48",
+    "Bubble L70"
    ]
   },
   {
@@ -2130,6 +2131,12 @@
   {
    "a": "f:src/rooms/worker.ts",
    "b": "f:src/rays.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/rooms/worker.ts",
+   "b": "f:src/maps/types.ts",
    "k": "import",
    "w": 1
   },

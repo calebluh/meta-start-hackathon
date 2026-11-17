@@ -140,7 +140,7 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     ...(code.length
       ? [
           '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out. If asked about anything else in the code, say you have only seen those lines.',
-          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which file, function and line to change, and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the fix (naming the file and line), and tell them it is on their notes list for their coding agent.',
+          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), say your best concrete suggestion in one or two short sentences: the line or function to change and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the full fix (naming the file and line), and tell them it is on their notes list for their coding agent. Keep the whole answer to 2-4 short sentences; the details belong in the note, not in your words.',
           '- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.',
         ]
       : [
@@ -502,8 +502,11 @@ export function parseReply(text: string): { answer: string; followups: string[] 
   const match = text.match(/^\s*FOLLOWUPS:\s*(.+)$/im);
   // Bubbles and speech are plain text: drop Markdown marks the model adds.
   const answer = (match ? text.slice(0, match.index) : text)
-    .replace(/[`*#]/g, '')
-    // _emphasis_ goes, but names keep their underscores (cleanup_old_tasks, __init__.py).
+    .replace(/[`#]/g, '')
+    // **bold**, *italic* and _emphasis_ go, but code keeps its own marks:
+    // cleanup_old_tasks, __init__.py, origins "*".
+    .replace(/\*\*([^*\n]+)\*\*/g, '$1')
+    .replace(/(^|\s)\*([^*\s][^*\n]*?)\*(?=[\s.,!?;:]|$)/g, '$1$2')
     .replace(/(^|\s)_{1,2}([^_\n]+?)_{1,2}(?=[\s.,!?;:]|$)/g, '$1$2')
     .replace(/\s+—\s+/g, ' - ')
     // Words said before and after a tool call arrive joined: "the building.I'm Eli".

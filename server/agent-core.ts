@@ -357,9 +357,19 @@ export function extractLeakedCalls(content: string): { text: string; calls: { na
     }
     calls.push({ name, args });
   }
+  // Or as a plain line of its own: "show_file: backend/app/api/simulation.py".
+  const plain = /^[ \t]*(show_file|add_note|go_to_room|play_flow|point_to_room|back_to_city)[ \t]*:[ \t]*(.*)$/gim;
+  for (const m of content.matchAll(plain)) {
+    const name = m[1].toLowerCase();
+    const value = m[2].trim();
+    const key = name === 'show_file' ? 'path' : name === 'add_note' ? 'text' : name === 'play_flow' ? 'flow_id' : 'room_id';
+    calls.push({ name, args: name === 'back_to_city' ? {} : { [key]: value } });
+  }
   const text = content
     .replace(/<([\w-]*:)?function_?calls>[\s\S]*?<\/([\w-]*:)?function_?calls>/gi, '')
     .replace(invoke, '')
+    // Any line that starts with a tool's name is not speech ("show_file...", "add_note(...)").
+    .replace(/^[ \t]*(show_file|add_note|go_to_room|play_flow|point_to_room|back_to_city)\b.*$/gim, '')
     .trim();
   return { text, calls };
 }

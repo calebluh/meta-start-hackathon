@@ -50,7 +50,7 @@ import { loadProps } from './props.js';
 import { makePropDecor, makePropStation, propsForTheme } from './stations.js';
 import { makeDecor, makeItem, makePalette, makeStation, pickTheme, type Theme } from './themes.js';
 import { type Mood, RobotCharacter } from './character.js';
-import { Bubble, codeBlock } from './worker.js';
+import { Bubble, codeBlock, warningTalkedAbout } from './worker.js';
 
 const ROOM_RADIUS = 5.2;
 const WALL_HEIGHT = 3.4;
@@ -1321,7 +1321,7 @@ export class RoomSystem extends createSystem({
       if (import.meta.env.DEV) console.log(`[notes] added from ${w.name}: ${note.text.slice(0, 80)}`);
     }
     const file = reply.actions.find((a) => a.type === 'show_file');
-    if (file?.type === 'show_file') this.showFileCard(file.path);
+    if (file?.type === 'show_file') this.showFileCard(file.path, `${reply.answer} ${note?.type === 'add_note' ? note.text : ''}`);
 
     const answer = reply.answer || 'Right this way.';
     const cuts = this.cutIns;
@@ -1407,13 +1407,19 @@ export class RoomSystem extends createSystem({
     return best?.id ?? null;
   }
 
-  /** A card for one of the room's files, floating to the viewer's left. */
-  private showFileCard(path: string): void {
+  /**
+   * A card for one of the room's files, floating to the viewer's left. A file
+   * with a warning shows the flagged lines (maps built with code excerpts);
+   * with two warnings, the one the robot is talking about (`said`).
+   */
+  private showFileCard(path: string, said = ''): void {
     const file = app.graph.files.find((f) => f.p === path);
     if (!file || !this.roomGroup || !this.theme) return;
     this.hideFileCard();
-    // A file with a warning shows the flagged lines under its description (maps built with code excerpts).
-    const issue = app.graph.health?.issues.find((i) => i.excerpt && i.locations?.[0]?.file === path);
+    const issue = warningTalkedAbout(
+      (app.graph.health?.issues ?? []).filter((i) => i.excerpt && i.locations?.[0]?.file === path),
+      said,
+    );
     const code = issue?.excerpt ? codeBlock(issue.excerpt) : undefined;
     const card = new Bubble(0.7, this.theme.accent, code ? 3 : 8);
     if (code && issue) {
