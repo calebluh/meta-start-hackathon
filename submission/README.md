@@ -69,6 +69,13 @@ emulator. This is the most important step left.
      six seconds. If mixed reality will not start, try the link with
      `?noanchor` on the end and tell Claude. If it misbehaves, roll back
      (see the end of this file).
+   - **Your own repository (new, 17 Nov night).** On the Quest Browser page,
+     before entering, type a public GitHub repository (try one of yours) in
+     the box under the buttons and press Build city, or tap Flask. After
+     about ten seconds it says the city is ready; Enter VR should open that
+     city. Pick a building, step inside, ask a robot: it should talk about
+     that repository's real files. Check that typing with the Quest keyboard
+     is comfortable.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -144,6 +151,25 @@ git push
 Or, without git: in Vercel, open the project, Deployments, find the
 deployment of commit `c17d434`, and choose **Promote to Production** (instant
 rollback).
+
+### Rolling back the GitHub repository cities
+
+If the repo box misbehaves, undo it alone (the anchor stays):
+
+```bash
+git revert --no-edit a985c1b a50d624
+git push
+```
+
+Then take it out of `devpost.md`: the "Optional, and the best part" note in
+testing step 3, the sentence "Any public GitHub repository: type its name..."
+under What it does, the "Any repository, on the spot" bullet, and "GitHub
+(public repositories)" under Built with. In `video-script.md`, put the 0:08
+row back to: a wall of code in an editor, then back to the city, with the
+voice-over "Joining a project means weeks of reading. But people don't learn
+places by reading. They walk around, and they ask someone who works there."
+
+### Rolling back the anchor
 
 If you roll back, also take the anchor out of `devpost.md` before pasting it:
 testing step 11, the sentences from "It also remembers that spot" to "Back

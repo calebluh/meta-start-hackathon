@@ -15,7 +15,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Public link | https://diorama.calebluh.com |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
 | Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/codebase-diorama (public viewer and Claude Code plugin, AGPL-3.0) |
-| Built with | IWSDK, WebXR, WebXR Plane Detection, WebXR Anchors (persistent), three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
+| Built with | IWSDK, WebXR, WebXR Plane Detection, WebXR Anchors (persistent), GitHub (public repositories), three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
 
 ## Testing instructions (for the judges)
 
@@ -29,6 +29,10 @@ Paste each part into the matching Devpost field. Everything marked
    the headset asks to share the layout of your room, allow it: that is how
    the city finds your table. (If your room has never been scanned, the city
    floats in front of you instead and you set it down yourself.)
+   **Optional, and the best part: your own code.** Before entering, type any
+   public GitHub repository (yours, or one you know) into the box under the
+   buttons, or tap Flask, Express or SWR, and press Build city. About ten
+   seconds later that repository is a city; Enter VR walks straight into it.
 4. Stay seated. Three cards appear in front of you, within reach. Tap
    **Larder**, the small one, with a fingertip for a first visit. Buttons
    are tapped like a touch screen; things further away are pointed at and
@@ -84,7 +88,8 @@ simply ask.
 ### What it does
 
 Codebase Diorama turns a real software project into a little city on your
-desk.
+desk. Any public GitHub repository: type its name on the page, and about ten
+seconds later you are walking into it.
 
 - **The city.** Every part of the code is a building of dark glass and lit
   windows on a circuit-board tray, sized by how much code it holds and
@@ -209,6 +214,18 @@ so it runs from a link in the Quest Browser with nothing to install.
   is still being looked for. If the headset has forgotten it, or the spot is
   out of reach from where you now sit, the table search takes over as
   before.
+- **Any repository, on the spot.** The server downloads the repository as
+  one tarball (size capped, nothing in it is run) and builds the city from
+  the code itself: folders become districts, the biggest files get buildings
+  of their own, tests and docs one each, line counts size them, imports
+  between files become the roads, and well-known packages (Stripe,
+  Postgres, Redis, OpenAI...) become outside services. Meta's model then
+  names the buildings in plain English, sums the project up and writes the
+  journeys a request takes, choosing only from the parts it is given; if it
+  is slow, the plain city stands. The map is signed by the server, and the
+  robots answer about it only when the signature checks out, so their
+  prompts are always built from text the server wrote, never from text a
+  visitor sends.
 - **Robots.** Answers come from Meta's Model API. The server writes the
   prompt itself from the map and the room, so a robot only knows its own
   room and the directory of the building, and its tools are real actions in
