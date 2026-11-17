@@ -16,4 +16,4 @@ the video wherever these clips appear.
 
 | Clip | Use | Notes |
 | --- | --- | --- |
-| `06-anchor-return.mp4` (10 s) | Mixed reality again, seated about 25 cm further right than last time: the city is back on the spot it was left on, and "Back where you left it" shows for the first 1.5 s. Good for the persistent-anchor beat at 2:32. | The cue lasts 6 s in the app; the recorder started late. |
+| `06-anchor-return.mp4` (10 s) | Mixed reality re-entered after the city was slid along the desk with the grab bar: it comes back on that spot, turned the same way, with "Back where you left it" for the first ~4 s. For the persistent-anchor beat at 2:32. | The cue lasts 6 s in the app; the recorder starts about 2 s late. |
