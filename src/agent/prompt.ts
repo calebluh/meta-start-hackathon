@@ -181,6 +181,9 @@ const LEAVE_PATTERNS = [
   /\bback to (the |my )?(city|desk|diorama)\b/i,
   // "go back to the table", as a request and not in the middle of a question
   /(^|[.,!?] ?)(please |ok(ay)?,? |thanks,? )*(go|head) back to (the |my )?(city|table|desk|map)\b/i,
+  // "can we go back to the table?": when nothing follows the place ("go back
+  // to the table of users" is about the code, and is not asking to leave)
+  /\b(can|could) (we|i|you) (go|head) back to (the |my )?(city|table|desk)( now| please)*\W*$/i,
   // "I'd like to leave", "can we go back out", "let's step out": only when
   // nothing follows but the place itself or a "now" or "please". "Can I leave
   // a tip?", "let me go back a step" and "can we go back to what you said"

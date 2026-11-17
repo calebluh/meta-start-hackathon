@@ -61,7 +61,7 @@ import { mergeGeometries, mergeStatic } from './rooms/merge.js';
 import { BoardPeg, District } from './diorama-components.js';
 import { guideNote } from './guide.js';
 import { Peek } from './peek.js';
-import { isPaused } from './pause.js';
+import { isPaused, onPause } from './pause.js';
 import { dive, DIVE_SECONDS } from './transition.js';
 import { buildLayout, resolveRef, type DioramaLayout, type District as Lot, type Rect } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
@@ -107,6 +107,8 @@ const WAYPOINT_COLOR = '#7ee0ff';
 const TURN_BUTTON_OUT = 0.55;
 const TURN_BUTTON_DROP = 0.18;
 const TURN_BUTTON_ANGLE = 0.95;
+/** The Turn buttons come round again only when the head turns this far (radians) from where they were placed. */
+const TURN_BUTTON_FOLLOW = 1.6;
 const UP = new Vector3(0, 1, 0);
 /**
  * The city is turned and resized with four pegs at its corners, never by
@@ -118,6 +120,8 @@ const PEG_RADIUS = 0.013;
 const PEG_HEIGHT = 0.05;
 /** How far outside the board's corners the pegs stand. */
 const PEG_OUTSET = 0.014;
+/** A pinch begun this soon (ms) after a peg was pointed at takes it, though the closing fingers swung the ray off. */
+const PEG_HOVER_GRACE_MS = 300;
 const PEG_COLOR = '#7ee0ff';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
@@ -404,6 +408,27 @@ export class DioramaSystem extends createSystem({
   /** The corner pegs, and whether they are out (only at the desk, at rest). */
   private pegs: { entity: Entity; mesh: Mesh; material: MeshStandardMaterial }[] = [];
   private pegsShown = true;
+  /** Half the board's diagonal at 1x, and the city size the pegs were last placed for. */
+  private pegReach = 0;
+  private pegScale = -1;
+  /** The peg last pointed at, and when: a pinch starting just after takes it. */
+  private pegHover: { entity: Entity; mesh: Mesh; material: MeshStandardMaterial } | null = null;
+  private pegHoverAt = -Infinity;
+
+  /**
+   * Stands the pegs on the board's diagonals, just beyond its corners at the
+   * city's current size. On the diagonal they stay outside the city however
+   * it is turned; moved out with its size, a grown city never covers them.
+   */
+  private placePegs(): void {
+    this.pegScale = this.uniformScale;
+    const centre = this.root.object3D!.position;
+    const reach = this.pegReach * this.uniformScale + PEG_OUTSET;
+    for (const peg of this.pegs) {
+      const corner = peg.mesh.userData.corner as Vector3;
+      peg.mesh.position.set(centre.x + corner.x * reach, centre.y, centre.z + corner.z * reach);
+    }
+  }
   /** Two pegs held: the distance between the hands, and the city's size, when the second was taken. */
   private resize: { distance: number; scale: number } | null = null;
   private handLeft = new Vector3();
@@ -443,6 +468,14 @@ export class DioramaSystem extends createSystem({
   private waypointHit: Vector3 | null = null;
   private turnButtons: { entity: Entity; mesh: Mesh; dir: 1 | -1 }[] = [];
   private turnHit: 1 | -1 | 0 = 0;
+  /** Where the Turn buttons were last placed: the head's turn then, and the street move they belong to. */
+  private turnAnchorYaw = 0;
+  private turnAnchorAt = -1;
+  /** The Turn button and the disc spot a ray was last on, and when (for hand pinches; see onSelectStart). */
+  private turnHover: 1 | -1 = 1;
+  private turnHoverAt = -Infinity;
+  private waypointHover = new Vector3();
+  private waypointHoverAt = -Infinity;
   private stickTurned = false;
   private streetExtrasShown = false;
   private headQuat = new Quaternion();
@@ -486,16 +519,37 @@ export class DioramaSystem extends createSystem({
       const hand = handOf(event);
       if (!hand) return;
       this.lastSelectHand = hand;
-      if ((event as Event & { inputSource?: XRInputSource }).inputSource?.hand) this.nearPinch = hand;
+      // Closing the fingers swings a hand's ray a little, often off a small
+      // peg before the press lands. A pinch that begins while a peg is
+      // pointed at (or was a moment ago) takes that peg.
+      if (this.pegsShown && this.pegHover && performance.now() - this.pegHoverAt < PEG_HOVER_GRACE_MS) this.pegHolds.set(hand, this.pegHover);
+      if ((event as Event & { inputSource?: XRInputSource }).inputSource?.hand) {
+        this.nearPinch = hand;
+        // The same swing in the street: a Turn button or a disc pointed at a moment ago takes the pinch.
+        if (this.streetExtrasShown) {
+          const now = performance.now();
+          if (now - this.turnHoverAt < PEG_HOVER_GRACE_MS) this.turnHit = this.turnHover;
+          else if (now - this.waypointHoverAt < PEG_HOVER_GRACE_MS) this.waypointHit = this.waypointHover.clone();
+        }
+      }
     };
     const onSelectEnd = (event: Event) => {
       const hand = handOf(event);
       if (hand) this.pegHolds.delete(hand);
     };
+    // A hand that stops being tracked mid-pinch never sends selectend: let go of its peg.
+    const onSourcesChange = (event: Event) => {
+      for (const source of (event as Event & { removed?: readonly XRInputSource[] }).removed ?? []) {
+        if (source.handedness === 'left' || source.handedness === 'right') this.pegHolds.delete(source.handedness);
+      }
+    };
     const onSessionStart = () => {
       xr.getSession()?.addEventListener('selectstart', onSelectStart);
       xr.getSession()?.addEventListener('selectend', onSelectEnd);
+      xr.getSession()?.addEventListener('inputsourceschange', onSourcesChange);
     };
+    // Headset off or the system menu up: nothing stays held.
+    this.cleanupFuncs.push(onPause(() => this.pegHolds.clear()));
     const onSessionEnd = () => this.pegHolds.clear();
     xr.addEventListener('sessionstart', onSessionStart);
     xr.addEventListener('sessionend', onSessionEnd);
@@ -504,6 +558,7 @@ export class DioramaSystem extends createSystem({
       xr.removeEventListener('sessionend', onSessionEnd);
       xr.getSession()?.removeEventListener('selectstart', onSelectStart);
       xr.getSession()?.removeEventListener('selectend', onSelectEnd);
+      xr.getSession()?.removeEventListener('inputsourceschange', onSourcesChange);
     });
     // A peg taken in VR belongs to the hand whose pinch just began. (Outside
     // VR, with the mouse, the Pressed query alone says what is held.)
@@ -557,16 +612,18 @@ export class DioramaSystem extends createSystem({
    */
   private buildPegs(): void {
     const desk = this.world.getSceneEntity('workspace');
-    const board = this.root.object3D!.position;
     const geometry = new CylinderGeometry(PEG_RADIUS, PEG_RADIUS, PEG_HEIGHT, 16).translate(0, PEG_HEIGHT / 2, 0);
-    const hitGeometry = new CylinderGeometry(PEG_RADIUS * 2.6, PEG_RADIUS * 2.6, PEG_HEIGHT * 1.6, 8).translate(0, PEG_HEIGHT * 0.7, 0);
-    const halfW = this.layout.width / 2 + PEG_OUTSET;
-    const halfD = this.layout.depth / 2 + PEG_OUTSET;
+    const hitGeometry = new CylinderGeometry(PEG_RADIUS * 3.5, PEG_RADIUS * 3.5, PEG_HEIGHT * 1.8, 8).translate(0, PEG_HEIGHT * 0.75, 0);
+    const halfW = this.layout.width / 2;
+    const halfD = this.layout.depth / 2;
+    // On the board's diagonals, just beyond its corners at any turn (see placePegs).
+    this.pegReach = Math.hypot(halfW, halfD);
+    this.pegScale = -1;
     for (const [x, z] of [[-halfW, -halfD], [halfW, -halfD], [-halfW, halfD], [halfW, halfD]]) {
       const material = new MeshStandardMaterial({ color: PEG_COLOR, emissive: new Color(PEG_COLOR), emissiveIntensity: 1, roughness: 0.4 });
       const mesh = new Mesh(geometry, material);
       mesh.name = 'board-peg';
-      mesh.position.set(board.x + x, board.y, board.z + z);
+      mesh.userData.corner = new Vector3(x, 0, z).normalize();
       // A wider invisible column around the peg, easy to point at.
       mesh.add(new Mesh(hitGeometry, HIT_MATERIAL));
       const entity = this.world.createTransformEntity(mesh, { parent: desk ?? this.root });
@@ -602,7 +659,9 @@ export class DioramaSystem extends createSystem({
     if (import.meta.env.DEV) console.log(`[near] ${best ?? 'nothing in reach'}`);
     if (!best) return;
     this.nearPickAt = performance.now();
-    this.pick(best);
+    // Never puts back the building already picked: a pinch on its Step inside
+    // button, which floats right over it, must not close it first.
+    if (best !== app.selected) this.pick(best);
   }
 
   /** Pegs show only with the city at rest on the desk: not in the menu, a room, a dive or street view. */
@@ -640,11 +699,17 @@ export class DioramaSystem extends createSystem({
         turn = entity.getValue(BoardPeg, 'turn') as number;
       }
     }
+    if (this.uniformScale !== this.pegScale) this.placePegs();
     for (const peg of this.pegs) {
       // Brighter when pointed at, brightest while held.
       let holding = peg.entity.hasComponent(Pressed);
       for (const held of this.pegHolds.values()) if (held === peg) holding = true;
-      peg.material.emissiveIntensity = holding ? 2.4 : peg.entity.hasComponent(Hovered) ? 1.8 : 1;
+      const hovered = peg.entity.hasComponent(Hovered);
+      if (hovered) {
+        this.pegHover = peg;
+        this.pegHoverAt = performance.now();
+      }
+      peg.material.emissiveIntensity = holding ? 2.4 : hovered ? 1.8 : 1;
     }
     const obj = this.root.object3D!;
     if (held >= 2) {
@@ -961,6 +1026,7 @@ export class DioramaSystem extends createSystem({
     // The lifted roof of the picked building, and the Step inside button over it.
     group.add(this.peek.group);
     const chip = makeChip('Step inside', 0.026);
+    chip.name = 'step-inside';
     chip.visible = false;
     // A wider invisible card behind the button, so a wavering ray still lands on it.
     const chipPad = new Mesh(chip.geometry, HIT_MATERIAL);
@@ -1793,8 +1859,15 @@ export class DioramaSystem extends createSystem({
     this.entities.push(entity);
     this.waypoints = mesh;
     // Which disc: the one nearest where the pinch landed. Acted on next frame.
-    (mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void }).addEventListener('pointerdown', (e) => {
+    const events = mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void };
+    events.addEventListener('pointerdown', (e) => {
       if (e.point) this.waypointHit = e.point.clone();
+    });
+    // Where a ray last touched the discs, for a hand pinch whose ray swings off as it closes.
+    events.addEventListener('pointermove', (e) => {
+      if (!e.point) return;
+      this.waypointHover.copy(e.point);
+      this.waypointHoverAt = performance.now();
     });
     this.streetExtrasShown = true;
     this.showStreetExtras(false);
@@ -1840,16 +1913,36 @@ export class DioramaSystem extends createSystem({
     for (const b of this.turnButtons) b.mesh.visible = shown;
   }
 
-  /** Keeps the Turn buttons low to either side of wherever the visitor faces. */
+  /**
+   * The Turn buttons stand low to either side of where the visitor faced on
+   * arriving, or after their last move or turn. They stay put while the head
+   * turns, so either one can be looked at and pinched; only a much bigger
+   * head turn brings them round again.
+   */
   private placeTurnButtons(): void {
     this.world.camera.getWorldPosition(this.headWorld);
     this.world.camera.getWorldQuaternion(this.headQuat);
     this.headEuler.setFromQuaternion(this.headQuat, 'YXZ');
+    let drift = this.headEuler.y - this.turnAnchorYaw;
+    while (drift > Math.PI) drift -= Math.PI * 2;
+    while (drift < -Math.PI) drift += Math.PI * 2;
+    const replace = this.turnAnchorAt !== this.streetMovedAt || Math.abs(drift) > TURN_BUTTON_FOLLOW;
+    if (replace) {
+      this.turnAnchorAt = this.streetMovedAt;
+      this.turnAnchorYaw = this.headEuler.y;
+    }
     for (const b of this.turnButtons) {
-      const a = this.headEuler.y - b.dir * TURN_BUTTON_ANGLE;
-      b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - TURN_BUTTON_DROP, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
+      if (replace) {
+        const a = this.turnAnchorYaw - b.dir * TURN_BUTTON_ANGLE;
+        b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - TURN_BUTTON_DROP, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
+      }
       b.mesh.lookAt(this.headWorld);
-      b.mesh.scale.setScalar(b.entity.hasComponent(Hovered) ? 1.15 : 1);
+      const hovered = b.entity.hasComponent(Hovered);
+      if (hovered) {
+        this.turnHover = b.dir;
+        this.turnHoverAt = performance.now();
+      }
+      b.mesh.scale.setScalar(hovered ? 1.15 : 1);
     }
   }
 
@@ -1933,7 +2026,11 @@ export class DioramaSystem extends createSystem({
       this.applyVisibility();
     }
     this.updateDive(delta);
-    if (app.mode !== 'table' || this.diveDir !== 0) return;
+    if (app.mode !== 'table' || this.diveDir !== 0) {
+      // A pinch made in a room or mid-dive is not one at the city.
+      this.nearPinch = null;
+      return;
+    }
 
     if (this.nearPinch) {
       const hand = this.nearPinch;

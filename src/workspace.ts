@@ -7,6 +7,7 @@ import {
   Grabbed,
   Group,
   Hovered,
+  RayInteractable,
   Mesh,
   MeshBasicMaterial,
   MovementMode,
@@ -38,6 +39,11 @@ const HANDLE_LIVE = '#7ee0ff';
  * strip and from the city's corner pegs, so one is never taken for another.
  */
 const STRIP_GRIP_OFFSET = new Vector3(0.665, 0.006, 0);
+/**
+ * A bare-hand pinch begun within this many ms of pointing at the bar or the
+ * grip takes it: closing the fingers swings a hand's ray off a small target.
+ */
+const HAND_GRAB_GRACE_MS = 300;
 const GRAB = { movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false };
 /** Mixed reality: keep looking for a real table this long after the desk is placed (the room's surfaces arrive a little after the session starts). */
 const TABLE_SEARCH_SECONDS = 5;
@@ -122,6 +128,16 @@ export class WorkspaceSystem extends createSystem({}) {
   private stripGrip: Entity | undefined;
   private stripGripMaterial = new MeshBasicMaterial({ color: HANDLE_IDLE });
   private stripGripPos = new Vector3();
+  /**
+   * Bare hands drag the bar and the grip here, not through the grab system:
+   * a hand pinch there is a near grab (squeeze), which these ray-only
+   * handles ignore. Which one a hand holds, where its fingertip and the
+   * handle were when the pinch began, and when each was last pointed at.
+   */
+  private handDrag: { what: 'desk' | 'strip'; hand: 'left' | 'right'; tip: Vector3; from: Vector3 } | null = null;
+  private deskPointedAt = -Infinity;
+  private stripPointedAt = -Infinity;
+  private dragTip = new Vector3();
   private floor: Object3D | undefined;
   private passthrough = false;
   /** Seconds left to keep looking for a real table. */
@@ -164,6 +180,37 @@ export class WorkspaceSystem extends createSystem({}) {
         }
       }),
     );
+
+    // Bare-hand pinches on the bar and the grip (see handDrag).
+    const handOf = (event: Event): XRInputSource | null => (event as Event & { inputSource?: XRInputSource }).inputSource ?? null;
+    const onSelectStart = (event: Event) => {
+      const source = handOf(event);
+      if (!source?.hand || (source.handedness !== 'left' && source.handedness !== 'right')) return;
+      const now = performance.now();
+      const what = now - this.stripPointedAt < HAND_GRAB_GRACE_MS ? 'strip' : now - this.deskPointedAt < HAND_GRAB_GRACE_MS ? 'desk' : null;
+      const object = what === 'strip' ? this.stripGrip?.object3D : what === 'desk' ? this.handle?.object3D : null;
+      if (import.meta.env.DEV) console.log(`[grip] hand pinch: ${what ?? 'none'} (strip pointed ${Math.round(now - this.stripPointedAt)} ms ago, desk ${Math.round(now - this.deskPointedAt)} ms ago)`);
+      if (!what || !object) return;
+      const tip = new Vector3();
+      this.player.indexTipSpaces[source.handedness].getWorldPosition(tip);
+      this.handDrag = { what, hand: source.handedness, tip, from: object.getWorldPosition(new Vector3()) };
+    };
+    const onSelectEnd = (event: Event) => {
+      if (this.handDrag && handOf(event)?.handedness === this.handDrag.hand) this.handDrag = null;
+    };
+    const onHandSourcesChange = (event: Event) => {
+      for (const source of (event as Event & { removed?: readonly XRInputSource[] }).removed ?? []) {
+        if (this.handDrag?.hand === source.handedness) this.handDrag = null;
+      }
+    };
+    const onHandSession = () => {
+      const session = this.world.renderer.xr.getSession();
+      session?.addEventListener('selectstart', onSelectStart);
+      session?.addEventListener('selectend', onSelectEnd);
+      session?.addEventListener('inputsourceschange', onHandSourcesChange);
+    };
+    this.world.renderer.xr.addEventListener('sessionstart', onHandSession);
+    this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionstart', onHandSession));
 
     // Recentering from the Quest menu moves the world origin; follow it.
     const xr = this.world.renderer.xr;
@@ -259,9 +306,17 @@ export class WorkspaceSystem extends createSystem({}) {
       object.visible = usable;
       if (usable && !grip.hasComponent(DistanceGrabbable)) grip.addComponent(DistanceGrabbable, GRAB);
       else if (!usable && grip.hasComponent(DistanceGrabbable)) grip.removeComponent(DistanceGrabbable);
+      // Pointable too, so a hand's ray finds it (see handDrag).
+      if (usable && !grip.hasComponent(RayInteractable)) grip.addComponent(RayInteractable);
+      else if (!usable && grip.hasComponent(RayInteractable)) grip.removeComponent(RayInteractable);
     }
-    if (!usable) return;
-    const grabbed = grip.hasComponent(Grabbed);
+    if (!usable) {
+      if (this.handDrag?.what === 'strip') this.handDrag = null;
+      return;
+    }
+    if (grip.hasComponent(Hovered)) this.stripPointedAt = performance.now();
+    const byHand = this.followHand('strip', object);
+    const grabbed = byHand || grip.hasComponent(Grabbed);
     this.stripGripMaterial.color.set(grabbed || grip.hasComponent(Hovered) ? HANDLE_LIVE : HANDLE_IDLE);
     if (grabbed) {
       object.getWorldPosition(this.stripGripPos);
@@ -274,6 +329,16 @@ export class WorkspaceSystem extends createSystem({}) {
     object.position.copy(this.strip.position).add(STRIP_GRIP_OFFSET);
     this.workspace.localToWorld(object.position);
     object.rotation.set(0, this.workspace.rotation.y, 0);
+  }
+
+  /** A bare hand holding this handle: move it with the fingertip. Returns true while held. */
+  private followHand(what: 'desk' | 'strip', object: Object3D): boolean {
+    const drag = this.handDrag;
+    if (!drag || drag.what !== what) return false;
+    this.player.indexTipSpaces[drag.hand].getWorldPosition(this.dragTip);
+    object.position.copy(drag.from).add(this.dragTip).sub(drag.tip);
+    object.updateMatrixWorld();
+    return true;
   }
 
   /** A pill-shaped bar, inside a larger invisible catch area so it is easy to hit. */
@@ -307,10 +372,17 @@ export class WorkspaceSystem extends createSystem({}) {
       object.visible = usable;
       if (usable && !handle.hasComponent(DistanceGrabbable)) handle.addComponent(DistanceGrabbable, GRAB);
       else if (!usable && handle.hasComponent(DistanceGrabbable)) handle.removeComponent(DistanceGrabbable);
+      if (usable && !handle.hasComponent(RayInteractable)) handle.addComponent(RayInteractable);
+      else if (!usable && handle.hasComponent(RayInteractable)) handle.removeComponent(RayInteractable);
     }
-    if (!usable) return;
+    if (!usable) {
+      if (this.handDrag?.what === 'desk') this.handDrag = null;
+      return;
+    }
 
-    const grabbed = handle.hasComponent(Grabbed);
+    if (handle.hasComponent(Hovered)) this.deskPointedAt = performance.now();
+    const byHand = this.followHand('desk', object);
+    const grabbed = byHand || handle.hasComponent(Grabbed);
     // The visitor is placing the desk themselves: stop looking for a table.
     if (grabbed) this.tableSearch = 0;
     if (this.wasGrabbed && !grabbed) guideNote('moved');
