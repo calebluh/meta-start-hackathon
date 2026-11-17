@@ -491,14 +491,22 @@ function plainMap(owner: string, name: string, commit: string, infos: FileInfo[]
     .sort((a, b) => [...b[1].parts.values()].reduce((x, y) => x + y, 0) - [...a[1].parts.values()].reduce((x, y) => x + y, 0))
     .slice(0, MAX_EXTERNALS);
 
-  const nodes: GraphNode[] = parts.map((p) => ({
-    id: p.id,
-    parent: null,
-    label: p.label,
-    kind: p.kind,
-    summary: clean(`${p.files.length} files and ${p.loc.toLocaleString('en-US')} lines of ${topLang(p.files)}${p.dir ? `, in ${p.dir}` : ''}.`, 160),
-    stats: { files: p.files.length, loc: p.loc },
-  }));
+  // Tests, docs and examples often outweigh the code itself; drawn at full
+  // size they would bury the city. They are drawn no bigger than 60% of the
+  // largest part of the real code (their summary keeps the true numbers).
+  const biggestMain = Math.max(1, ...parts.filter((p) => p.kind !== 'test' && p.kind !== 'misc').map((p) => p.loc));
+  const nodes: GraphNode[] = parts.map((p) => {
+    const aux = p.kind === 'test' || p.kind === 'misc';
+    const scale = aux ? Math.min(1, (biggestMain * 0.6) / Math.max(p.loc, 1)) : 1;
+    return {
+      id: p.id,
+      parent: null,
+      label: p.label,
+      kind: p.kind,
+      summary: clean(`${p.files.length} files and ${p.loc.toLocaleString('en-US')} lines of ${topLang(p.files)}${p.dir ? `, in ${p.dir}` : ''}.`, 160),
+      stats: { files: Math.max(1, Math.round(p.files.length * scale)), loc: Math.round(p.loc * scale) },
+    };
+  });
   for (const [id, e] of externals) {
     nodes.push({ id, parent: null, label: e.name, kind: 'external', summary: `${e.name}, an outside service this code talks to.` });
   }

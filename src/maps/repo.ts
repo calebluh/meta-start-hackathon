@@ -48,6 +48,18 @@ export function restoreRepoMap(): string | null {
   }
 }
 
+/** The last repo city built in this browser, without loading it: its id and project name. */
+export function lastRepoMap(): { id: string; name: string } | null {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) ?? 'null') as { id?: string; map?: string } | null;
+    if (!saved?.id || !saved.map) return null;
+    const name = (JSON.parse(saved.map) as GraphData).project?.name;
+    return typeof name === 'string' ? { id: saved.id, name } : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Extra fields for a question about `mapId`: the signed map, when it is a repo map. */
 export function repoMapFields(mapId: string): { repoMap?: string; repoSig?: string } {
   const s = signed.get(mapId);

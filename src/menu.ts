@@ -1,6 +1,8 @@
 import { createSystem, type UIKit, type UIKitMLAsset, VisibilityState } from '@iwsdk/core';
 import { click } from './audio/sound.js';
+import { HACKATHON } from './edition.js';
 import { CUSTOM_MAPS, MAPS } from './maps/index.js';
+import { buildRepoCity, lastRepoMap, restoreRepoMap } from './maps/repo.js';
 import { setPanelShown } from './panels.js';
 import { app, chooseDemo, onChange } from './state.js';
 
@@ -47,6 +49,7 @@ export class MenuSystem extends createSystem({}) {
           ?.setProperties({ text: `${parts} rooms | ${graph.files.length} files | ${lines.toLocaleString('en-US')} lines` });
       }
     }
+    if (panel) this.wireRepoChips(panel);
     // Meta VR Glasses are aimed with the eyes (gaze), not a pointing hand.
     const hint = panel?.getElementById<UIKit.Text>('menu-hint');
     if (hint) {
@@ -64,6 +67,66 @@ export class MenuSystem extends createSystem({}) {
     }
     this.cleanupFuncs.push(onChange(() => this.apply()));
     this.apply();
+  }
+
+  /**
+   * GitHub repositories as cities, from inside the headset: one tap builds a
+   * well-known repo's city on the server (server/repo-map.ts) and opens it.
+   * Typing a repo of your own happens on the page before VR (landing.ts);
+   * the last one built comes back here as its own chip.
+   */
+  private wireRepoChips(panel: UIKitMLAsset): void {
+    if (!HACKATHON) return;
+    const status = panel.getElementById<UIKit.Text>('repo-status');
+    const say = (text: string) => status?.setProperties({ text });
+    let busy = false;
+    const open = async (repo: string, label: string) => {
+      if (busy) return;
+      busy = true;
+      click();
+      say(`Building ${label}: downloading the code and drawing the city, about 10 seconds...`);
+      const result = await buildRepoCity(repo);
+      busy = false;
+      if ('error' in result) {
+        say(`${label}: ${result.error}.`);
+        return;
+      }
+      say('Tap one to build its city (about 10 seconds). To use your own, type it on the page before entering VR.');
+      this.refreshLast(panel);
+      chooseDemo(result.id);
+    };
+    const chips: [string, string, string][] = [
+      ['repo-flask', 'pallets/flask', 'Flask'],
+      ['repo-express', 'expressjs/express', 'Express'],
+      ['repo-swr', 'vercel/swr', 'SWR'],
+    ];
+    for (const [id, repo, label] of chips) {
+      const chip = panel.getElementById(id);
+      if (!chip) continue;
+      const onClick = () => void open(repo, label);
+      chip.addEventListener('click', onClick);
+      this.cleanupFuncs.push(() => chip.removeEventListener('click', onClick));
+    }
+    const last = panel.getElementById('repo-last');
+    if (last) {
+      const onLast = () => {
+        const saved = lastRepoMap();
+        if (!saved || busy) return;
+        click();
+        if (!MAPS[saved.id]) restoreRepoMap();
+        if (MAPS[saved.id]) chooseDemo(saved.id);
+      };
+      last.addEventListener('click', onLast);
+      this.cleanupFuncs.push(() => last.removeEventListener('click', onLast));
+    }
+    this.refreshLast(panel);
+  }
+
+  /** The last repo city built here, as a chip of its own (hidden until there is one). */
+  private refreshLast(panel: UIKitMLAsset): void {
+    const saved = lastRepoMap();
+    panel.getElementById('repo-last')?.setProperties({ display: saved ? 'flex' : 'none' });
+    if (saved) panel.getElementById<UIKit.Text>('repo-last-name')?.setProperties({ text: saved.name.slice(0, 14) });
   }
 
   private apply(): void {
