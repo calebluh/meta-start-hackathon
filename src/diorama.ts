@@ -9,6 +9,7 @@ import {
   EdgesGeometry,
   type Entity,
   Grabbed,
+  GrabSystem,
   InputComponent,
   Group,
   Hovered,
@@ -22,9 +23,9 @@ import {
   OctahedronGeometry,
   PlaneGeometry,
   Pressed,
+  Quaternion,
   QuadraticBezierCurve3,
   RayInteractable,
-  RepeatWrapping,
   SphereGeometry,
   SRGBColorSpace,
   TorusGeometry,
@@ -34,7 +35,21 @@ import {
   type UIKitMLAsset,
   Vector3,
 } from '@iwsdk/core';
-import { click } from './audio/sound.js';
+import { click, pop } from './audio/sound.js';
+import {
+  BeamBatch,
+  blockShell,
+  buildPools,
+  circuitTexture,
+  facadeTextures,
+  keepWholeForRays,
+  type Pool,
+  setRoofOpen,
+  shadowTexture,
+  type Shell,
+  tint,
+  towerShell,
+} from './city-style.js';
 import { KIND_COLORS } from './colors.js';
 import { HACKATHON } from './edition.js';
 import { inPassthrough } from './passthrough.js';
@@ -43,13 +58,14 @@ import { setPanelShown } from './panels.js';
 import { ignoreRays } from './rays.js';
 import { buildRooftops } from './rooftops.js';
 import { classifyHop, HOP_COLORS, HOP_TAGS, type HopKind } from './network.js';
-import { mergeGeometries } from './rooms/merge.js';
+import { mergeGeometries, mergeStatic } from './rooms/merge.js';
 import { District } from './diorama-components.js';
+import { Peek } from './peek.js';
 import { isPaused } from './pause.js';
 import { dive, DIVE_SECONDS } from './transition.js';
-import { buildLayout, resolveRef, type DioramaLayout } from './layout.js';
+import { buildLayout, resolveRef, type DioramaLayout, type District as Lot, type Rect } from './layout.js';
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
-import { pickTheme } from './rooms/themes.js';
+import { hashString, pickTheme } from './rooms/themes.js';
 import {
   app,
   currentFlow,
@@ -114,10 +130,30 @@ const KIND_NAMES: Record<NodeKind, string> = {
 
 /** A second pinch on the selected building within this time is the same pinch. */
 const RESELECT_QUIET_MS = 1200;
-const BASE_GLOW = 0.16;
-const HOVER_GLOW = 0.55;
-const SELECT_GLOW = 0.85;
-const FLOW_GLOW = 1.3;
+/**
+ * How strongly a part glows at rest, pointed at, picked, and as the current
+ * step of a flow. Buildings glow through their windows, so they glow harder
+ * than the flat plinths and outside towers.
+ */
+type Glow = readonly [number, number, number, number];
+const BUILDING_GLOW: Glow = [1.05, 1.9, 2.6, 3.4];
+const PLINTH_GLOW: Glow = [0.03, 0.16, 0.3, 0.5];
+const TOWER_GLOW: Glow = [0.35, 0.8, 1.1, 1.6];
+/** The walls brighten a little along with the windows. */
+const TINT_LIFT: Glow = [1, 1.5, 1.9, 2.2];
+/** Thickness of the neon edges on buildings and on plinths. */
+const EDGE = 0.0012;
+const PLINTH_EDGE = 0.0008;
+/** Ignore a pinch on the Step inside chip this soon after the building was picked. */
+const CHIP_QUIET_MS = 500;
+/**
+ * A pinch made right at the city takes hold of the board (a near grab), not
+ * of a building. Held this briefly and moved this little, it was not a grab
+ * at all: it picks the building the fingers closed on, within this reach.
+ */
+const TAP_MS = 450;
+const TAP_SLIP = 0.02;
+const TAP_REACH = 0.05;
 const HOP_SECONDS = 1.3;
 const DWELL_SECONDS = 2.8;
 
@@ -132,8 +168,16 @@ interface Site {
   issues: HealthIssue[];
   recentNotes: string[];
   hovered: boolean;
-  /** Windowed buildings only glow through their windows, so they glow harder. */
-  boost: number;
+  glow: Glow;
+  /** The wall colour at rest. */
+  tint: Color;
+  label: Mesh;
+  labelY: number;
+  /** Its name shows all the time; other names show when pointed at or connected to the picked part. */
+  always: boolean;
+  /** A building whose roof can lift (leaf parts only). */
+  shell: Shell | null;
+  lot: Lot | null;
 }
 
 interface Conduit {
@@ -149,23 +193,7 @@ interface Beacon {
   mesh: Mesh;
   baseY: number;
   phase: number;
-}
-
-/** One window cell: a light wall with a darker pane, and a matching glow mask. */
-function windowTextures(): { body: CanvasTexture; glow: CanvasTexture } {
-  const make = (wall: string, pane: string) => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 32;
-    const ctx = c.getContext('2d')!;
-    ctx.fillStyle = wall;
-    ctx.fillRect(0, 0, 32, 32);
-    ctx.fillStyle = pane;
-    ctx.fillRect(7, 8, 18, 16);
-    const t = new CanvasTexture(c);
-    t.colorSpace = SRGBColorSpace;
-    return t;
-  };
-  return { body: make('#ffffff', '#5a6270'), glow: make('#000000', '#ffffff') };
+  siteId: string;
 }
 
 /** Draws a text label on a canvas and returns a plane `height` meters tall. */
@@ -202,13 +230,61 @@ function makeLabel(text: string, height: number, accent: string): Mesh {
   return mesh;
 }
 
+/** The "Step inside" button that floats over a picked building: a bright pill, `height` meters tall. */
+function makeChip(text: string, height: number): Mesh {
+  const canvas = document.createElement('canvas');
+  const measure = canvas.getContext('2d')!;
+  const font = '700 54px Inter, "Segoe UI", system-ui, sans-serif';
+  measure.font = font;
+  const textW = Math.ceil(measure.measureText(text).width);
+  const h = 104;
+  const w = textW + 150;
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#7ee0ff';
+  ctx.beginPath();
+  ctx.roundRect(3, 3, w - 6, h - 6, (h - 6) / 2);
+  ctx.fill();
+  ctx.strokeStyle = '#ffffff';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  ctx.font = font;
+  ctx.fillStyle = '#06222c';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 44, h / 2 + 3);
+  // An arrow pointing down into the building.
+  const ax = w - 62;
+  ctx.strokeStyle = '#06222c';
+  ctx.lineWidth = 9;
+  ctx.lineCap = ctx.lineJoin = 'round';
+  ctx.beginPath();
+  ctx.moveTo(ax, h / 2 - 20);
+  ctx.lineTo(ax, h / 2 + 18);
+  ctx.moveTo(ax - 17, h / 2 + 2);
+  ctx.lineTo(ax, h / 2 + 19);
+  ctx.lineTo(ax + 17, h / 2 + 2);
+  ctx.stroke();
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.anisotropy = 4;
+  const mesh = new Mesh(
+    new PlaneGeometry((height * w) / h, height),
+    new MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }),
+  );
+  mesh.name = 'step-inside-chip';
+  mesh.renderOrder = 11;
+  return mesh;
+}
+
 /**
  * Builds the codebase diorama from a Floorplan graph and runs the tabletop:
  * hover glow, pinch-to-inspect, the inspector and control panels, and flow
  * playback on the board.
  *
  * Interaction with bare hands:
- * - point at a building and pinch to select it (ray select);
+ * - point at a building and pinch to select it (ray select): its roof lifts
+ *   to show the robots inside, and a Step inside button appears over it;
  * - pinch near the board to pick the whole diorama up; use both hands to turn
  *   and resize it;
  * - with a part selected, Step inside to sit in its room (RoomSystem).
@@ -232,7 +308,18 @@ export class DioramaSystem extends createSystem({
   private dotMatrix = new Matrix4();
   private dotScale = new Vector3();
   private labels: Mesh[] = [];
+  private gateLabel: Mesh | null = null;
   private beacons: Beacon[] = [];
+  /** Rooftop features for the whole city, rebuilt without one building while its roof is lifted. */
+  private rooftops: Group | null = null;
+  /** The lifted roof and the room under it (see peek.ts), and whose it is. */
+  private peek = new Peek();
+  private peekId: string | null = null;
+  /** The Step inside button over the open building. */
+  private chip: Entity | null = null;
+  private chipHit = false;
+  /** Mixed reality: the tray's shadow on the real table. */
+  private shadow: Mesh | null = null;
 
   private shownStep = -1;
   private stepClock = 0;
@@ -252,6 +339,12 @@ export class DioramaSystem extends createSystem({
   private uniformScale = 1;
   private grabStartScale = 1;
   private wasGrabbed = false;
+  /** The start of the current hold on the board: when, which hand, where its fingertip was, and the board's pose. */
+  private tapAt = 0;
+  private tapHand: 'left' | 'right' | null = null;
+  private tapPoint = new Vector3();
+  private tapPose = { position: new Vector3(), quaternion: new Quaternion(), scale: 1 };
+  private tapBox = new Box3();
   /** When the current building was picked, to tell a second pinch from a shaky first one. */
   private selectedAt = 0;
   /** Street view: whether the city is life size now, and the move between the two. */
@@ -283,6 +376,8 @@ export class DioramaSystem extends createSystem({
   /** Room to surface from, once RoomSystem has taken its room down. */
   private surfaceFrom: string | null = null;
   private lastMode: 'table' | 'room' = 'table';
+  /** Whether the real room was showing (mixed reality) when visibility was last worked out. */
+  private passthroughShown = false;
   private menuShown: boolean | null = null;
   private lastRoom: string | null = null;
 
@@ -304,19 +399,64 @@ export class DioramaSystem extends createSystem({
           this.streetPressed = id;
           return;
         }
-        const now = performance.now();
-        if (app.selected === id) {
-          // A hand pinch often registers twice. Pinching the same building
-          // again only clears it once the first pinch is clearly over.
-          if (now - this.selectedAt < RESELECT_QUIET_MS) return;
-          select(null);
-        } else {
-          this.selectedAt = now;
-          select(id);
-        }
+        this.pick(id);
       }),
     );
     this.render();
+  }
+
+  /** A pinch on a part: picks it, or puts it back if it was already picked. */
+  private pick(id: string): void {
+    const now = performance.now();
+    if (app.selected === id) {
+      // A hand pinch often registers twice. Pinching the same building
+      // again only clears it once the first pinch is clearly over.
+      if (now - this.selectedAt < RESELECT_QUIET_MS) return;
+      select(null);
+    } else {
+      this.selectedAt = now;
+      select(id);
+    }
+  }
+
+  /** Remembers how a hold on the board began, in case it turns out to be a quick pinch on a building. */
+  private noteGrabStart(): void {
+    const obj = this.root.object3D!;
+    this.tapAt = performance.now();
+    this.tapPose.position.copy(obj.position);
+    this.tapPose.quaternion.copy(obj.quaternion);
+    this.tapPose.scale = this.uniformScale;
+    this.tapHand = this.world.getSystem(GrabSystem)?.getHolderHand(this.root) ?? null;
+    if (this.tapHand) this.player.indexTipSpaces[this.tapHand].getWorldPosition(this.tapPoint);
+  }
+
+  /**
+   * The board was let go. A hold that was short and went nowhere was a pinch
+   * on a building: put the board back exactly and pick the building nearest
+   * the fingertip.
+   */
+  private tapPick(): void {
+    const obj = this.root.object3D!;
+    if (!this.tapHand || performance.now() - this.tapAt > TAP_MS) return;
+    if (obj.position.distanceTo(this.tapPose.position) > TAP_SLIP) return;
+    obj.position.copy(this.tapPose.position);
+    obj.quaternion.copy(this.tapPose.quaternion);
+    this.uniformScale = this.tapPose.scale;
+    obj.scale.setScalar(this.uniformScale);
+    obj.updateWorldMatrix(true, true);
+    let best: string | null = null;
+    let bestDistance = TAP_REACH;
+    for (const site of this.sitesById.values()) {
+      // Buildings and outside towers, not the plinths under them.
+      if (this.layout.districts.has(site.id) && !site.lot) continue;
+      const distance = this.tapBox.setFromObject(site.mesh).distanceToPoint(this.tapPoint);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = site.id;
+      }
+    }
+    if (import.meta.env.DEV) console.log(`[tap] ${best ?? 'nothing in reach'}`);
+    if (best && best !== app.selected) this.pick(best);
   }
 
   // ---------------------------------------------------------------- build
@@ -332,16 +472,54 @@ export class DioramaSystem extends createSystem({
 
     // The board the districts stand on. It must exist before the grab
     // component is added, since grabbing needs a mesh to hit.
+    const boardW = this.layout.width + 0.02;
+    const boardD = this.layout.depth + 0.16;
+    const boardZ = -0.04;
+    const boardRect: Rect = { x: -boardW / 2, z: boardZ - boardD / 2, w: boardW, d: boardD };
+    // A circuit board for a floor: its traces carry a little light.
+    const circuit = circuitTexture();
+    circuit.repeat.set(boardW / 0.2, boardD / 0.2);
     const board = new Mesh(
-      new BoxGeometry(this.layout.width + 0.02, 0.008, this.layout.depth + 0.16),
-      new MeshStandardMaterial({ color: '#1a1d24', roughness: 0.8 }),
+      new BoxGeometry(boardW, 0.008, boardD),
+      new MeshStandardMaterial({
+        map: circuit,
+        emissiveMap: circuit,
+        emissive: new Color('#ffffff'),
+        emissiveIntensity: 0.7,
+        roughness: 0.4,
+        metalness: 0.5,
+      }),
     );
-    board.position.set(0, -0.004, -0.04);
+    board.position.set(0, -0.004, boardZ);
     board.name = 'board';
     group.add(board);
-    const rim = ignoreRays(new LineSegments(new EdgesGeometry(board.geometry), new LineBasicMaterial({ color: '#2f3b4a' })));
-    rim.position.copy(board.position);
-    group.add(rim);
+    group.add(this.buildTray(boardW, boardD, boardZ));
+    // In mixed reality the tray casts a soft shadow, so it sits on the real
+    // table instead of floating over it.
+    this.shadow = ignoreRays(
+      new Mesh(
+        new PlaneGeometry(boardW + 0.14, boardD + 0.14),
+        new MeshBasicMaterial({ map: shadowTexture(), color: '#000000', transparent: true, opacity: 0.6, depthWrite: false }),
+      ),
+    );
+    this.shadow.rotation.x = -Math.PI / 2;
+    this.shadow.position.set(0, -0.0015, boardZ);
+    this.shadow.renderOrder = -1;
+    this.shadow.visible = false;
+    group.add(this.shadow);
+
+    // Neon edges and pools of light for the whole city, each merged into one mesh below.
+    const beams = new BeamBatch();
+    const pools: Pool[] = [];
+    const white = new Color('#ffffff');
+    beams.outline(
+      { x: boardRect.x + 0.003, z: boardRect.z + 0.003, w: boardW - 0.006, d: boardD - 0.006 },
+      0,
+      0.0007,
+      0.0014,
+      new Color('#3fd0ff').multiplyScalar(0.7),
+      false,
+    );
 
     this.root = this.world.createTransformEntity(group, workspace ? { parent: workspace } : undefined);
     this.root.addComponent(TwoHandsGrabbable, {
@@ -365,7 +543,17 @@ export class DioramaSystem extends createSystem({
     const recentLine = new LineBasicMaterial({ color: '#3fb950' });
     const nodesById = new Map(graph.nodes.map((n) => [n.id, n]));
 
-    const addSite = (id: string, mesh: Mesh, material: MeshStandardMaterial, roof: Vector3, labelHeight: number, boost = 1) => {
+    const addSite = (
+      id: string,
+      mesh: Mesh,
+      material: MeshStandardMaterial,
+      roof: Vector3,
+      labelHeight: number,
+      glow: Glow,
+      always: boolean,
+      shell: Shell | null = null,
+      lot: Lot | null = null,
+    ) => {
       const node = nodesById.get(id)!;
       const entity = this.world.createTransformEntity(mesh, { parent: this.root });
       this.entities.push(entity);
@@ -381,60 +569,109 @@ export class DioramaSystem extends createSystem({
         },
       );
       const label = makeLabel(node.label, labelHeight, KIND_COLORS[node.kind]);
-      label.position.set(roof.x, roof.y + labelHeight * 0.9, roof.z);
+      const labelY = roof.y + labelHeight * 0.9;
+      label.position.set(roof.x, labelY, roof.z);
       group.add(ignoreRays(label));
       this.labels.push(label);
-      this.sitesById.set(id, { id, mesh, material, roof, conduits: [], issues: [], recentNotes: [], hovered: false, boost });
+      this.sitesById.set(id, {
+        id,
+        mesh,
+        material,
+        roof,
+        conduits: [],
+        issues: [],
+        recentNotes: [],
+        hovered: false,
+        glow,
+        tint: material.color.clone(),
+        label,
+        labelY,
+        always,
+        shell,
+        lot,
+      });
     };
 
-    const windows = windowTextures();
     for (const d of this.layout.districts.values()) {
-      const color = new Color(KIND_COLORS[d.kind]);
-      const material = new MeshStandardMaterial({
-        color: d.isLeaf ? color : color.clone().multiplyScalar(0.35),
-        emissive: d.isLeaf ? color.clone().lerp(new Color('#ffffff'), 0.35) : color,
-        emissiveIntensity: BASE_GLOW,
-        roughness: 0.55,
-        metalness: 0.05,
-      });
-      if (d.isLeaf) {
-        // Buildings get rows of lit windows, sized to the building.
-        const repeatX = Math.max(1, Math.round(Math.max(d.rect.w, d.rect.d) / 0.012));
-        const repeatY = Math.max(1, Math.round(d.height / 0.013));
-        material.map = windows.body.clone();
-        material.emissiveMap = windows.glow.clone();
-        for (const t of [material.map, material.emissiveMap]) {
-          t.wrapS = t.wrapT = RepeatWrapping;
-          t.repeat.set(repeatX, repeatY);
-          t.needsUpdate = true;
-        }
-      }
+      const accent = KIND_COLORS[d.kind];
+      const color = new Color(accent);
       // Data stores are round silos; everything else is a block.
-      const mesh = new Mesh(d.isLeaf && d.kind === 'data' ? unitTower : unitBox, material);
+      const round = d.isLeaf && d.kind === 'data';
+      let shell: Shell | null = null;
+      let material: MeshStandardMaterial;
+      if (d.isLeaf) {
+        // A building: dark glass, with rows of lit windows sized to it.
+        const cells = (meters: number) => Math.max(1, Math.round(meters / 0.012));
+        const cellsY = Math.max(1, Math.round(d.height / 0.013));
+        shell = round
+          ? towerShell(cells((Math.PI * (d.rect.w + d.rect.d)) / 2), cellsY)
+          : blockShell(cells(d.rect.w), cells(d.rect.d), cellsY);
+        material = new MeshStandardMaterial({
+          color: color.clone().multiplyScalar(0.13),
+          emissive: new Color('#ffffff'),
+          emissiveIntensity: BUILDING_GLOW[0],
+          roughness: 0.25,
+          metalness: 0.7,
+          ...facadeTextures(accent, hashString(d.id)),
+        });
+      } else {
+        // A plinth: the ground a group of parts stands on.
+        material = new MeshStandardMaterial({
+          color: color.clone().multiplyScalar(0.07),
+          emissive: color,
+          emissiveIntensity: PLINTH_GLOW[0],
+          roughness: 0.5,
+          metalness: 0.3,
+        });
+      }
+      const mesh = new Mesh(shell ? shell.geometry : unitBox, material);
+      if (shell) keepWholeForRays(mesh);
       mesh.name = `district:${d.id}`;
       mesh.position.set(d.rect.x + d.rect.w / 2, d.base, d.rect.z + d.rect.d / 2);
       mesh.scale.set(d.rect.w, d.height, d.rect.d);
+      const top = d.base + d.height;
+      if (d.isLeaf) {
+        const edge = color.clone().lerp(white, 0.2);
+        if (round) beams.ring(mesh.position.x, top, mesh.position.z, d.rect.w, d.rect.d, EDGE, edge);
+        else beams.outline(d.rect, d.base, top, EDGE, edge, true);
+        const under = d.parent ? this.layout.districts.get(d.parent)?.rect : undefined;
+        pools.push({ rect: d.rect, y: d.base + 0.0004, clip: under ?? boardRect, color: color.clone().multiplyScalar(0.32) });
+      } else {
+        beams.outline(d.rect, d.base, top, PLINTH_EDGE, color.clone().multiplyScalar(0.6), false);
+      }
       // Parents label their front edge; buildings label their roof.
       const roof = d.isLeaf
-        ? new Vector3(mesh.position.x, d.base + d.height, mesh.position.z)
-        : new Vector3(mesh.position.x, d.base + d.height + 0.004, d.rect.z + d.rect.d - 0.008);
-      addSite(d.id, mesh, material, roof, d.depth === 0 ? 0.02 : 0.016, d.isLeaf ? 5 : 1);
+        ? new Vector3(mesh.position.x, top, mesh.position.z)
+        : new Vector3(mesh.position.x, top + 0.004, d.rect.z + d.rect.d - 0.008);
+      addSite(
+        d.id,
+        mesh,
+        material,
+        roof,
+        d.depth === 0 ? 0.02 : 0.016,
+        d.isLeaf ? BUILDING_GLOW : PLINTH_GLOW,
+        !d.isLeaf || d.depth === 0,
+        shell,
+        d.isLeaf ? d : null,
+      );
     }
 
-    group.add(buildRooftops(this.layout.districts.values()));
+    this.setRooftops(null);
 
     for (const s of this.layout.externals.values()) {
       const material = new MeshStandardMaterial({
-        color: new Color(KIND_COLORS.external).multiplyScalar(0.5),
+        color: new Color(KIND_COLORS.external).multiplyScalar(0.4),
         emissive: new Color(KIND_COLORS.external),
-        emissiveIntensity: BASE_GLOW,
-        roughness: 0.4,
+        emissiveIntensity: TOWER_GLOW[0],
+        roughness: 0.3,
+        metalness: 0.5,
       });
       const mesh = new Mesh(unitTower, material);
       mesh.name = `external:${s.id}`;
       mesh.position.set(s.x, 0, s.z);
       mesh.scale.set(s.radius * 2, s.height, s.radius * 2);
-      addSite(s.id, mesh, material, new Vector3(s.x, s.height, s.z), 0.016);
+      beams.ring(s.x, s.height, s.z, s.radius * 2, s.radius * 2, EDGE, new Color(KIND_COLORS.external).lerp(white, 0.3));
+      addSite(s.id, mesh, material, new Vector3(s.x, s.height, s.z), 0.016, TOWER_GLOW, true);
     }
 
     // Connections, folded up to one conduit per pair of parts.
@@ -463,7 +700,9 @@ export class DioramaSystem extends createSystem({
       mid.y = Math.max(from.y, to.y) + 0.03 + from.distanceTo(to) * 0.35;
       const curve = new QuadraticBezierCurve3(from.clone(), mid, to.clone());
       const radius = 0.0007 + 0.0004 * Math.log2(1 + c.weight);
-      c.tube = new Mesh(new TubeGeometry(curve, 28, radius, 5, false));
+      // Each conduit takes the colour of the part it starts from.
+      const tone = new Color(KIND_COLORS[nodesById.get(c.a)!.kind]).lerp(white, 0.3);
+      c.tube = new Mesh(tint(new TubeGeometry(curve, 28, radius, 5, false), tone));
       c.curve = curve;
       this.conduits.push(c);
       this.sitesById.get(c.a)!.conduits.push(c);
@@ -483,7 +722,7 @@ export class DioramaSystem extends createSystem({
         const baseY = site.roof.y + 0.032;
         beacon.position.set(site.roof.x + 0.012, baseY, site.roof.z);
         group.add(beacon);
-        this.beacons.push({ mesh: beacon, baseY, phase: this.beacons.length * 1.7 });
+        this.beacons.push({ mesh: beacon, baseY, phase: this.beacons.length * 1.7, siteId: site.id });
       }
     }
 
@@ -494,7 +733,8 @@ export class DioramaSystem extends createSystem({
         const site = id ? this.sitesById.get(id) : undefined;
         if (!site) continue;
         site.recentNotes.push(item.note);
-        if (site.recentNotes.length === 1 && site.mesh.geometry === unitBox) {
+        const boxy = this.layout.districts.has(site.id) && site.lot?.kind !== 'data';
+        if (site.recentNotes.length === 1 && boxy) {
           const outline = ignoreRays(new LineSegments(unitEdges, recentLine));
           outline.scale.setScalar(1.02);
           outline.position.y = -0.01;
@@ -506,6 +746,23 @@ export class DioramaSystem extends createSystem({
     if (graph.project.logo) this.addLogoPlaque(group, graph.project.logo);
 
     this.addGateway(group);
+
+    const neon = beams.build();
+    if (neon) group.add(neon);
+    const light = buildPools(pools);
+    if (light) group.add(light);
+
+    // The lifted roof of the picked building, and the Step inside button over it.
+    group.add(this.peek.group);
+    const chip = makeChip('Step inside', 0.026);
+    chip.visible = false;
+    this.chip = this.world.createTransformEntity(chip, { parent: this.root });
+    this.entities.push(this.chip);
+    // Acted on next frame: walking in takes the button's ray target away,
+    // which must not happen while the pointer event is still being delivered.
+    (chip as unknown as { addEventListener(type: string, fn: () => void): void }).addEventListener('pointerdown', () => {
+      this.chipHit = true;
+    });
 
     // The pulse that travels along a flow.
     this.pulse = new Mesh(new SphereGeometry(0.0055, 16, 12), new MeshBasicMaterial({ color: '#ffffff' }));
@@ -534,6 +791,13 @@ export class DioramaSystem extends createSystem({
     this.flowDots = null;
     if (this.diveDir !== 0) this.endDive();
     this.surfaceFrom = null;
+    this.peek.clear();
+    this.peek.group.removeFromParent();
+    this.peekId = null;
+    this.rooftops = null;
+    this.chip = null;
+    this.gateLabel = null;
+    this.shadow = null;
     for (const e of this.entities) e.dispose();
     this.entities = [];
     this.root?.dispose();
@@ -545,6 +809,117 @@ export class DioramaSystem extends createSystem({
     this.labels = [];
     this.beacons = [];
     this.shownStep = -1;
+  }
+
+  /** The tray the city stands in: a low metal rim around the board. */
+  private buildTray(w: number, d: number, z: number): Group {
+    const rim = new Group();
+    rim.name = 'tray';
+    const metal = new MeshStandardMaterial({ color: '#3a414e', roughness: 0.3, metalness: 0.85 });
+    const t = 0.008;
+    const h = 0.016;
+    const y = -0.008 + h / 2;
+    for (const side of [-1, 1]) {
+      const long = new Mesh(new BoxGeometry(w + 2 * t, h, t), metal);
+      long.position.set(0, y, z + side * (d / 2 + t / 2));
+      const short = new Mesh(new BoxGeometry(t, h, d), metal);
+      short.position.set(side * (w / 2 + t / 2), y, z);
+      rim.add(long, short);
+    }
+    mergeStatic(rim);
+    return ignoreRays(rim);
+  }
+
+  /** (Re)builds the rooftop features, leaving one roof bare while it is lifted. */
+  private setRooftops(skip: string | null): void {
+    if (this.rooftops) {
+      this.rooftops.traverse((o) => {
+        const mesh = o as Mesh;
+        if (!mesh.isMesh) return;
+        mesh.geometry.dispose();
+        (mesh.material as MeshStandardMaterial).dispose();
+      });
+      this.rooftops.removeFromParent();
+    }
+    this.rooftops = buildRooftops(this.layout.districts.values(), { skip });
+    this.root.object3D!.add(this.rooftops);
+  }
+
+  // ---------------------------------------------------------- lifted roof
+
+  /** Lifts the roof of the picked building, and lowers any other. */
+  private syncPeek(): void {
+    if (app.mode !== 'table') return; // through a dive the roof stays as it was
+    const lot = app.selected ? this.sitesById.get(app.selected)?.lot : null;
+    const want =
+      lot && !app.street && !this.streetShown && !this.streetMoving && app.stepIndex < 0 && !app.menu ? lot.id : null;
+    if (want === this.peekId) {
+      if (want) this.peek.reopen();
+      return;
+    }
+    if (!want) {
+      this.peek.close(); // update() puts the roof back once it is down
+      return;
+    }
+    if (this.peekId) this.shutPeek();
+    this.openPeek(want);
+  }
+
+  private openPeek(id: string): void {
+    const site = this.sitesById.get(id);
+    const lot = site?.lot;
+    if (!site || !lot || !site.shell) return;
+    this.peekId = id;
+    pop();
+    setRoofOpen(site.shell, true);
+    this.setRooftops(id);
+    this.peek.open(
+      {
+        x: lot.rect.x + lot.rect.w / 2,
+        z: lot.rect.z + lot.rect.d / 2,
+        w: lot.rect.w,
+        d: lot.rect.d,
+        base: lot.base,
+        height: lot.height,
+        round: lot.kind === 'data',
+        accent: KIND_COLORS[lot.kind],
+      },
+      buildRooftops([lot], { doors: false }),
+    );
+    // The name and the button move up, clear of the lid.
+    site.label.position.y = site.roof.y + this.peek.clearance + 0.012;
+    this.chip?.object3D?.position.set(site.roof.x, site.roof.y + this.peek.clearance + 0.044, site.roof.z);
+  }
+
+  /** Puts the roof back at once and clears the room under it. */
+  private shutPeek(): void {
+    const site = this.peekId ? this.sitesById.get(this.peekId) : undefined;
+    if (site?.shell) setRoofOpen(site.shell, false);
+    if (site) site.label.position.y = site.labelY;
+    this.peek.clear();
+    if (this.peekId) this.setRooftops(null);
+    this.peekId = null;
+    this.showChip();
+  }
+
+  /** The Step inside button shows over an open building, and only then can it be pinched. */
+  private showChip(): void {
+    const chip = this.chip;
+    const object = chip?.object3D;
+    if (!chip || !object) return;
+    const shown =
+      this.peekId !== null && app.selected === this.peekId && app.mode === 'table' && this.diveDir === 0 && !this.surfaceFrom;
+    object.visible = shown;
+    if (shown && !chip.hasComponent(RayInteractable)) chip.addComponent(RayInteractable);
+    else if (!shown && chip.hasComponent(RayInteractable)) chip.removeComponent(RayInteractable);
+  }
+
+  private chipPressed(): void {
+    const id = this.peekId;
+    // A pinch often registers twice: the one that picked the building must not also walk in.
+    if (!id || app.mode !== 'table' || performance.now() - this.selectedAt < CHIP_QUIET_MS) return;
+    click();
+    enterRoom(id);
   }
 
   /** The project's logo on a small plaque at the front-left of the board. */
@@ -642,7 +1017,33 @@ export class DioramaSystem extends createSystem({
     // The desk drops away as a dive starts, so the city rises around the viewer.
     // In mixed reality the visitor's own desk takes its place.
     if (desk) desk.visible = onTable && this.diveDir === 0 && !inPassthrough(this.world) && !app.street && !this.streetShown && !this.streetMoving;
-    for (const label of this.labels) label.visible = this.diveDir === 0;
+    this.refreshLabels();
+    this.showChip();
+    this.showShadow();
+  }
+
+  private showShadow(): void {
+    if (!this.shadow) return;
+    this.shadow.visible =
+      inPassthrough(this.world) && this.diveDir === 0 && !app.street && !this.streetShown && !this.streetMoving;
+  }
+
+  /**
+   * Which names show. Groups, standalone parts and outside services are
+   * always named; a building inside a group is named when it is pointed at,
+   * picked, the current step of a flow, or connected to the part in focus.
+   * That keeps the city readable, and shows at a glance what a part talks to.
+   * In street view every building keeps its sign.
+   */
+  private refreshLabels(): void {
+    const shown = this.diveDir === 0;
+    const all = app.street || this.streetShown;
+    const focus = currentStep()?.nodeId ?? app.selected;
+    for (const site of this.sitesById.values()) {
+      const linked = !!focus && (site.id === focus || site.conduits.some((c) => c.a === focus || c.b === focus));
+      site.label.visible = shown && (all || site.always || site.hovered || linked);
+    }
+    if (this.gateLabel) this.gateLabel.visible = shown;
   }
 
   /**
@@ -755,6 +1156,7 @@ export class DioramaSystem extends createSystem({
       this.lastMode = app.mode;
     }
     if (app.mode === 'room') this.lastRoom = app.roomNode;
+    this.syncPeek();
     this.applyVisibility();
 
     if (app.stepIndex !== this.shownStep) {
@@ -889,11 +1291,11 @@ export class DioramaSystem extends createSystem({
   private refreshGlow(): void {
     const focus = currentStep()?.nodeId ?? app.selected;
     for (const site of this.sitesById.values()) {
-      let glow = BASE_GLOW;
-      if (site.hovered) glow = HOVER_GLOW;
-      if (site.id === focus) glow = app.stepIndex >= 0 ? FLOW_GLOW : SELECT_GLOW;
-      site.material.emissiveIntensity = glow * site.boost;
+      const level = site.id === focus ? (app.stepIndex >= 0 ? 3 : 2) : site.hovered ? 1 : 0;
+      site.material.emissiveIntensity = site.glow[level];
+      site.material.color.copy(site.tint).multiplyScalar(TINT_LIFT[level]);
     }
+    this.refreshLabels();
     this.redrawConduits(focus ?? null);
   }
 
@@ -941,13 +1343,13 @@ export class DioramaSystem extends createSystem({
     const add = (list: Conduit[], opacity: number) => {
       const geometry = mergeGeometries(list.map((c) => c.tube));
       if (!geometry) return;
-      const mesh = ignoreRays(new Mesh(geometry, new MeshBasicMaterial({ color: '#7ee0ff', transparent: true, opacity, depthWrite: false })));
+      const mesh = ignoreRays(new Mesh(geometry, new MeshBasicMaterial({ vertexColors: true, transparent: true, opacity, depthWrite: false })));
       mesh.renderOrder = 5;
       this.root.object3D!.add(mesh);
       this.conduitMeshes.push(mesh);
     };
     add(lit, 0.95);
-    add(rest, focus ? 0.08 : 0.4);
+    add(rest, focus ? 0.1 : 0.55);
   }
 
   private startHop(): void {
@@ -982,7 +1384,7 @@ export class DioramaSystem extends createSystem({
     const front = -0.04 + (this.layout.depth + 0.16) / 2;
     const x = w / 2 - 0.035;
     const z = front - 0.035;
-    const material = new MeshStandardMaterial({ color: '#5ce1ff', emissive: new Color('#5ce1ff'), emissiveIntensity: 0.9, roughness: 0.4 });
+    const material = new MeshStandardMaterial({ color: '#5ce1ff', emissive: new Color('#5ce1ff'), emissiveIntensity: 1.4, roughness: 0.4 });
     const arch = new Mesh(new TorusGeometry(0.022, 0.0035, 8, 24, Math.PI), material);
     arch.position.set(x, 0.03, z);
     group.add(ignoreRays(arch));
@@ -995,6 +1397,7 @@ export class DioramaSystem extends createSystem({
     label.position.set(x, 0.07, z);
     group.add(ignoreRays(label));
     this.labels.push(label);
+    this.gateLabel = label;
     this.gatePoint.set(x, 0.03, z);
   }
 
@@ -1150,8 +1553,22 @@ export class DioramaSystem extends createSystem({
 
   update(delta: number, time: number): void {
     if (isPaused()) return; // headset off or system menu up: hold everything still
+    // Entering or leaving mixed reality swaps the virtual desk for the real one.
+    const passthrough = inPassthrough(this.world);
+    if (passthrough !== this.passthroughShown) {
+      this.passthroughShown = passthrough;
+      this.applyVisibility();
+    }
     this.updateDive(delta);
     if (app.mode !== 'table' || this.diveDir !== 0) return;
+
+    if (this.chipHit) {
+      this.chipHit = false;
+      this.chipPressed();
+      if (app.mode !== 'table') return;
+    }
+    // The lifted roof: once it has come back down, the building is whole again.
+    if (this.peek.update(delta, time)) this.shutPeek();
 
     // Street view: grow to life size or shrink back, then walk by pinching.
     if (this.streetMoving) {
@@ -1177,7 +1594,11 @@ export class DioramaSystem extends createSystem({
     // The grab rewrites the scale every frame from its value when the grab
     // began, so measure the change against that, not against the last frame.
     const grabbed = this.root.hasComponent(Grabbed);
-    if (grabbed && !this.wasGrabbed) this.grabStartScale = this.uniformScale;
+    if (grabbed && !this.wasGrabbed) {
+      this.grabStartScale = this.uniformScale;
+      this.noteGrabStart();
+    }
+    if (!grabbed && this.wasGrabbed) this.tapPick();
     this.wasGrabbed = grabbed;
     const scale = this.root.object3D!.scale;
     if (scale.x !== scale.y || scale.y !== scale.z) {
@@ -1201,15 +1622,24 @@ export class DioramaSystem extends createSystem({
       }
     }
 
+    this.showShadow();
+
     // Labels turn to face the viewer.
     this.world.camera.getWorldPosition(this.headWorld);
     for (const label of this.labels) label.lookAt(this.headWorld);
+    const chip = this.chip?.object3D;
+    if (chip?.visible) {
+      chip.lookAt(this.headWorld);
+      chip.scale.setScalar(1 + 0.05 * Math.sin(time * 4));
+    }
 
     this.updateFlowDots(time);
 
     for (const b of this.beacons) {
       b.mesh.rotation.y = time * 2 + b.phase;
-      b.mesh.position.y = b.baseY + Math.sin(time * 3 + b.phase) * 0.003;
+      // Over an open building the beacon rides above the lid.
+      const lifted = b.siteId === this.peekId ? this.peek.clearance * this.peek.amount : 0;
+      b.mesh.position.y = b.baseY + lifted + Math.sin(time * 3 + b.phase) * 0.003;
     }
 
     if (app.stepIndex >= 0) {

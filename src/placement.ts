@@ -12,9 +12,20 @@
 export const NEAR = { reach: 0.7, drop: 0.42 } as const;
 export const FAR = { reach: 0.95, drop: 0.36 } as const;
 
-export const placement: { reach: number; drop: number; gaze: boolean; recentre: () => void } = {
+export const placement: {
+  reach: number;
+  drop: number;
+  gaze: boolean;
+  mixed: boolean;
+  onTable: boolean;
+  recentre: () => void;
+} = {
   ...NEAR,
   gaze: false,
+  /** The visitor is in mixed reality: the real room shows around the city. */
+  mixed: false,
+  /** Mixed reality: the city is standing on a real table the headset found in the room. */
+  onTable: false,
   /** Puts the desk back in front of the viewer (set by WorkspaceSystem; does nothing outside VR). */
   recentre: () => undefined,
 };

@@ -59,7 +59,13 @@ export async function landingReady(world: World): Promise<void> {
       mixed.hidden = false;
       mixed.addEventListener('click', () => {
         unlock();
-        world.launchXR({ sessionMode: SessionMode.ImmersiveAR });
+        // Plane detection is the headset's map of the room's flat surfaces
+        // (scene understanding). With it the city is set down on the
+        // visitor's real table; without it the app still runs (see
+        // WorkspaceSystem). Asked for here only, so plain VR never prompts.
+        // ?noplanes leaves it out (for troubleshooting a headset).
+        const planes = !new URLSearchParams(location.search).has('noplanes');
+        world.launchXR({ sessionMode: SessionMode.ImmersiveAR, features: planes ? { planeDetection: true } : {} });
       });
     }
   } else {

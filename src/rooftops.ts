@@ -24,21 +24,34 @@ import { mergeStatic } from './rooms/merge.js';
  * Everything is merged into one mesh per material, so a whole city of
  * rooftops costs a handful of draw calls. Rooftops never take rays: pinching
  * one selects the building under it.
+ *
+ * `skip` leaves one building's roof bare (its roof is lifted, and carries its
+ * own copy of the feature); `doors: false` builds roof features only.
  */
-export function buildRooftops(districts: Iterable<District>): Group {
+export function buildRooftops(
+  districts: Iterable<District>,
+  options: { skip?: string | null; doors?: boolean } = {},
+): Group {
   const group = new Group();
   group.name = 'rooftops';
-  const trim = new MeshStandardMaterial({ color: '#d7dde6', roughness: 0.5, metalness: 0.2 });
-  const door = new MeshStandardMaterial({ color: '#ffe2a8', emissive: new Color('#ffd27a'), emissiveIntensity: 1.1 });
+  const trim = new MeshStandardMaterial({ color: '#566070', roughness: 0.28, metalness: 0.8 });
+  const door = new MeshStandardMaterial({ color: '#ffe2a8', emissive: new Color('#ffd27a'), emissiveIntensity: 1.6 });
   const glows = new Map<string, MeshStandardMaterial>();
   const glow = (kind: string): MeshStandardMaterial => {
     let m = glows.get(kind);
     if (!m) {
       const c = new Color(KIND_COLORS[kind as keyof typeof KIND_COLORS] ?? '#ffffff');
-      m = new MeshStandardMaterial({ color: c.clone().multiplyScalar(0.8), emissive: c, emissiveIntensity: 0.45, roughness: 0.6 });
+      m = new MeshStandardMaterial({ color: c.clone().multiplyScalar(0.5), emissive: c, emissiveIntensity: 1.0, roughness: 0.5 });
       glows.set(kind, m);
     }
     return m;
+  };
+  // Whole roofs are large: dark glass with only a little light of their own.
+  let slate: MeshStandardMaterial | null = null;
+  const roofing = (): MeshStandardMaterial => {
+    const c = new Color(KIND_COLORS.feature);
+    slate ??= new MeshStandardMaterial({ color: c.clone().multiplyScalar(0.16), emissive: c, emissiveIntensity: 0.14, roughness: 0.25, metalness: 0.7 });
+    return slate;
   };
 
   for (const d of districts) {
@@ -55,7 +68,10 @@ export function buildRooftops(districts: Iterable<District>): Group {
     };
     // A lit door in the front wall: in street view, where you stand to go in.
     const doorH = Math.min(0.014, d.height * 0.8);
-    add(new Mesh(new BoxGeometry(Math.min(0.008, w * 0.5), doorH, 0.0008), door), x, d.base + doorH / 2, d.rect.z + depth + 0.0002);
+    if (options.doors !== false) {
+      add(new Mesh(new BoxGeometry(Math.min(0.008, w * 0.5), doorH, 0.0008), door), x, d.base + doorH / 2, d.rect.z + depth + 0.0002);
+    }
+    if (d.id === options.skip) continue;
     switch (d.kind) {
       case 'ui': {
         // A billboard screen standing on the roof, facing the viewer (+Z).
@@ -84,7 +100,7 @@ export function buildRooftops(districts: Iterable<District>): Group {
       }
       case 'feature': {
         // A pitched roof over the whole footprint.
-        const roof = new Mesh(new ConeGeometry(0.5, 1, 4, 1), glow('feature'));
+        const roof = new Mesh(new ConeGeometry(0.5, 1, 4, 1), roofing());
         roof.rotation.y = Math.PI / 4;
         roof.scale.set(w * 1.02, s * 0.3, depth * 1.02);
         add(roof, x, top + s * 0.15, z);

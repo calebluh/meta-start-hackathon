@@ -15,7 +15,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Public link | https://diorama.calebluh.com |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
 | Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/codebase-diorama (public viewer and Claude Code plugin, AGPL-3.0) |
-| Built with | IWSDK, WebXR, three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
+| Built with | IWSDK, WebXR, WebXR Plane Detection, three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
 
 ## Testing instructions (for the judges)
 
@@ -24,13 +24,17 @@ Paste each part into the matching Devpost field. Everything marked
 3. Pinch **Allow microphone** if you would like to talk to the robots out
    loud (optional: every question can also be pinched from a list), then
    pinch **Mixed reality** to see the city on your own desk, or **Enter VR**
-   for a fully virtual room.
-4. Stay seated. A desk appears in front of you with three cards. Pinch or
-   poke **Larder**, the small one, for a first visit. To move the desk,
-   pinch the grey bar under its buttons and drag.
-5. Follow the card that floats above the desk. It teaches one thing at a
-   time and takes about three minutes: pinch a building, step inside, pinch a
-   robot, ask it something.
+   for a fully virtual room. For mixed reality, sit at a table or desk. If
+   the headset asks to share the layout of your room, allow it: that is how
+   the city finds your table. (If your room has never been scanned, the city
+   floats in front of you instead and you set it down yourself.)
+4. Stay seated. Three cards appear in front of you. Pinch or poke
+   **Larder**, the small one, for a first visit. To move the city, pinch
+   the grey bar under its buttons and drag.
+5. Follow the card that floats above the city. It teaches one thing at a
+   time and takes about three minutes: pinch a building and its roof lifts
+   to show its robots, pinch **Step inside** over it, pinch a robot, ask it
+   something.
 6. Things worth saying to a robot:
    - "What happens in this room?"
    - "Take me to the kitchen."
@@ -67,10 +71,16 @@ simply ask.
 Codebase Diorama turns a real software project into a little city on your
 desk.
 
-- **The city.** Every part of the code is a building, sized by how much code
-  it holds and joined to the parts it talks to. Pinch a building and a panel
-  says, in plain English, what that part does, which files it holds and what
-  is wrong with it.
+- **The city.** Every part of the code is a building of dark glass and lit
+  windows on a circuit-board tray, sized by how much code it holds and
+  joined to the parts it talks to. Pinch a building and a panel says, in
+  plain English, what that part does, which files it holds and what is
+  wrong with it. Only the names that matter show: groups, the building you
+  point at, and the parts it talks to.
+- **Lift the roof.** The building you pinch opens like a doll's house: its
+  roof lifts and there, in miniature, are the robots who work inside, with a
+  **Step inside** button floating over them. You see who you are about to
+  meet before you go in.
 - **The flows.** Pinch **Play flow** and a packet of data travels from
   building to building along a real path through the code, such as a first
   order in a shop, while each step is read aloud. It comes in through an
@@ -102,9 +112,18 @@ desk.
   away while it runs. Pinch one of three answers, or say it in your own
   words. A wrong answer is corrected straight away, with the right one left
   standing on the panel, and you get a score at the end.
-- **Mixed reality.** Choose **Mixed reality** and the city sits on your own
-  desk, in your own room, through the headset's passthrough cameras. The
-  rooms you step into still surround you, with your real room around them.
+- **Mixed reality.** Choose **Mixed reality** and the city is set down on
+  your own desk, in your own room. The app asks the headset for the flat
+  surfaces it knows in the room, picks the table in front of you, and stands
+  the tray on it: square with the table's edges, inside them, with a soft
+  shadow on the real wood. The grab bar slides it along the table top. In a
+  room with no table, or one the headset has never scanned, the city floats
+  within reach and you place it yourself. The rooms you step into still
+  surround you, with your real room around them.
+  `[FILL IN after trying it on a Quest 3 or 3S: keep the table sentences
+  only if the city landed on your real desk. So far this was verified in the
+  IWSDK emulator's furnished room, where the emulated headset's desk, side
+  table, couch and walls are reported the same way.]`
 - **Your own code.** A Claude Code plugin maps any repository into a city.
   The third demo, **This app**, is the diorama's own source code, mapped by
   that plugin.
@@ -124,6 +143,16 @@ so it runs from a link in the Quest Browser with nothing to install.
 - **City and rooms.** Buildings, rooms and props are built in code from
   simple shapes, with a few CC0 models. Sound is all synthesized in the
   browser and placed in 3D, so a till rings from where the till stands.
+  The whole city's neon edges are one mesh and its pools of light another,
+  so the look costs two draw calls, not two per building.
+- **The real room.** Mixed reality uses WebXR plane detection, the browser's
+  view of the headset's scene understanding. Each frame the headset lists
+  the room's surfaces with a label, an outline and a pose. The app skips
+  floors, couches and walls, keeps horizontal surfaces at table height within
+  reach, prefers ones labelled table or desk, and fits the tray and its
+  buttons inside the outline. It asks for this only in mixed reality, as an
+  optional feature, so plain VR never prompts and a headset without a room
+  scan still works.
 - **Robots.** Answers come from Meta's Model API. The server writes the
   prompt itself from the map and the room, so a robot only knows its own
   room and the directory of the building, and its tools are real actions in
@@ -150,6 +179,12 @@ Development was done with Claude Code as a pair programmer.
   fingertip poke on a panel. The landing page's buttons are large enough to
   pinch in the Quest Browser, and the microphone prompt is answered there,
   before the session starts, instead of in the middle of a conversation.
+- **Point at it or reach for it.** A building can be pinched from a distance
+  or with your fingers right on it. The button that takes you inside appears
+  at the building you are looking at, not on a far panel.
+- **Passthrough with a purpose.** In mixed reality your own table is the play
+  surface. The city takes its place, height and direction from the real
+  furniture, so the experience is different in every room.
 - **Voice as a second way in.** Anything a pinch can do inside a room can
   also be said: ask a question, change room, play a flow, leave.
 - **Seated and still.** The desk places itself just in front of wherever you
@@ -181,6 +216,11 @@ Development was done with Claude Code as a pair programmer.
 - **Hand input is noisy.** One pinch often arrives twice, which made buttons
   start and stop at once and buildings select and deselect. Every control now
   ignores a repeat that arrives too soon.
+- **A pinch that picked up the whole city.** Reaching out and pinching a
+  building, the most natural thing to do, took hold of the board instead,
+  because a pinch made close to the city is a grab. A hold that is short and
+  goes nowhere is now read as what it was: a pinch on the building under
+  your fingers.
 - **A robot that talks has to stay visible.** Side panels, a speech bubble
   and the guide card all want the same space in front of you. The robot now
   walks to a spot between the panels, and the card drops to the desk.

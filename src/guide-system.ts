@@ -63,7 +63,12 @@ const STEPS: Step[] = [
   },
   {
     title: 'Get comfortable',
-    text: () => 'Too close or too far? Pinch the grey bar below the buttons and drag it where you like.',
+    text: () =>
+      placement.onTable
+        ? 'The city is standing on your own table. Pinch the grey bar below the buttons to slide it where you like.'
+        : placement.mixed
+          ? 'Pinch the grey bar below the buttons and set the city down on your own desk.'
+          : 'Too close or too far? Pinch the grey bar below the buttons and drag it where you like.',
     done: (clock) => guideProgress.moved || clock > 14 || app.selected !== null || app.mode === 'room',
     target: 'handle',
     pinch: true,
@@ -77,7 +82,7 @@ const STEPS: Step[] = [
   },
   {
     title: 'Step inside',
-    text: () => 'Pinch Step inside, on the panel in front of you, to visit its room.',
+    text: () => 'The roof lifts: that is its team. Pinch Step inside, over the building, to visit them.',
     done: () => app.mode === 'room' || guideProgress.asked,
     target: null,
     pinch: true,

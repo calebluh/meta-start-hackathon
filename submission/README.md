@@ -54,6 +54,18 @@ emulator. This is the most important step left.
 
 1. Open the public link in the Quest Browser. Put the controllers down.
 2. Go through the judge steps in [devpost.md](devpost.md) exactly as written.
+   Three things are new since the last headset run and have only been seen
+   in the emulator, so look at them first:
+   - **Mixed reality on a real table.** Scan the room once (Settings,
+     Environment setup), sit at a desk and pinch Mixed reality. The headset
+     may ask to share the room's layout: allow it. The city should stand on
+     the desk, square with its edge. If the page will not start, open the
+     link with `?noplanes` on the end (it skips the room request) and tell
+     Claude what happened.
+   - **The roof.** Pinch a building: the roof lifts, small robots stand
+     inside, and a **Step inside** button floats over it. Pinch the button.
+   - **Reaching for a building.** Put your fingers right on a building and
+     pinch quickly. It should be picked, and the city should not move.
 3. Note anything that is hard to pinch, too small to read, or out of reach
    from a chair, and how smooth it feels in the city and in a room.
 4. To see the frame rate: Quest menu, Settings, Developer, turn on the
@@ -83,7 +95,10 @@ Everything is written in [devpost.md](devpost.md). Search it for `FILL IN`:
 
 Upload the pictures in [screenshots/](screenshots/). They were captured in
 the emulator; replace any of them with headset captures if you have better
-ones.
+ones. `02`, `03`, `05`, `08` and `09` show the city as it looks now (`08` is
+the lifted roof, `09` the city on a real desk in the emulator's room, with
+the emulator's outlined hands). `01`, `04`, `06` and `07` are from before and
+still match: the menu and the rooms did not change.
 
 Two things to decide while you paste:
 
@@ -102,6 +117,8 @@ Two things to decide while you paste:
       competition repo has no licence on purpose: visible to judges, not
       for reuse.
 - [ ] The video is set to public and is under 3:00.
+- [ ] Every `[FILL IN ...]` in `devpost.md` is filled in or deleted,
+      including the one about the real table in mixed reality.
 - [ ] Track is **Productivity**, division is **New Experience**.
 - [ ] Submitted before 12:00 PM Pacific on 18 November. Do not push to
       `main` after that: Vercel redeploys on every push.
