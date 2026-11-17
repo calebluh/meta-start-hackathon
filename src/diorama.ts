@@ -77,6 +77,7 @@ import {
   currentStep,
   cycleFlow,
   enterRoom,
+  freshParts,
   leaveRoom,
   nextStep,
   cycleMap,
@@ -203,6 +204,8 @@ const PLINTH_GLOW: Glow = [0.03, 0.16, 0.3, 0.5];
 const TOWER_GLOW: Glow = [0.35, 0.8, 1.1, 1.6];
 /** The walls brighten a little along with the windows. */
 const TINT_LIFT: Glow = [1, 1.5, 1.9, 2.2];
+/** How long a part the coding agent just changed keeps throbbing. */
+const FRESH_SECONDS = 10;
 /** Thickness of the neon edges on buildings and on plinths. */
 const EDGE = 0.0012;
 const PLINTH_EDGE = 0.0008;
@@ -1844,6 +1847,28 @@ export class DioramaSystem extends createSystem({
     this.refreshGlow();
   }
 
+  /**
+   * Parts the coding agent just changed (a live map update) throb brightly for
+   * a few seconds, so the visitor sees where the code moved.
+   */
+  private pulseFresh(): void {
+    const now = performance.now();
+    let ended = false;
+    for (const [id, at] of freshParts) {
+      const age = (now - at) / 1000;
+      const site = this.sitesById.get(id);
+      if (age > FRESH_SECONDS || !site) {
+        freshParts.delete(id);
+        ended = true;
+        continue;
+      }
+      const beat = 0.5 + 0.5 * Math.sin(age * 5);
+      site.material.emissiveIntensity = site.glow[3] * (0.7 + 0.8 * beat);
+      site.material.color.copy(site.tint).multiplyScalar(TINT_LIFT[3]);
+    }
+    if (ended) this.refreshGlow();
+  }
+
   /** Recomputes every building's glow and conduit brightness from the current state. */
   private refreshGlow(): void {
     const focus = currentStep()?.nodeId ?? app.selected;
@@ -2269,6 +2294,7 @@ export class DioramaSystem extends createSystem({
     this.showPegs(atRest && !app.street && !this.streetShown);
     this.showStreetExtras(atRest && this.streetShown);
     this.shiftInspectorForNotes();
+    if (freshParts.size) this.pulseFresh();
     if (app.mode !== 'table' || this.diveDir !== 0) {
       // A pinch made in a room or mid-dive is not one at the city.
       this.nearPinch = null;

@@ -16,6 +16,25 @@ import { WebSocketServer } from 'ws';
 function agentApi(): Plugin {
   return {
     name: 'agent-api',
+    // A map rebuilt while the app is open (a coding agent ran the map builder)
+    // goes to the page as data, not as a reload: a reload would end the VR
+    // session. src/live.ts swaps it in.
+    // This plugin is listed before iwsdkDev, which otherwise reloads the
+    // runtime page on any source change; returning [] hands it no modules.
+    // The server's own copy (the robots' facts) is still marked stale, so the
+    // robots read the new map on their next answer.
+    async handleHotUpdate({ file, server, read }) {
+      const match = /[\\/]src[\\/]maps[\\/](?:custom[\\/])?([\w-]+)\.json$/.exec(file);
+      if (!match) return;
+      try {
+        const graph = JSON.parse(await read()) as { nodes?: unknown };
+        if (!Array.isArray(graph.nodes)) return [];
+        server.ws.send({ type: 'custom', event: 'diorama:map', data: { id: match[1], graph } });
+        return [];
+      } catch {
+        return []; // half-written: the finished write comes next
+      }
+    },
     configureServer(server) {
       const env = loadEnv('development', process.cwd(), '');
 
@@ -27,6 +46,64 @@ function agentApi(): Plugin {
           const { relayAsr } = (await server.ssrLoadModule('/server/asr-relay.ts')) as typeof import('./server/asr-relay');
           relayAsr(client, env.MODEL_API_KEY ?? env.LLAMA_API_KEY, req.socket.remoteAddress ?? 'local');
         });
+      });
+      // Your screen in VR: /share on the computer sends JPEG frames up this
+      // socket; every headset watching gets them. One sharer at a time.
+      const screenSockets = new WebSocketServer({ noServer: true, maxPayload: 4 * 1024 * 1024 });
+      const watchers = new Set<import('ws').WebSocket>();
+      let sharer: import('ws').WebSocket | null = null;
+      let lastFrame: Buffer | null = null;
+      const tellWatchers = (live: boolean) => {
+        for (const w of watchers) if (w.readyState === 1) w.send(JSON.stringify({ live }));
+      };
+      server.httpServer?.on('upgrade', (req, socket, head) => {
+        if (!req.url?.startsWith('/api/screen')) return;
+        screenSockets.handleUpgrade(req, socket, head, (client) => {
+          let role: 'share' | 'watch' | null = null;
+          client.on('message', (data, isBinary) => {
+            if (!isBinary) {
+              try {
+                const message = JSON.parse(String(data)) as { role?: string };
+                if (message.role === 'watch' && !role) {
+                  role = 'watch';
+                  watchers.add(client);
+                  client.send(JSON.stringify({ live: sharer !== null }));
+                  if (sharer && lastFrame) client.send(lastFrame);
+                } else if (message.role === 'share' && !role) {
+                  role = 'share';
+                  if (sharer && sharer !== client) sharer.close(4000, 'Another window started sharing');
+                  sharer = client;
+                  tellWatchers(true);
+                  client.send(JSON.stringify({ watchers: watchers.size }));
+                }
+              } catch {
+                // ignore
+              }
+              return;
+            }
+            if (role !== 'share' || client !== sharer) return;
+            lastFrame = Buffer.isBuffer(data) ? data : Buffer.from(data as ArrayBuffer);
+            for (const w of watchers) {
+              // A slow headset skips frames rather than falling behind.
+              if (w.readyState === 1 && w.bufferedAmount < 1_000_000) w.send(lastFrame);
+            }
+          });
+          client.on('close', () => {
+            watchers.delete(client);
+            if (client === sharer) {
+              sharer = null;
+              lastFrame = null;
+              tellWatchers(false);
+            }
+          });
+          client.on('error', () => client.close());
+        });
+      });
+      server.middlewares.use('/share', async (req, res, next) => {
+        if (req.method !== 'GET' || (req.url && req.url !== '/' && !req.url.startsWith('/?'))) return next();
+        const { readFile } = await import('node:fs/promises');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.end(await readFile(new URL('./server/share.html', import.meta.url), 'utf8'));
       });
       server.middlewares.use('/api/agent', (req, res) => {
         if (req.method !== 'POST') {
@@ -169,7 +246,8 @@ function agentApi(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [iwsdkDev(), agentApi()],
+  // agentApi first: its live map update must run before iwsdkDev's reload.
+  plugins: [agentApi(), iwsdkDev()],
   // PORT lets a second copy (another worktree) run beside the first.
   server: { host: '0.0.0.0', port: Number(process.env.PORT) || 8081, open: false },
   build: {

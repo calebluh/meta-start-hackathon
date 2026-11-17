@@ -18,6 +18,8 @@ import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
 import { DesktopControlsSystem } from './desktop-controls.js';
+import { ScreenSystem } from './screen.js';
+import { listenForMapUpdates } from './live.js';
 
 // Eye tracking is only for Meta VR Glasses (open with ?gaze). Asking for it
 // crashes the Quest 2 browser at page load, and Quest has no eye tracking.
@@ -42,6 +44,12 @@ World.create(
   world.registerSystem(AtmosphereSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(DesktopControlsSystem);
+  // Development: your computer's screen on a monitor behind the city (/share), and
+  // maps rebuilt by a coding agent swapped in without leaving VR.
+  if (import.meta.env.DEV) {
+    world.registerSystem(ScreenSystem);
+    listenForMapUpdates();
+  }
 
   // A link straight to one map (the Claude skill prints one) skips the menu.
   const wanted = new URLSearchParams(location.search).get('map');

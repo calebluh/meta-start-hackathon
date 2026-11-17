@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Share your screen</title>
+<style>
+  :root { color-scheme: dark; --bg: #0b0f17; --fg: #e8edf5; --dim: #8b97a8; --accent: #4fd1ff; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.5 system-ui, sans-serif; }
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px; }
+  h1 { font-size: 24px; margin: 0 0 8px; }
+  p { color: var(--dim); margin: 0 0 16px; }
+  button { font: inherit; font-weight: 600; padding: 12px 20px; border-radius: 10px; border: 0; background: var(--accent); color: #04121a; cursor: pointer; }
+  button.stop { background: #ff6b6b; }
+  #status { margin: 16px 0; color: var(--fg); }
+  video { width: 100%; border-radius: 8px; background: #000; margin-top: 8px; }
+  label { color: var(--dim); display: block; margin-top: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Your screen in the diorama</h1>
+  <p>Pick a window (your terminal or editor reads best) or the whole screen. It appears on a monitor behind the city in the headset, so you can watch your coding agent work without taking the headset off. View only: keep typing here. Nothing leaves this computer and your local network.</p>
+  <button id="go">Share a window</button>
+  <label><input type="checkbox" id="sharp"> Sharper text (more data, for a small font)</label>
+  <div id="status">Not sharing.</div>
+  <video id="preview" muted playsinline></video>
+</main>
+<script>
+const go = document.getElementById('go');
+const statusLine = document.getElementById('status');
+const preview = document.getElementById('preview');
+const sharp = document.getElementById('sharp');
+const canvas = document.createElement('canvas');
+const ctx = canvas.getContext('2d');
+let stream = null, socket = null, timer = null;
+
+function say(text) { statusLine.textContent = text; }
+
+function stop() {
+  clearInterval(timer); timer = null;
+  stream?.getTracks().forEach((t) => t.stop()); stream = null;
+  socket?.close(); socket = null;
+  preview.srcObject = null;
+  go.textContent = 'Share a window'; go.className = '';
+  say('Not sharing.');
+}
+
+function frame() {
+  if (!socket || socket.readyState !== 1 || !preview.videoWidth) return;
+  if (socket.bufferedAmount > 1500000) return; // the network is behind: skip this one
+  const maxWidth = sharp.checked ? 1920 : 1280;
+  const scale = Math.min(1, maxWidth / preview.videoWidth);
+  const w = Math.round(preview.videoWidth * scale), h = Math.round(preview.videoHeight * scale);
+  if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
+  ctx.drawImage(preview, 0, 0, w, h);
+  canvas.toBlob((blob) => {
+    if (!blob || !socket || socket.readyState !== 1) return;
+    blob.arrayBuffer().then((buffer) => socket?.send(buffer));
+  }, 'image/jpeg', sharp.checked ? 0.8 : 0.7);
+}
+
+/** Sends at most five frames a second, read straight from the track. */
+async function pump(track) {
+  const reader = new MediaStreamTrackProcessor({ track }).readable.getReader();
+  let last = 0;
+  while (stream) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    const now = performance.now();
+    if (now - last >= 200 && socket && socket.readyState === 1 && socket.bufferedAmount < 1500000) {
+      last = now;
+      const maxWidth = sharp.checked ? 1920 : 1280;
+      const scale = Math.min(1, maxWidth / value.displayWidth);
+      const w = Math.round(value.displayWidth * scale), h = Math.round(value.displayHeight * scale);
+      const off = new OffscreenCanvas(w, h);
+      off.getContext('2d').drawImage(value, 0, 0, w, h);
+      value.close();
+      const blob = await off.convertToBlob({ type: 'image/jpeg', quality: sharp.checked ? 0.8 : 0.7 });
+      if (socket && socket.readyState === 1) socket.send(await blob.arrayBuffer());
+    } else {
+      value.close();
+    }
+  }
+  reader.cancel().catch(() => {});
+}
+
+async function start() {
+  try {
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: 10 }, audio: false });
+  } catch {
+    say('Sharing was cancelled.');
+    return;
+  }
+  preview.srcObject = stream;
+  await preview.play();
+  stream.getVideoTracks()[0].addEventListener('ended', stop);
+  socket = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/screen`);
+  socket.addEventListener('open', () => {
+    socket.send(JSON.stringify({ role: 'share' }));
+    // Background tabs get their timers slowed to once a second, and this tab
+    // is usually behind the terminal being shared. Reading the video track's
+    // frames is driven by the frames themselves, so it keeps its pace there.
+    if ('MediaStreamTrackProcessor' in window) pump(stream.getVideoTracks()[0]);
+    else timer = setInterval(frame, 200);
+  });
+  socket.addEventListener('message', (e) => {
+    try { const m = JSON.parse(e.data); if (typeof m.watchers === 'number') say(m.watchers ? 'Sharing. Look behind the city in the headset.' : 'Sharing, but no headset is watching yet: open the diorama on the headset from this same server.'); } catch {}
+  });
+  socket.addEventListener('close', (e) => {
+    if (stream) { say(e.reason || 'The dev server closed the connection.'); stop(); }
+  });
+  go.textContent = 'Stop sharing'; go.className = 'stop';
+  say('Sharing. Look behind the city in the headset.');
+}
+
+go.addEventListener('click', () => (stream ? stop() : start()));
+</script>
+</body>
+</html>
