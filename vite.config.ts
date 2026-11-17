@@ -99,6 +99,25 @@ function agentApi(): Plugin {
           client.on('error', () => client.close());
         });
       });
+      // Frame-rate reports from each page (src/fps.ts), newest last; GET lists them.
+      const fpsReports: string[] = [];
+      server.middlewares.use('/api/fps', (req, res) => {
+        if (req.method === 'GET') {
+          res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+          res.end(fpsReports.join('\n') + '\n');
+          return;
+        }
+        let raw = '';
+        req.on('data', (chunk) => {
+          if (raw.length < 2000) raw += chunk;
+        });
+        req.on('end', () => {
+          fpsReports.push(`${new Date().toISOString().slice(11, 19)} ${req.socket.remoteAddress ?? ''} ${raw.slice(0, 400)}`);
+          if (fpsReports.length > 500) fpsReports.shift();
+          res.statusCode = 204;
+          res.end();
+        });
+      });
       server.middlewares.use('/share', async (req, res, next) => {
         if (req.method !== 'GET' || (req.url && req.url !== '/' && !req.url.startsWith('/?'))) return next();
         const { readFile } = await import('node:fs/promises');

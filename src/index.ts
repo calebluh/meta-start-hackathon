@@ -19,6 +19,7 @@ import { restartGuide } from './guide.js';
 import { WorkspaceSystem } from './workspace.js';
 import { DesktopControlsSystem } from './desktop-controls.js';
 import { ScreenSystem } from './screen.js';
+import { FpsSystem } from './fps.js';
 import { listenForMapUpdates } from './live.js';
 
 // Eye tracking is only for Meta VR Glasses (open with ?gaze). Asking for it
@@ -48,6 +49,7 @@ World.create(
   // maps rebuilt by a coding agent swapped in without leaving VR.
   if (import.meta.env.DEV) {
     world.registerSystem(ScreenSystem);
+    world.registerSystem(FpsSystem);
     listenForMapUpdates();
   }
 
