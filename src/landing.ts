@@ -1,6 +1,7 @@
 import { SessionMode, VisibilityState, type World } from '@iwsdk/core';
 import { canRecord } from './agent/recorder.js';
 import { unlock } from './audio/sound.js';
+import { anchorsWanted } from './desk-anchor.js';
 
 /**
  * The flat web page around the 3D view: a title while the app loads, then one
@@ -65,7 +66,10 @@ export async function landingReady(world: World): Promise<void> {
         // WorkspaceSystem). Asked for here only, so plain VR never prompts.
         // ?noplanes leaves it out (for troubleshooting a headset).
         const planes = !new URLSearchParams(location.search).has('noplanes');
-        world.launchXR({ sessionMode: SessionMode.ImmersiveAR, features: planes ? { planeDetection: true } : {} });
+        // Anchors (optional): the headset remembers where the city stood in
+        // this room, for next time (see desk-anchor.ts). ?noanchor leaves it out.
+        const anchors = anchorsWanted();
+        world.launchXR({ sessionMode: SessionMode.ImmersiveAR, features: { ...(planes ? { planeDetection: true } : {}), ...(anchors ? { anchors: true } : {}) } });
       });
     }
   } else {

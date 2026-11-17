@@ -260,7 +260,7 @@ interface Beacon {
 }
 
 /** Draws a text label on a canvas and returns a plane `height` meters tall. */
-function makeLabel(text: string, height: number, accent: string): Mesh {
+export function makeLabel(text: string, height: number, accent: string): Mesh {
   const fontPx = 56;
   const canvas = document.createElement('canvas');
   const measure = canvas.getContext('2d')!;

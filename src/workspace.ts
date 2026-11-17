@@ -18,6 +18,8 @@ import {
   Vector3,
   VisibilityState,
 } from '@iwsdk/core';
+import { DeskAnchor } from './desk-anchor.js';
+import { makeLabel } from './diorama.js';
 import { guideNote } from './guide.js';
 import { inPassthrough } from './passthrough.js';
 import { FAR, NEAR, placement } from './placement.js';
@@ -53,6 +55,12 @@ const BAR_HALF = 0.12;
 const GRAB = { movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false };
 /** Mixed reality: keep looking for a real table this long after the desk is placed (the room's surfaces arrive a little after the session starts). */
 const TABLE_SEARCH_SECONDS = 5;
+/** Mixed reality: how long to wait for the headset to find last visit's spot. */
+const RESTORE_SECONDS = 4;
+/** Last visit's spot is used only within this distance of where the visitor now sits. */
+const RESTORE_MAX_DISTANCE = 1.8;
+/** How long "Back where you left it" shows. */
+const CUE_SECONDS = 5;
 /** A real table must be at least this big, this high off the floor, and this near, to take the city. */
 const TABLE_MIN_WIDTH = 0.5;
 const TABLE_MIN_DEPTH = 0.4;
@@ -169,6 +177,20 @@ export class WorkspaceSystem extends createSystem({}) {
   private spot = new Vector3();
   private headAhead = new Vector3();
   private best = new Vector3();
+  /** Mixed reality: the spot in the real room the city is remembered at (see desk-anchor.ts). */
+  private deskAnchor = new DeskAnchor();
+  /** Seconds left to wait for last visit's spot to be found again. */
+  private restoreWait = 0;
+  /** Set on entering VR, cleared once the desk has been placed. */
+  private entering = false;
+  private anchorMatrix = new Matrix4();
+  private anchorPos = new Vector3();
+  private anchorQuat = new Quaternion();
+  private anchorScale = new Vector3();
+  /** "Back where you left it", shown for a moment when the city returns to its spot. */
+  private cue: Mesh | undefined;
+  private cueTime = 0;
+  private cuePending = false;
 
   init(): void {
     this.workspace = this.world.getSceneObject('workspace');
@@ -193,6 +215,7 @@ export class WorkspaceSystem extends createSystem({}) {
           // Only on entering VR. Coming back from the Quest menu or putting the
           // headset back on must not move a desk the visitor already placed.
           this.immersive = true;
+          this.entering = true;
           this.pendingFrames = SETTLE_FRAMES;
         }
       }),
@@ -224,12 +247,19 @@ export class WorkspaceSystem extends createSystem({}) {
     };
     const onHandSession = () => {
       const session = this.world.renderer.xr.getSession();
+      if (session) this.deskAnchor.begin(session);
       session?.addEventListener('selectstart', onSelectStart);
       session?.addEventListener('selectend', onSelectEnd);
       session?.addEventListener('inputsourceschange', onHandSourcesChange);
     };
     this.world.renderer.xr.addEventListener('sessionstart', onHandSession);
     this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionstart', onHandSession));
+    const onSessionEnd = () => {
+      this.deskAnchor.end();
+      this.restoreWait = 0;
+    };
+    this.world.renderer.xr.addEventListener('sessionend', onSessionEnd);
+    this.cleanupFuncs.push(() => this.world.renderer.xr.removeEventListener('sessionend', onSessionEnd));
 
     // Recentering from the Quest menu moves the world origin; follow it.
     const xr = this.world.renderer.xr;
@@ -276,14 +306,24 @@ export class WorkspaceSystem extends createSystem({}) {
   update(delta: number): void {
     if (this.pendingFrames > 0) {
       this.pendingFrames -= 1;
-      if (this.pendingFrames === 0) this.placeInFrontOfHead();
+      if (this.pendingFrames === 0) {
+        // Entering mixed reality with a spot saved last time: give the
+        // headset a moment to find it before anything is saved over it.
+        if (this.entering && inPassthrough(this.world) && this.deskAnchor.hasSaved) this.restoreWait = RESTORE_SECONDS;
+        this.entering = false;
+        this.placeInFrontOfHead();
+      }
     }
+    this.updateAnchor(delta);
     // Mixed reality: the room's surfaces can arrive a moment after the desk
     // was placed. Keep looking for a short while, at the table only.
     if (this.tableSearch > 0) {
       this.tableSearch -= delta;
       if (app.mode !== 'table' || app.street || dive.active) this.tableSearch = 0;
-      else if (this.snapToTable()) this.tableSearch = 0;
+      else if (this.snapToTable()) {
+        this.tableSearch = 0;
+        this.rememberSpot();
+      }
       else if (this.tableSearch <= 0 && import.meta.env.DEV) this.reportPlanes();
     }
     this.updateHandle();
@@ -467,8 +507,18 @@ export class WorkspaceSystem extends createSystem({}) {
     const byHand = this.followHand('desk', object);
     const grabbed = byHand || handle.hasComponent(Grabbed);
     // The visitor is placing the desk themselves: stop looking for a table.
-    if (grabbed) this.tableSearch = 0;
-    if (this.wasGrabbed && !grabbed) guideNote('moved');
+    if (grabbed) {
+      this.tableSearch = 0;
+      // Moved by hand before last visit's spot turned up: this spot wins.
+      if (this.restoreWait > 0) {
+        this.restoreWait = 0;
+        this.deskAnchor.dropRestored();
+      }
+    }
+    if (this.wasGrabbed && !grabbed) {
+      guideNote('moved');
+      this.rememberSpot();
+    }
     this.wasGrabbed = grabbed;
     this.handleMaterial.color.set(grabbed || handle.hasComponent(Hovered) ? HANDLE_LIVE : HANDLE_IDLE);
     if (grabbed) {
@@ -565,7 +615,103 @@ export class WorkspaceSystem extends createSystem({}) {
     // Mixed reality: set the city down on a real table if the room has one.
     placement.onTable = false;
     this.tableSearch = 0;
-    if (inPassthrough(this.world) && !this.snapToTable()) this.tableSearch = TABLE_SEARCH_SECONDS;
+    if (inPassthrough(this.world)) {
+      if (this.snapToTable()) this.rememberSpot();
+      else this.tableSearch = TABLE_SEARCH_SECONDS;
+    }
+  }
+
+  /**
+   * Mixed reality: puts the city back on last visit's spot once the headset
+   * finds it, saves a spot asked for while another was saving, and fades the
+   * "back where you left it" cue.
+   */
+  private updateAnchor(delta: number): void {
+    // The cue waits for the city itself: after a reload the start menu comes first.
+    if (this.cuePending && !app.menu && app.mode === 'table') {
+      this.cuePending = false;
+      this.showCue();
+    }
+    if (this.cue?.visible) {
+      this.cueTime -= delta;
+      if (this.cueTime <= 0 || app.mode !== 'table' || app.menu) this.cue.visible = false;
+    }
+    const frame = this.world.xrFrame;
+    const space = this.world.xrReferenceSpace;
+    if (!frame || !space || !this.workspace) return;
+    const pending = this.deskAnchor.pendingSave;
+    if (pending && this.restoreWait <= 0) {
+      this.deskAnchor.pendingSave = null;
+      this.deskAnchor.save(frame, space, pending.position, pending.orientation, pending.onTable, pending.axis);
+    }
+    if (this.restoreWait <= 0) return;
+    if (app.mode !== 'table' || app.street || dive.active) return;
+    const found = this.deskAnchor.takeRestored(frame, space);
+    if (!found) {
+      this.restoreWait -= delta;
+      // Not found in time: keep where the table search put the city, and remember that instead.
+      if (this.restoreWait <= 0) {
+        this.deskAnchor.dropRestored();
+        if (import.meta.env.DEV) console.log('[anchor] last spot not found in time');
+        this.rememberSpot();
+      }
+      return;
+    }
+    this.restoreWait = 0;
+    // Anchor pose (reference space) to world (the XR origin can itself be moved).
+    this.anchorMatrix.fromArray(found.matrix).premultiply(this.player.matrixWorld);
+    this.anchorMatrix.decompose(this.anchorPos, this.anchorQuat, this.anchorScale);
+    this.player.head.getWorldPosition(this.head);
+    const away = Math.hypot(this.anchorPos.x - this.head.x, this.anchorPos.z - this.head.z);
+    // Somewhere this visitor cannot reach from where they sit now: leave the city where it is.
+    if (away > RESTORE_MAX_DISTANCE || this.anchorPos.y < 0.3 || this.anchorPos.y > this.head.y - 0.1) {
+      if (import.meta.env.DEV) console.log(`[anchor] last spot is out of reach (${away.toFixed(2)} m), not used`);
+      return;
+    }
+    this.euler.setFromQuaternion(this.anchorQuat, 'YXZ');
+    this.workspace.position.copy(this.anchorPos);
+    this.workspace.rotation.set(0, this.euler.y, 0);
+    placement.onTable = found.spot.onTable;
+    this.tableAxis = found.spot.axis;
+    this.tableY = this.anchorPos.y;
+    this.tableSearch = 0;
+    this.cuePending = true;
+    if (import.meta.env.DEV) {
+      console.log('[anchor] back on last visit\'s spot at ' + [this.anchorPos.x, this.anchorPos.y, this.anchorPos.z].map((v) => v.toFixed(2)).join(', '));
+    }
+  }
+
+  /** Mixed reality: asks the headset to remember where the city now stands. */
+  private rememberSpot(): void {
+    if (!this.workspace || this.restoreWait > 0 || !inPassthrough(this.world) || !this.deskAnchor.enabled) return;
+    const frame = this.world.xrFrame;
+    const space = this.world.xrReferenceSpace;
+    if (!frame || !space) return;
+    // World to the session's reference space.
+    this.anchorMatrix
+      .compose(this.workspace.position, this.anchorQuat.setFromAxisAngle(UP, this.workspace.rotation.y), this.anchorScale.set(1, 1, 1))
+      .premultiply(this.planeInverse.copy(this.player.matrixWorld).invert());
+    this.anchorMatrix.decompose(this.anchorPos, this.anchorQuat, this.anchorScale);
+    this.deskAnchor.save(
+      frame,
+      space,
+      { x: this.anchorPos.x, y: this.anchorPos.y, z: this.anchorPos.z, w: 1 },
+      { x: this.anchorQuat.x, y: this.anchorQuat.y, z: this.anchorQuat.z, w: this.anchorQuat.w },
+      placement.onTable,
+      this.tableAxis,
+    );
+  }
+
+  private showCue(): void {
+    if (!this.workspace) return;
+    if (!this.cue) {
+      this.cue = makeLabel('Back where you left it', 0.05, '#7ee0ff');
+      // Low over the front of the city: the guide card floats above its middle.
+      this.cue.position.set(0, 0.17, 0.16);
+      this.workspace.add(this.cue);
+    }
+    this.cue.visible = true;
+    this.cueTime = CUE_SECONDS;
   }
 
   /** Development: say what the headset knows of the room when no table was found. */
