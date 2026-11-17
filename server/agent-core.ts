@@ -14,6 +14,7 @@ import {
 } from '../src/agent/prompt.js';
 import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
+import { admitRepoMap } from './repo-map.js';
 import { MAX_NOTE, MAX_SAID, NOTES_IN_PROMPT, parseScribe, scribePrompt, type ScribeReply } from '../src/notes/scribe.js';
 import { createLimiter } from './rate-limit.js';
 
@@ -388,6 +389,8 @@ export async function handleAgent(
   address = 'local',
 ): Promise<{ status: number; json: unknown }> {
   try {
+    // A question about a GitHub repo's city brings that map, signed by this server (see repo-map.ts).
+    admitRepoMap(body, apiKey);
     // The notes room sends an idea to talk over instead of a question about a room.
     const scribe = !!body && typeof body === 'object' && (body as Record<string, unknown>).scribe === true;
     const idea = scribe ? validateScribe(body) : null;

@@ -2,6 +2,9 @@ import { SessionMode, VisibilityState, type World } from '@iwsdk/core';
 import { canRecord } from './agent/recorder.js';
 import { unlock } from './audio/sound.js';
 import { anchorsWanted } from './desk-anchor.js';
+import { HACKATHON } from './edition.js';
+import { buildRepoCity } from './maps/repo.js';
+import { chooseDemo } from './state.js';
 
 /**
  * The flat web page around the 3D view: a title while the app loads, then one
@@ -86,6 +89,7 @@ export async function landingReady(world: World): Promise<void> {
     });
   }
 
+  setupRepoForm();
   root.classList.remove('loading');
   root.classList.add('ready');
 
@@ -126,4 +130,55 @@ async function offerMicrophone(mic: HTMLButtonElement, note: HTMLElement): Promi
       note.textContent = 'No problem: every question can also be picked from a list with a pinch.';
     }
   });
+}
+
+/**
+ * Any public GitHub repository as a city: type owner/name (or paste its
+ * link), the server maps it (server/repo-map.ts), and Enter VR walks into it.
+ * Shown only with ?repo on the link until it has been checked on the live site.
+ */
+function setupRepoForm(): void {
+  const form = el<HTMLFormElement>('repo-form');
+  const input = el<HTMLInputElement>('repo-input');
+  const go = el<HTMLButtonElement>('repo-go');
+  const note = el('repo-note');
+  if (!form || !input || !go || !note || !HACKATHON) return;
+  if (!new URLSearchParams(location.search).has('repo')) return;
+  form.hidden = false;
+  let busy = false;
+  const say = (text: string, tone: '' | 'ok' | 'bad' = '') => {
+    note.textContent = text;
+    note.className = tone;
+  };
+  const build = async (repo: string) => {
+    if (busy || !repo.trim()) return;
+    busy = true;
+    go.disabled = true;
+    unlock();
+    say('Downloading the code and drawing the city: about 10 seconds...');
+    const result = await buildRepoCity(repo.trim());
+    busy = false;
+    go.disabled = false;
+    if ('error' in result) {
+      say(result.error, 'bad');
+      return;
+    }
+    const parts = result.graph.nodes.filter((n) => n.kind !== 'external').length;
+    chooseDemo(result.id);
+    // A reload, or this link shared, opens the same city (kept in this browser).
+    const url = new URL(location.href);
+    url.searchParams.set('map', result.id);
+    history.replaceState(null, '', url);
+    say(`${result.graph.project.name} is ready: ${parts} buildings. Press Enter VR or Mixed reality to step inside.`, 'ok');
+  };
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    void build(input.value);
+  });
+  for (const chip of form.querySelectorAll<HTMLButtonElement>('button[data-repo]')) {
+    chip.addEventListener('click', () => {
+      input.value = chip.dataset.repo ?? '';
+      void build(input.value);
+    });
+  }
 }

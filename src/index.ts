@@ -4,6 +4,7 @@ import { DioramaSystem } from './diorama.js';
 import { RoomSystem } from './rooms/room.js';
 import { pickTheme } from './rooms/themes.js';
 import { MAPS } from './maps/index.js';
+import { restoreRepoMap } from './maps/repo.js';
 import { NOTES_ROOM } from './notes/scribe.js';
 import { app, chooseDemo, cycleMap, enterRoom, leaveRoom, nextStep, select, setStreet, startFlow } from './state.js';
 import { stopSpeaking } from './agent/client.js';
@@ -55,6 +56,8 @@ World.create(
 
   // A link straight to one map (the Claude skill prints one) skips the menu.
   const wanted = new URLSearchParams(location.search).get('map');
+  // A GitHub repo's city built earlier in this browser (see maps/repo.ts).
+  if (wanted?.startsWith('gh-')) restoreRepoMap();
   if (wanted && MAPS[wanted]) chooseDemo(wanted);
 
   // Development: ?tour visits the table, a room and street view on a timer

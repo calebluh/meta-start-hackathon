@@ -1,4 +1,5 @@
 import type { Persona } from '../agent/prompt.js';
+import { repoMapFields } from '../maps/repo.js';
 import type { GraphData } from '../maps/types.js';
 import { notesMarkdown, partNamed, type ChatTurn, type Note, type NoteMode, type ScribeReply } from './scribe.js';
 
@@ -94,7 +95,7 @@ export async function talkOver(
     const response = await fetch('/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, persona, said, notes, history, scribe: true }),
+      body: JSON.stringify({ mapId, persona, said, notes, history, scribe: true, ...repoMapFields(mapId) }),
       signal: AbortSignal.timeout(15000),
     });
     const json = (await response.json()) as Partial<ScribeReply> & { error?: string };

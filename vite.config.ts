@@ -124,6 +124,28 @@ function agentApi(): Plugin {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
         res.end(await readFile(new URL('./server/share.html', import.meta.url), 'utf8'));
       });
+      server.middlewares.use('/api/map', (req, res) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.end();
+          return;
+        }
+        let raw = '';
+        req.on('data', (chunk) => (raw += chunk));
+        req.on('end', async () => {
+          const { handleRepoMap } = (await server.ssrLoadModule('/server/repo-map.ts')) as typeof import('./server/repo-map');
+          let body: unknown = null;
+          try {
+            body = JSON.parse(raw);
+          } catch {
+            // handleRepoMap reports the bad body
+          }
+          const { status, json } = await handleRepoMap(body, env.MODEL_API_KEY ?? env.LLAMA_API_KEY, env.MODEL_NAME, req.socket.remoteAddress ?? 'local');
+          res.statusCode = status;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(json));
+        });
+      });
       server.middlewares.use('/api/agent', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;

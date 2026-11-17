@@ -171,6 +171,78 @@
       .dock button[hidden] {
         display: none;
       }
+      #repo-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        padding-top: 10px;
+        border-top: 1px solid rgba(126, 224, 201, 0.2);
+      }
+      #repo-form[hidden] {
+        display: none;
+      }
+      #repo-form label {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f0f3f6;
+      }
+      .repo-row {
+        display: flex;
+        gap: 8px;
+      }
+      #repo-input {
+        flex: 1;
+        min-width: 0;
+        min-height: 52px;
+        padding: 0 16px;
+        font: inherit;
+        font-size: 18px;
+        color: #f0f3f6;
+        background: #161d27;
+        border: 1px solid rgba(126, 224, 201, 0.4);
+        border-radius: 14px;
+      }
+      .dock #repo-go {
+        min-height: 52px;
+        padding: 0 22px;
+        font-size: 18px;
+        background: #7ee0c9;
+        color: #06241d;
+      }
+      .dock #repo-go:disabled {
+        opacity: 0.6;
+        cursor: progress;
+      }
+      .repo-try {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 6px;
+        font-size: 14px;
+        color: #aab4c0;
+      }
+      .dock .repo-try button {
+        min-height: 40px;
+        padding: 0 14px;
+        font-size: 15px;
+        font-weight: 600;
+        background: #222c3a;
+        color: #f0f3f6;
+      }
+      #repo-note {
+        margin: 0;
+        min-height: 1.4em;
+        font-size: 15px;
+        color: #aab4c0;
+      }
+      #repo-note.ok {
+        color: #7ee0c9;
+      }
+      #repo-note.bad {
+        color: #ff9b8f;
+      }
       #landing-note {
         margin: 0;
         font-size: 15px;
@@ -205,6 +277,20 @@
           <button id="allow-mic" type="button" hidden>Allow microphone</button>
         </div>
         <p id="landing-note"></p>
+        <form id="repo-form" hidden>
+          <label for="repo-input">Or step inside any public GitHub repository</label>
+          <div class="repo-row">
+            <input id="repo-input" type="text" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="github.com/owner/repo" maxlength="200" />
+            <button id="repo-go" type="submit">Build city</button>
+          </div>
+          <div class="repo-try">
+            Try:
+            <button type="button" data-repo="pallets/flask">Flask</button>
+            <button type="button" data-repo="expressjs/express">Express</button>
+            <button type="button" data-repo="vercel/swr">SWR</button>
+          </div>
+          <p id="repo-note" aria-live="polite"></p>
+        </form>
         <p id="landing-more">
           <a href="https://github.com/calebluh/codebase-diorama" target="_blank" rel="noopener">Map your own code with the Claude Code plugin</a>
         </p>

@@ -9,6 +9,7 @@ import {
   type ChatTurn,
   type Persona,
 } from './prompt.js';
+import { repoMapFields } from '../maps/repo.js';
 import type { GraphData } from '../maps/types.js';
 
 /**
@@ -38,7 +39,7 @@ export async function ask(
     const response = await fetch('/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, nodeId, persona, question, history }),
+      body: JSON.stringify({ mapId, nodeId, persona, question, history, ...repoMapFields(mapId) }),
       signal: controller.signal,
     });
     clearTimeout(timer);
@@ -87,7 +88,7 @@ export async function markSpoken(
     const response = await fetch('/api/agent', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ mapId, nodeId, persona, question: said.slice(0, 300), quiz: questionId }),
+      body: JSON.stringify({ mapId, nodeId, persona, question: said.slice(0, 300), quiz: questionId, ...repoMapFields(mapId) }),
       signal: controller.signal,
     });
     clearTimeout(timer);
