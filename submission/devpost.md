@@ -33,6 +33,8 @@ Paste each part into the matching Devpost field. Everything marked
    public GitHub repository (yours, or one you know) into the box under the
    buttons, or tap Flask, Express or SWR, and press Build city. About ten
    seconds later that repository is a city; Enter VR walks straight into it.
+   Inside VR, the start menu (the **Demos** button) has the same one-tap
+   Flask, Express and SWR, plus the last repository you built.
 4. Stay seated. Three cards appear in front of you, within reach. Tap
    **Larder**, the small one, with a fingertip for a first visit. Buttons
    are tapped like a touch screen; things further away are pointed at and
@@ -219,7 +221,10 @@ so it runs from a link in the Quest Browser with nothing to install.
   the code itself: folders become districts, the biggest files get buildings
   of their own, tests and docs one each, line counts size them, imports
   between files become the roads, and well-known packages (Stripe,
-  Postgres, Redis, OpenAI...) become outside services. Meta's model then
+  Postgres, Redis, OpenAI...) become outside services. Each file's function
+  and class names come along with their lines, so the robots can name real
+  code, and very long files or clusters of TODO notes light warning beacons
+  that a robot can talk you through fixing. Meta's model then
   names the buildings in plain English, sums the project up and writes the
   journeys a request takes, choosing only from the parts it is given; if it
   is slow, the plain city stands. The map is signed by the server, and the

@@ -75,7 +75,8 @@ emulator. This is the most important step left.
      about ten seconds it says the city is ready; Enter VR should open that
      city. Pick a building, step inside, ask a robot: it should talk about
      that repository's real files. Check that typing with the Quest keyboard
-     is comfortable.
+     is comfortable. Then, in VR, tap Demos: the menu has Flask, Express and
+     SWR chips and one with your repo; each should open its city.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -157,7 +158,7 @@ rollback).
 If the repo box misbehaves, undo it alone (the anchor stays):
 
 ```bash
-git revert --no-edit a985c1b a50d624
+git revert --no-edit 5df1dbb 88b3290 a985c1b a50d624
 git push
 ```
 
