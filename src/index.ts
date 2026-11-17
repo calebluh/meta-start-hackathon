@@ -57,6 +57,22 @@ World.create(
   const wanted = new URLSearchParams(location.search).get('map');
   if (wanted && MAPS[wanted]) chooseDemo(wanted);
 
+  // Development: ?tour visits the table, a room and street view on a timer
+  // once the VR session starts, so a headset nobody is wearing can be
+  // measured (src/fps.ts reports each place).
+  if (import.meta.env.DEV && params.has('tour')) {
+    world.renderer.xr.addEventListener('sessionstart', () => {
+      const leaf = app.graph.nodes.find((n) => n.id === 'api.routes') ?? app.graph.nodes.find((n) => !app.graph.nodes.some((c) => c.parent === n.id) && n.kind !== 'external');
+      const at = (seconds: number, step: () => void) => setTimeout(step, seconds * 1000);
+      at(1, () => chooseDemo(app.mapId));
+      at(30, () => leaf && enterRoom(leaf.id));
+      at(60, () => leaveRoom());
+      at(68, () => setStreet(true));
+      at(98, () => setStreet(false));
+      console.log('[tour] table 0-30 s, room 30-60 s, street 68-98 s, then table');
+    });
+  }
+
   // A Quest 2 has about a third of a Quest 3's graphics power: draw slightly
   // fewer pixels there so turning the head stays smooth.
   if (/Quest 2/.test(navigator.userAgent)) world.renderer.xr.setFramebufferScaleFactor(0.85);
