@@ -16,8 +16,8 @@
    "kind": "feature",
    "summary": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",
    "stats": {
-    "files": 11,
-    "loc": 3487
+    "files": 12,
+    "loc": 3569
    }
   },
   {
@@ -27,8 +27,8 @@
    "kind": "ui",
    "summary": "The desk itself and what sits around it: the card that describes whatever you picked, the row of buttons for playing journeys and stepping inside, and the glowing floor and distant skyline that set the scene.",
    "stats": {
-    "files": 11,
-    "loc": 1361
+    "files": 13,
+    "loc": 1527
    }
   },
   {
@@ -39,7 +39,7 @@
    "summary": "Where a visit begins: it starts the app, shows the start menu, and walks first-time visitors through a short hands-on tour. It also quiets everything when the headset comes off.",
    "stats": {
     "files": 10,
-    "loc": 1150
+    "loc": 1160
    }
   },
   {
@@ -148,8 +148,8 @@
    "kind": "infra",
    "summary": "The one door between the headset and the outside AI services. It passes on questions, voice and speech requests, keeps the secret keys out of the headset, and limits how often any one visitor may call.",
    "stats": {
-    "files": 6,
-    "loc": 327
+    "files": 7,
+    "loc": 538
    }
   },
   {
@@ -369,6 +369,13 @@
    "loc": 43
   },
   {
+   "p": "server/share.html",
+   "n": "talk.server",
+   "name": "Share your screen",
+   "d": "The page you open on your computer to send its screen, or one window, to the monitor in the headset.",
+   "loc": 114
+  },
+  {
    "p": "server/transcribe-core.ts",
    "n": "talk.listening",
    "name": "Recording to text",
@@ -485,7 +492,7 @@
    "n": "table.city",
    "name": "City on the desk",
    "d": "Draws the miniature city, lets you pick, grab and resize it, plays journeys as lights between buildings, fills in the cards, and grows the city around you when you step inside.",
-   "loc": 2241
+   "loc": 2266
   },
   {
    "p": "src/edition.ts",
@@ -493,6 +500,13 @@
    "name": "Edition switch",
    "d": "Tells the app whether it is the competition build with a menu of demos, or the personal build that opens straight onto your own maps.",
    "loc": 20
+  },
+  {
+   "p": "src/fps.ts",
+   "n": "table.desk",
+   "name": "Frame rate check",
+   "d": "Reports how smoothly a real headset is drawing, and where the visitor is, to the development server.",
+   "loc": 31
   },
   {
    "p": "src/guide-system.ts",
@@ -513,7 +527,7 @@
    "n": "table.welcome",
    "name": "App start-up",
    "d": "Starts everything: it switches on each part of the app, opens the map named in the web address, and pauses sound and speech when the headset comes off.",
-   "loc": 157
+   "loc": 167
   },
   {
    "p": "src/landing.ts",
@@ -528,6 +542,13 @@
    "name": "City planner",
    "d": "Works out where every building stands: bigger plots and taller buildings for parts with more code, and outside services as towers in a row behind the board.",
    "loc": 222
+  },
+  {
+   "p": "src/live.ts",
+   "n": "table.city",
+   "name": "Live city",
+   "d": "When the map is rebuilt, swaps the new one in without reloading, so you stay in VR and see the city change.",
+   "loc": 16
   },
   {
    "p": "src/maps/index.ts",
@@ -712,11 +733,18 @@
    "loc": 45
   },
   {
+   "p": "src/screen.ts",
+   "n": "table.desk",
+   "name": "Your screen",
+   "d": "Shows your computer's screen on a monitor behind the city, so you can watch your coding agent work without taking the headset off.",
+   "loc": 135
+  },
+  {
    "p": "src/state.ts",
    "n": "table.city",
    "name": "Visit tracker",
    "d": "Keeps track of which map is open, what you have picked, which journey is playing and whether you are at the desk or in a room, and tells every other part when that changes.",
-   "loc": 169
+   "loc": 210
   },
   {
    "p": "src/transition.ts",
@@ -737,7 +765,7 @@
    "n": "talk.server",
    "name": "Local server",
    "d": "Runs the app on your own computer and answers the headset's requests for answers, voices and speech, reading the secret keys from a private file that never reaches the headset.",
-   "loc": 202
+   "loc": 299
   }
  ],
  "links": [
@@ -1126,6 +1154,12 @@
    "w": 1
   },
   {
+   "a": "f:src/fps.ts",
+   "b": "f:src/state.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/guide-system.ts",
    "b": "f:src/audio/sound.ts",
    "k": "import",
@@ -1312,6 +1346,24 @@
    "w": 1
   },
   {
+   "a": "f:src/index.ts",
+   "b": "f:src/screen.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/index.ts",
+   "b": "f:src/fps.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/index.ts",
+   "b": "f:src/live.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
    "a": "f:src/landing.ts",
    "b": "f:src/agent/recorder.ts",
    "k": "import",
@@ -1325,6 +1377,18 @@
   },
   {
    "a": "f:src/layout.ts",
+   "b": "f:src/maps/types.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/live.ts",
+   "b": "f:src/state.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/live.ts",
    "b": "f:src/maps/types.ts",
    "k": "import",
    "w": 1
@@ -1698,6 +1762,12 @@
   {
    "a": "f:src/rooms/worker.ts",
    "b": "f:src/rays.ts",
+   "k": "import",
+   "w": 1
+  },
+  {
+   "a": "f:src/screen.ts",
+   "b": "f:src/state.ts",
    "k": "import",
    "w": 1
   },
@@ -2118,6 +2188,42 @@
    "labels": [
     "notes to work through"
    ]
+  },
+  {
+   "a": "f:server/share.html",
+   "b": "f:vite.config.ts",
+   "k": "event",
+   "w": 1,
+   "labels": [
+    "your screen"
+   ]
+  },
+  {
+   "a": "f:vite.config.ts",
+   "b": "f:src/screen.ts",
+   "k": "event",
+   "w": 1,
+   "labels": [
+    "your screen"
+   ]
+  },
+  {
+   "a": "f:vite.config.ts",
+   "b": "f:src/live.ts",
+   "k": "event",
+   "w": 1,
+   "labels": [
+    "a rebuilt map"
+   ]
+  },
+  {
+   "a": "f:src/fps.ts",
+   "b": "f:vite.config.ts",
+   "k": "http",
+   "w": 1,
+   "labels": [
+    "frame rate"
+   ]
   }
  ],
  "flows": [
@@ -2359,7 +2465,7 @@
     "locations": [
      {
       "file": "src/index.ts",
-      "line": 92
+      "line": 102
      }
     ]
    }

@@ -43,6 +43,10 @@ export default {
     'src/desktop-controls.ts',
     'src/passthrough.ts',
     'src/notes/*.ts',
+    'src/screen.ts',
+    'src/live.ts',
+    'src/fps.ts',
+    'server/share.html',
     'src/audio/*.ts',
     'src/rooms/*.ts',
     'src/scene-assets/*.ts',
@@ -118,6 +122,11 @@ export default {
     { from: 'f:src/notes/store.ts', to: 'f:vite.config.ts', kind: 'http', label: 'the notes list' },
     { from: 'f:src/rooms/room.ts', to: 'f:public/ui/notes.uikitml', kind: 'call', label: 'your notes' },
     { from: 'f:vite.config.ts', to: 'n:claude-code', kind: 'data', label: 'notes to work through' },
+    // Your screen in VR and the city updating live.
+    { from: 'f:server/share.html', to: 'f:vite.config.ts', kind: 'event', label: 'your screen' },
+    { from: 'f:vite.config.ts', to: 'f:src/screen.ts', kind: 'event', label: 'your screen' },
+    { from: 'f:vite.config.ts', to: 'f:src/live.ts', kind: 'event', label: 'a rebuilt map' },
+    { from: 'f:src/fps.ts', to: 'f:vite.config.ts', kind: 'http', label: 'frame rate' },
   ],
 
   nodes: [
@@ -139,6 +148,7 @@ export default {
         'src/rooftops.ts',
         'src/city-style.ts',
         'src/network.ts',
+        'src/live.ts',
       ],
     },
     {
@@ -152,6 +162,8 @@ export default {
         'src/reach.ts',
         'src/desktop-controls.ts',
         'src/passthrough.ts',
+        'src/screen.ts',
+        'src/fps.ts',
         'src/atmosphere.ts',
         'src/panels.ts',
         'src/rays.ts',
@@ -238,7 +250,7 @@ export default {
       parent: 'talk',
       label: 'Server front door',
       kind: 'infra',
-      paths: ['vite.config.ts', 'api/*.ts', 'server/rate-limit.ts'],
+      paths: ['vite.config.ts', 'server/share.html', 'api/*.ts', 'server/rate-limit.ts'],
     },
     { id: 'talk', label: 'Talking with robots', kind: 'feature' },
 
