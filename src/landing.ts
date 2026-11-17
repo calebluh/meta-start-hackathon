@@ -135,7 +135,7 @@ async function offerMicrophone(mic: HTMLButtonElement, note: HTMLElement): Promi
 /**
  * Any public GitHub repository as a city: type owner/name (or paste its
  * link), the server maps it (server/repo-map.ts), and Enter VR walks into it.
- * Shown only with ?repo on the link until it has been checked on the live site.
+ * Checked on the live site (17 Nov): Flask, Express, SWR, FastAPI and sindresorhus/is build in 2-5 s.
  */
 function setupRepoForm(): void {
   const form = el<HTMLFormElement>('repo-form');
@@ -143,7 +143,6 @@ function setupRepoForm(): void {
   const go = el<HTMLButtonElement>('repo-go');
   const note = el('repo-note');
   if (!form || !input || !go || !note || !HACKATHON) return;
-  if (!new URLSearchParams(location.search).has('repo')) return;
   form.hidden = false;
   let busy = false;
   const say = (text: string, tone: '' | 'ok' | 'bad' = '') => {
