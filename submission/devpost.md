@@ -15,7 +15,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Public link | https://diorama.calebluh.com |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
 | Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/codebase-diorama (public viewer and Claude Code plugin, AGPL-3.0) |
-| Built with | IWSDK, WebXR, WebXR Plane Detection, three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
+| Built with | IWSDK, WebXR, WebXR Plane Detection, WebXR Anchors (persistent), three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
 
 ## Testing instructions (for the judges)
 
@@ -58,6 +58,10 @@ Paste each part into the matching Devpost field. Everything marked
    four questions about its room. Tap an answer or say it in your own
    words; a wrong answer is corrected on the spot.
 10. If the desk is ever in the wrong place, tap **Recenter**.
+11. In mixed reality, slide the city somewhere else on your desk with the
+    grab bar, then leave (Quest menu, Exit) and pinch **Mixed reality**
+    again. The city comes back to the spot you left it on ("Back where you
+    left it"): the headset kept a spatial anchor there.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
 Controllers work too: the trigger is a pinch, and the right thumbstick spins
@@ -132,7 +136,10 @@ desk.
   room with no table, or one the headset has never scanned, the city floats
   within reach and you place it yourself. Step into a room and it surrounds
   you completely; come back out and the city is on your table where you left
-  it.
+  it. It also remembers that spot between visits: the headset keeps a
+  spatial anchor where the city stands, so tomorrow, in the same room, the
+  city goes straight back to that place on your desk ("Back where you left
+  it"), even if you sit down a little to one side.
   `[FILL IN after trying it on a Quest 3 or 3S: keep the table sentences
   only if the city landed on your real desk. So far this was verified in the
   IWSDK emulator's furnished room, where the emulated headset's desk, side
@@ -190,6 +197,14 @@ so it runs from a link in the Quest Browser with nothing to install.
   buttons inside the outline. It asks for this only in mixed reality, as an
   optional feature, so plain VR never prompts and a headset without a room
   scan still works.
+- **Remembering the spot.** When the city is set down (on the table it
+  found, by the grab bar, or with Recenter) the app makes a WebXR anchor
+  there and asks the headset to keep it (a persistent anchor), saving only
+  its id in the browser. On the next mixed-reality visit the anchor is
+  restored and wins over the table search; nothing is saved over it while it
+  is still being looked for. If the headset has forgotten it, or the spot is
+  out of reach from where you now sit, the table search takes over as
+  before.
 - **Robots.** Answers come from Meta's Model API. The server writes the
   prompt itself from the map and the room, so a robot only knows its own
   room and the directory of the building, and its tools are real actions in
@@ -224,7 +239,8 @@ Development was done with Claude Code as a pair programmer.
   at the building you are looking at, not on a far panel.
 - **Passthrough with a purpose.** In mixed reality your own table is the play
   surface. The city takes its place, height and direction from the real
-  furniture, so the experience is different in every room.
+  furniture, so the experience is different in every room, and it is
+  anchored there: come back another day and it is waiting on the same spot.
 - **Voice as a second way in.** Anything a pinch can do inside a room can
   also be said: ask a question, change room, play a flow, leave.
 - **Seated and still.** The desk places itself just in front of wherever you

@@ -62,6 +62,13 @@ emulator. This is the most important step left.
      the desk, square with its edge. If the page will not start, open the
      link with `?noplanes` on the end (it skips the room request) and tell
      Claude what happened.
+   - **The city remembers its spot (new, 17 Nov evening).** Still in mixed
+     reality, drag the city by its grab bar to another spot on the desk.
+     Leave (Quest menu, Exit), pinch Mixed reality again: the city should
+     come back to that exact spot, with "Back where you left it" over it for
+     five seconds. If mixed reality will not start, try the link with
+     `?noanchor` on the end and tell Claude. If it misbehaves, roll back
+     (see the end of this file).
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -122,3 +129,18 @@ Two things to decide while you paste:
 - [ ] Track is **Productivity**, division is **New Experience**.
 - [ ] Submitted before 12:00 PM Pacific on 18 November. Do not push to
       `main` after that: Vercel redeploys on every push.
+
+## Rolling back the 17 November evening changes
+
+The build before the "persistent anchor" work is tagged `safe-2026-11-17`.
+If the new build misbehaves on the headset, undo the anchor commit (6d07a17) and push.
+That redeploys the judged link in about a minute:
+
+```bash
+git revert --no-edit 6d07a17
+git push
+```
+
+Or, without git: in Vercel, open the project, Deployments, find the
+deployment of commit `c17d434`, and choose **Promote to Production** (instant
+rollback).
