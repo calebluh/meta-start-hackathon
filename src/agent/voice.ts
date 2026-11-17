@@ -89,7 +89,9 @@ export type OnVoiceStart = (charsPerSecond: number) => void;
  * Says a line and resolves when it is finished. `seed` picks the robot's
  * voice; `at` is where its head is, so the voice comes from there.
  */
-export async function speak(text: string, seed = 0, at?: Vector3, onStart?: OnVoiceStart): Promise<void> {
+export async function speak(shown: string, seed = 0, at?: Vector3, onStart?: OnVoiceStart): Promise<void> {
+  // Code names are said as words: "cleanup_old_tasks" as "cleanup old tasks", not "underscore".
+  const text = shown.replace(/([A-Za-z0-9])_+(?=[A-Za-z0-9])/g, '$1 ');
   const gen = ++generation;
   stopAll();
   let started = false;

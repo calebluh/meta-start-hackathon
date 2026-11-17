@@ -41,6 +41,8 @@ export interface GraphFile {
   /** One-line description. */
   d: string;
   loc: number;
+  /** Top-level function and class names with their first line, e.g. "handleAgent L14" (maps built by scripts/build-map.mjs). */
+  exports?: string[];
 }
 
 export interface GraphLink {
@@ -72,6 +74,8 @@ export interface HealthIssue {
   title: string;
   detail?: string;
   locations?: { file: string; line?: number }[];
+  /** The code around the flagged line, numbered, that line marked ">" (maps built by scripts/build-map.mjs). */
+  excerpt?: string;
 }
 
 export interface RecentItem {

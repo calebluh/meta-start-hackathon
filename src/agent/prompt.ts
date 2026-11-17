@@ -66,14 +66,66 @@ export function roomFacts(graph: GraphData, nodeId: string): string[] {
   return facts;
 }
 
+/** Room facts plus code lines stay under this many characters, so prompts stay short. */
+const ROOM_FACTS_MAX = 7000;
+
+/**
+ * What the map read from the room's code itself (maps built by
+ * scripts/build-map.mjs): each file's top-level function and class names with
+ * their lines, and the lines around each of the room's warnings. Empty for
+ * maps without them. Warnings come first, so a long room loses function
+ * names, never the code the visitor is most likely to ask about.
+ */
+export function codeFacts(graph: GraphData, nodeId: string, budget: number): string[] {
+  const issues = (graph.health?.issues ?? []).filter((issue) => {
+    const loc = issue.locations?.[0];
+    return issue.excerpt && loc && resolveRef(graph, loc.file) === nodeId;
+  });
+  const warning = (issue: HealthIssue, radius: number) => {
+    const loc = issue.locations![0];
+    return `Code around the warning "${issue.title}" in ${loc.file}, flagged line ${loc.line ?? '?'} marked ">":\n${excerptWindow(issue.excerpt!, radius)}`;
+  };
+  // The warnings always go in; in a room that is already long, fewer lines around each.
+  let warnings = issues.map((i) => warning(i, Infinity));
+  if (warnings.join('\n').length > budget) warnings = issues.map((i) => warning(i, NARROW_EXCERPT));
+  const out = [...warnings];
+  let left = budget - warnings.join('\n').length;
+  const names = graph.files.filter((f) => f.n === nodeId && f.exports?.length).map((f) => `- ${f.p}: ${f.exports!.join(', ')}`);
+  const heading = 'Functions and classes in your files (name and first line):';
+  if (names.length && heading.length + names[0].length + 2 <= left) {
+    out.push(heading);
+    left -= heading.length + 1;
+    for (const n of names) {
+      if (n.length + 1 > left) break;
+      out.push(n);
+      left -= n.length + 1;
+    }
+  }
+  return out;
+}
+
+/** Lines either side of the flagged line kept when a room's facts are already long. */
+const NARROW_EXCERPT = 5;
+
+/** The lines of an excerpt within `radius` of its flagged (">") line. */
+function excerptWindow(excerpt: string, radius: number): string {
+  const lines = excerpt.split('\n');
+  const at = lines.findIndex((l) => l.startsWith('>'));
+  if (at < 0 || !Number.isFinite(radius)) return excerpt;
+  return lines.slice(Math.max(0, at - radius), at + radius + 1).join('\n');
+}
+
 export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona): string {
   const node = graph.nodes.find((n) => n.id === nodeId);
+  const facts = roomFacts(graph, nodeId);
+  const code = codeFacts(graph, nodeId, ROOM_FACTS_MAX - facts.join('\n').length);
   return [
     `You are ${persona.name}, a ${persona.role} in the ${persona.place}. You are a worker in an imaginary building where every part of the "${graph.project.name}" codebase is a room, and the workers in each room personify that code. Your room is "${node?.label ?? nodeId}" (room id ${nodeId}).`,
     `The app as a whole: ${graph.project.summary}`,
     '',
     'Facts about your room (the only things you know for certain):',
-    ...roomFacts(graph, nodeId),
+    ...facts,
+    ...(code.length ? ['', 'From your code itself (only these lines; you have not read the rest of the code):', ...code] : []),
     '',
     'Building directory (room id = name):',
     ...graph.nodes.map((n) => `- ${n.id} = ${n.label}`),
@@ -85,7 +137,15 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '- Keep it to 2-4 short sentences; your words appear in a speech bubble in VR and are read aloud.',
     '- You have already said hello and given your name and job. Do not do that again, and do not announce what you are about to say ("here is what I do", "I am on it"). Your first sentence is already the answer.',
     '- Use only the facts above for what the code does. If something is not covered, say you do not know and suggest which room to ask.',
-    '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
+    ...(code.length
+      ? [
+          '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out. If asked about anything else in the code, say you have only seen those lines.',
+          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which file, function and line to change, and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the fix (naming the file and line), and tell them it is on their notes list for their coding agent.',
+          '- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.',
+        ]
+      : [
+          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
+        ]),
     '- You can act, using your tools, in the same reply as your words. Acting never replaces talking: still give your full 2-4 sentence spoken answer, then act. Never write tool calls as text.',
     '  - go_to_room when the visitor asks to go somewhere or to see another part, or agrees to your suggestion. Say you are sending them over.',
     '  - play_flow when they want to watch how something happens from start to finish.',
@@ -442,7 +502,9 @@ export function parseReply(text: string): { answer: string; followups: string[] 
   const match = text.match(/^\s*FOLLOWUPS:\s*(.+)$/im);
   // Bubbles and speech are plain text: drop Markdown marks the model adds.
   const answer = (match ? text.slice(0, match.index) : text)
-    .replace(/[`*_#]/g, '')
+    .replace(/[`*#]/g, '')
+    // _emphasis_ goes, but names keep their underscores (cleanup_old_tasks, __init__.py).
+    .replace(/(^|\s)_{1,2}([^_\n]+?)_{1,2}(?=[\s.,!?;:]|$)/g, '$1$2')
     .replace(/\s+—\s+/g, ' - ')
     // Words said before and after a tool call arrive joined: "the building.I'm Eli".
     .replace(/([a-z][.!?])(?=[A-Z][a-z' ])/g, '$1 ')

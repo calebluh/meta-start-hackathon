@@ -549,7 +549,7 @@
       "title": "Test shortcuts only fit the sample shop",
       "detail": "The keyboard shortcuts used for testing without a headset jump to rooms by the sample shop's names, so on any other map those keys do nothing useful.",
       "file": "src/index.ts",
-      "line": 102
+      "line": 118
     }
   ],
   "routes": [

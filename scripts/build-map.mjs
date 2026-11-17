@@ -8,6 +8,10 @@
 // part summaries, flows and health notes come from a hand-written
 // architecture file (see --arch).
 //
+// It also notes, from the text alone, each file's top-level function and
+// class names with their lines, and the lines around each health warning,
+// so the robots can name real functions and point at the flagged line.
+//
 // usage: node scripts/build-map.mjs <repo dir> --arch <arch.json> --map <config.mjs> --out <graph.json>
 
 import fs from 'node:fs';
@@ -172,6 +176,70 @@ for (const call of arch.frontendCalls ?? []) {
 // Connections the code can't show (calls to services through config or IPC).
 for (const e of config.extraLinks ?? []) addLink(e.from, e.to, e.kind, e.label);
 
+// ------------------------------------------------------------- code facts
+
+/** Most names kept per file. */
+const MAX_EXPORTS = 12;
+/** Lines kept either side of a warning's line, and the most characters in all. */
+const EXCERPT_RADIUS = 10;
+const EXCERPT_MAX = 1500;
+const DEFINITIONS = {
+  js: [
+    /^export\s+(?:default\s+)?(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/,
+    /^export\s+(?:default\s+)?(?:abstract\s+)?class\s+([A-Za-z_$][\w$]*)/,
+    /^export\s+(?:const|let)\s+([A-Za-z_$][\w$]*)\s*[:=]/,
+    /^(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)\s*\(/,
+    /^class\s+([A-Za-z_$][\w$]*)/,
+  ],
+  py: [/^(?:async\s+)?def\s+([A-Za-z_]\w*)\s*\(/, /^class\s+([A-Za-z_]\w*)/],
+};
+
+/** Top-level function and class names, "name L14", in file order (read from the text, never run). */
+function exportsOf(p) {
+  const patterns = p.endsWith('.py') ? DEFINITIONS.py : /\.(m?[jt]sx?|vue)$/.test(p) ? DEFINITIONS.js : null;
+  if (!patterns) return [];
+  const found = [];
+  const seen = new Set();
+  text.get(p).split('\n').forEach((line, i) => {
+    if (found.length >= MAX_EXPORTS) return;
+    for (const re of patterns) {
+      const m = line.match(re);
+      if (m && !seen.has(m[1])) {
+        seen.add(m[1]);
+        found.push(`${m[1]} L${i + 1}`);
+        return;
+      }
+    }
+  });
+  return found;
+}
+
+/** The lines around a warning, numbered, the flagged one marked ">"; trimmed from the far end to fit. */
+function excerptAt(p, line) {
+  if (!text.has(p) || !line) return undefined;
+  const all = text.get(p).replace(/\r/g, '').split('\n');
+  if (line > all.length) return undefined;
+  let from = Math.max(1, line - EXCERPT_RADIUS);
+  let to = Math.min(all.length, line + EXCERPT_RADIUS);
+  const width = String(to).length;
+  const render = () =>
+    all
+      .slice(from - 1, to)
+      .map((l, i) => {
+        const n = from + i;
+        const code = l.length > 140 ? `${l.slice(0, 139)}…` : l;
+        return `${n === line ? '>' : ' '}${String(n).padStart(width)} ${code}`.trimEnd();
+      })
+      .join('\n');
+  let out = render();
+  while (out.length > EXCERPT_MAX && to - from > 2) {
+    if (to - line >= line - from) to -= 1;
+    else from += 1;
+    out = render();
+  }
+  return out;
+}
+
 // ------------------------------------------------------------- output
 
 const describe = arch.files ?? {};
@@ -201,10 +269,16 @@ const graph = {
     name: describe[p]?.name ?? path.posix.basename(p),
     d: describe[p]?.d ?? '',
     loc: loc(p),
+    ...(exportsOf(p).length ? { exports: exportsOf(p) } : {}),
   })),
   links: [...links.values()],
   flows: arch.flows ?? [],
-  health: { issues: (arch.health ?? []).map((h) => ({ id: h.id, kind: h.kind ?? 'review', severity: h.severity, title: h.title, detail: h.detail, locations: [{ file: h.file, line: h.line }] })) },
+  health: {
+    issues: (arch.health ?? []).map((h) => {
+      const excerpt = excerptAt(h.file, h.line);
+      return { id: h.id, kind: h.kind ?? 'review', severity: h.severity, title: h.title, detail: h.detail, locations: [{ file: h.file, line: h.line }], ...(excerpt ? { excerpt } : {}) };
+    }),
+  },
 };
 
 fs.mkdirSync(path.dirname(out), { recursive: true });

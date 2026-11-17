@@ -17,7 +17,7 @@
    "summary": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",
    "stats": {
     "files": 12,
-    "loc": 3569
+    "loc": 3620
    }
   },
   {
@@ -28,7 +28,7 @@
    "summary": "The desk itself and what sits around it: the card that describes whatever you picked, the row of buttons for playing journeys and stepping inside, and the glowing floor and distant skyline that set the scene.",
    "stats": {
     "files": 13,
-    "loc": 1527
+    "loc": 1539
    }
   },
   {
@@ -39,7 +39,7 @@
    "summary": "Where a visit begins: it starts the app, shows the start menu, and walks first-time visitors through a short hands-on tour. It also quiets everything when the headset comes off.",
    "stats": {
     "files": 10,
-    "loc": 1160
+    "loc": 1263
    }
   },
   {
@@ -61,7 +61,7 @@
    "summary": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
    "stats": {
     "files": 3,
-    "loc": 2271
+    "loc": 2305
    }
   },
   {
@@ -83,7 +83,7 @@
    "summary": "The robot crew shared by every room: how they walk, wave and move their mouths in time with their voice, plus their speech bubbles and the small things they say while thinking.",
    "stats": {
     "files": 3,
-    "loc": 401
+    "loc": 402
    }
   },
   {
@@ -105,7 +105,7 @@
    "summary": "Gets a robot's answer to your question. It writes a briefing from the map so the AI only talks about this code, sends the question to Meta's AI, and tidies the reply. If the AI cannot be reached, the robot answers from the map's own descriptions.",
    "stats": {
     "files": 5,
-    "loc": 1226
+    "loc": 1317
    }
   },
   {
@@ -138,7 +138,7 @@
    "summary": "Everything you hear: each robot's speaking voice, button clicks, whooshing packets and each room's background hum. The audio comes from wherever its maker is standing, so sounds have a place in the room.",
    "stats": {
     "files": 3,
-    "loc": 523
+    "loc": 525
    }
   },
   {
@@ -171,7 +171,7 @@
    "summary": "Turns a project's files and a set of plain-English descriptions into one finished map the headset can show, then looks it over for slips before anyone puts the headset on.",
    "stats": {
     "files": 2,
-    "loc": 245
+    "loc": 315
    }
   },
   {
@@ -182,7 +182,7 @@
    "summary": "The maps the app can show: the built-in sample of a made-up meal-kit shop, any maps made from your own code, and the rules for what a map must contain.",
    "stats": {
     "files": 3,
-    "loc": 323
+    "loc": 327
    }
   },
   {
@@ -247,7 +247,10 @@
    "n": "talk.server",
    "name": "Hosted question door",
    "d": "The online doorway for robot questions: it takes a question from the headset and hands it to the answer service, noting who asked so the usage limits can apply.",
-   "loc": 21
+   "loc": 21,
+   "exports": [
+    "POST L8"
+   ]
   },
   {
    "p": "api/asr.ts",
@@ -261,14 +264,21 @@
    "n": "talk.server",
    "name": "Hosted recording door",
    "d": "The online doorway for recorded sentences: it turns away anything too large and passes the rest on to be turned into text.",
-   "loc": 16
+   "loc": 16,
+   "exports": [
+    "POST L5"
+   ]
   },
   {
    "p": "api/tts.ts",
    "n": "talk.server",
    "name": "Hosted voice door",
    "d": "The online doorway for robot voices: it says whether natural voices are switched on, and returns a spoken line as sound.",
-   "loc": 21
+   "loc": 21,
+   "exports": [
+    "GET L5",
+    "POST L10"
+   ]
   },
   {
    "p": "index.html",
@@ -324,49 +334,90 @@
    "n": "maps.builder",
    "name": "Map maker",
    "d": "Reads a project's files, counts their lines, works out which files rely on which, and joins that with the written descriptions into one map file.",
-   "loc": 199
+   "loc": 269,
+   "exports": [
+    "walk L38",
+    "resolvePython L89",
+    "exportsOf L198",
+    "excerptAt L218"
+   ]
   },
   {
    "p": "scripts/export-personal.mjs",
    "n": "maps.upkeep",
    "name": "Public edition maker",
    "d": "Copies the app into the public edition that people install, leaving out everything made only for the competition and checking that none of it slips through.",
-   "loc": 149
+   "loc": 149,
+   "exports": [
+    "removeLines L65",
+    "replaceOnce L72",
+    "removeNode L77"
+   ]
   },
   {
    "p": "scripts/fetch-props.mjs",
    "n": "maps.upkeep",
    "name": "Furniture downloader",
    "d": "Downloads the free photo-scanned furniture from Poly Haven in a light size for the headset, and writes the credits list.",
-   "loc": 65
+   "loc": 65,
+   "exports": [
+    "json L35",
+    "download L41"
+   ]
   },
   {
    "p": "scripts/sync-skills.mjs",
    "n": "maps.upkeep",
    "name": "Skill copier",
    "d": "Keeps the second copy of the mapping skill, for coding agents other than Claude, the same as the first.",
-   "loc": 69
+   "loc": 69,
+   "exports": [
+    "list L28",
+    "render L39"
+   ]
   },
   {
    "p": "server/agent-core.ts",
    "n": "talk.answers",
    "name": "Answer service",
    "d": "Checks that a question is short and about a real room, writes the robot's briefing from the map, asks Meta's AI, and returns the answer with any actions such as pointing to another room.",
-   "loc": 374
+   "loc": 374,
+   "exports": [
+    "MODEL_API_BASE L30",
+    "AgentError L67",
+    "validate L94",
+    "markAnswer L122",
+    "validateScribe L160",
+    "talkOver L183",
+    "askAgent L197",
+    "dropLeadIn L279",
+    "complete L295",
+    "extractLeakedCalls L345",
+    "handleAgent L374"
+   ]
   },
   {
    "p": "server/asr-relay.ts",
    "n": "talk.listening",
    "name": "Live speech relay",
    "d": "Passes your live microphone sound to Meta's speech service and sends back the words as they are heard, adding the secret key itself and hanging up after five minutes.",
-   "loc": 165
+   "loc": 165,
+   "exports": [
+    "relayAsr L44",
+    "toBytes L160"
+   ]
   },
   {
    "p": "server/rate-limit.ts",
    "n": "talk.server",
    "name": "Usage limits",
    "d": "Counts how often each visitor calls and says no past a limit, so one busy visitor cannot use up the owner's AI credits.",
-   "loc": 43
+   "loc": 43,
+   "exports": [
+    "createLimiter L17",
+    "allowAll L36",
+    "callerAddress L44"
+   ]
   },
   {
    "p": "server/share.html",
@@ -380,56 +431,119 @@
    "n": "talk.listening",
    "name": "Recording to text",
    "d": "Sends one recorded sentence to Meta's speech service and returns the words; this is the slower backup for when live speech is not available.",
-   "loc": 47
+   "loc": 47,
+   "exports": [
+    "handleTranscribe L14"
+   ]
   },
   {
    "p": "server/tts-core.ts",
    "n": "talk.voices",
    "name": "Voice maker",
    "d": "Turns a line of text into a natural spoken voice through OpenAI, choosing from a fixed list of voices and refusing lines that are too long.",
-   "loc": 53
+   "loc": 53,
+   "exports": [
+    "TTS_VOICES L14",
+    "ttsStatus L34",
+    "handleTts L38"
+   ]
   },
   {
    "p": "src/agent/client.ts",
    "n": "talk.answers",
    "name": "Question sender",
    "d": "Sends your question to the server and waits up to 15 seconds; if no answer comes, it answers from the map's own descriptions instead.",
-   "loc": 83
+   "loc": 99,
+   "exports": [
+    "ask L27",
+    "markSpoken L77"
+   ]
   },
   {
    "p": "src/agent/live-mic.ts",
    "n": "talk.listening",
    "name": "Open microphone",
    "d": "Keeps the microphone on during a conversation, sends your voice off to be written down as you speak, and turns each finished sentence into a question.",
-   "loc": 236
+   "loc": 236,
+   "exports": [
+    "LiveMic L34",
+    "toWav L226"
+   ]
   },
   {
    "p": "src/agent/prompt.ts",
    "n": "talk.answers",
    "name": "Robot briefing",
    "d": "Writes what a robot knows about its room, lists the actions it may take, suggests questions you could ask, and tidies up the AI's reply.",
-   "loc": 429
+   "loc": 504,
+   "exports": [
+    "roomFacts L21",
+    "codeFacts L79",
+    "excerptWindow L111",
+    "systemPrompt L118",
+    "AGENT_TOOLS L162",
+    "leavesRoom L227",
+    "asksToLeave L255",
+    "asksToGo L262",
+    "roomsNamed L286",
+    "promiseAt L322",
+    "flowNamed L336",
+    "plainRequest L361"
+   ]
   },
   {
    "p": "src/agent/quiz.ts",
    "n": "talk.answers",
    "name": "Quiz master",
    "d": "Makes the quiz a robot gives you on its room: questions and answers drawn from the map, and the rules for marking an answer you say in your own words.",
-   "loc": 235
+   "loc": 235,
+   "exports": [
+    "brief L34",
+    "quizFor L48",
+    "answerOrder L149",
+    "heardAnswer L180",
+    "QUIZ_LENGTH L197",
+    "quizRound L200",
+    "gradingPrompt L212",
+    "parseVerdict L226",
+    "asksForQuiz L241",
+    "asksToStopQuiz L255"
+   ]
   },
   {
    "p": "src/agent/recorder.ts",
    "n": "talk.listening",
    "name": "Sentence recorder",
    "d": "Checks whether a microphone can be used and sends a recorded sentence to be turned into text; it also holds an older press-to-talk recorder that is no longer used.",
-   "loc": 114
+   "loc": 114,
+   "exports": [
+    "canRecord L10",
+    "Recorder L12",
+    "downsample L68",
+    "encodeWav L83",
+    "transcribe L110"
+   ]
   },
   {
    "p": "src/agent/voice.ts",
    "n": "talk.voices",
    "name": "Robot voices",
    "d": "Speaks a robot's line in its own voice from where it stands, starting with the first sentence so speech begins quickly, and falls back to the browser's voice when needed.",
-   "loc": 239
+   "loc": 241,
+   "exports": [
+    "speakingSeconds L19",
+    "cloudAvailable L32",
+    "warmVoice L48",
+    "stopAll L57",
+    "voiceLevel L74",
+    "speak L92",
+    "voiceMissing L123",
+    "stopSpeaking L125",
+    "chunks L131",
+    "speakCloud L145",
+    "bestVoices L221",
+    "speakBrowser L234"
+   ]
   },
   {
    "p": "src/assets.ts",
@@ -443,28 +557,62 @@
    "n": "table.desk",
    "name": "Floor and skyline",
    "d": "Sets the scene around the desk: a rippling floor, a distant skyline shaped by the biggest files, drifting dust, and cards that pop open.",
-   "loc": 226
+   "loc": 226,
+   "exports": [
+    "AtmosphereSystem L72"
+   ]
   },
   {
    "p": "src/audio/sound.ts",
    "n": "talk.voices",
    "name": "Sound effects",
    "d": "Makes every sound from scratch with no recordings: clicks, whooshes, an arrival chord and a background hum for each kind of room, each coming from its own place in the scene.",
-   "loc": 231
+   "loc": 231,
+   "exports": [
+    "context L18",
+    "unlock L30",
+    "pauseAudio L38",
+    "resumeAudio L43",
+    "audioPaused L48",
+    "setListener L51",
+    "audioContext L71",
+    "audioOutput L76",
+    "output L80",
+    "tone L100",
+    "noise L115",
+    "whoosh L142"
+   ]
   },
   {
    "p": "src/city-style.ts",
    "n": "table.city",
    "name": "City look",
    "d": "The look of the little city: dark glass buildings with lit windows, neon edges, pools of light and a circuit-board tray.",
-   "loc": 349
+   "loc": 349,
+   "exports": [
+    "canvas L33",
+    "finish L39",
+    "wall L51",
+    "glow L65",
+    "facadeTextures L91",
+    "blockShell L117",
+    "towerShell L135",
+    "setRoofOpen L153",
+    "keepWholeForRays L162",
+    "paint L173",
+    "tint L185",
+    "BeamBatch L194"
+   ]
   },
   {
    "p": "src/colors.ts",
    "n": "table.city",
    "name": "Building colours",
    "d": "Gives each kind of part its own colour, so different kinds of building can be told apart at a glance.",
-   "loc": 16
+   "loc": 16,
+   "exports": [
+    "KIND_COLORS L4"
+   ]
   },
   {
    "p": "src/components.ts",
@@ -478,294 +626,513 @@
    "n": "table.desk",
    "name": "Desktop controls",
    "d": "Lets you walk and look around with the keyboard and mouse in the flat browser preview, without a headset.",
-   "loc": 116
+   "loc": 116,
+   "exports": [
+    "DesktopControlsSystem L15"
+   ]
   },
   {
    "p": "src/diorama-components.ts",
    "n": "table.city",
    "name": "Building and robot tags",
    "d": "Defines the tags that mark an object as a building standing for one part of the code, or as a robot you can talk to.",
-   "loc": 22
+   "loc": 22,
+   "exports": [
+    "District L4",
+    "Carryable L9",
+    "Pipe L14",
+    "BoardPeg L19",
+    "Worker L24"
+   ]
   },
   {
    "p": "src/diorama.ts",
    "n": "table.city",
    "name": "City on the desk",
    "d": "Draws the miniature city, lets you pick, grab and resize it, plays journeys as lights between buildings, fills in the cards, and grows the city around you when you step inside.",
-   "loc": 2266
+   "loc": 2316,
+   "exports": [
+    "makeLabel L263",
+    "makeTurnButton L298",
+    "makeChip L336",
+    "DioramaSystem L394"
+   ]
   },
   {
    "p": "src/edition.ts",
    "n": "table.welcome",
    "name": "Edition switch",
    "d": "Tells the app whether it is the competition build with a menu of demos, or the personal build that opens straight onto your own maps.",
-   "loc": 20
+   "loc": 20,
+   "exports": [
+    "readEdition L13",
+    "HACKATHON L21"
+   ]
   },
   {
    "p": "src/fps.ts",
    "n": "table.desk",
    "name": "Frame rate check",
    "d": "Reports how smoothly a real headset is drawing, and where the visitor is, to the development server.",
-   "loc": 31
+   "loc": 31,
+   "exports": [
+    "FpsSystem L11"
+   ]
   },
   {
    "p": "src/guide-system.ts",
    "n": "table.welcome",
    "name": "First-visit tour",
    "d": "Leads a new visitor through the basics with a floating card and an arrow, moving on only when they actually do each step.",
-   "loc": 343
+   "loc": 431,
+   "exports": [
+    "makeSkipButton L167",
+    "GuideSystem L193"
+   ]
   },
   {
    "p": "src/guide.ts",
    "n": "table.welcome",
    "name": "Tour notes",
    "d": "Keeps note of whether you have talked to a robot and heard an answer yet, so the tour knows when to move on.",
-   "loc": 25
+   "loc": 25,
+   "exports": [
+    "guideProgress L6",
+    "guideNote L17",
+    "restartGuide L21"
+   ]
   },
   {
    "p": "src/index.ts",
    "n": "table.welcome",
    "name": "App start-up",
    "d": "Starts everything: it switches on each part of the app, opens the map named in the web address, and pauses sound and speech when the headset comes off.",
-   "loc": 167
+   "loc": 182
   },
   {
    "p": "src/landing.ts",
    "n": "table.welcome",
    "name": "Front page",
    "d": "The flat web page you see before putting the headset to work: a title while things load, then a large Enter VR button and a prompt to allow the microphone.",
-   "loc": 116
+   "loc": 116,
+   "exports": [
+    "landingFailed L19",
+    "landingReady L28",
+    "offerMicrophone L101"
+   ]
   },
   {
    "p": "src/layout.ts",
    "n": "table.city",
    "name": "City planner",
    "d": "Works out where every building stands: bigger plots and taller buildings for parts with more code, and outside services as towers in a row behind the board.",
-   "loc": 222
+   "loc": 222,
+   "exports": [
+    "BOARD_WIDTH L54",
+    "BOARD_DEPTH L55",
+    "squarify L68",
+    "buildLayout L135",
+    "resolveRef L237"
+   ]
   },
   {
    "p": "src/live.ts",
    "n": "table.city",
    "name": "Live city",
    "d": "When the map is rebuilt, swaps the new one in without reloading, so you stay in VR and see the city change.",
-   "loc": 16
+   "loc": 16,
+   "exports": [
+    "listenForMapUpdates L10"
+   ]
   },
   {
    "p": "src/maps/index.ts",
    "n": "maps.collection",
    "name": "Map shelf",
    "d": "Gathers every map the app can open: the built-in ones plus any you have made from your own code.",
-   "loc": 29
+   "loc": 29,
+   "exports": [
+    "CUSTOM_MAPS L21",
+    "MAPS L30",
+    "DEFAULT_MAP L33"
+   ]
   },
   {
    "p": "src/maps/larder.ts",
    "n": "maps.collection",
    "name": "Sample shop map",
    "d": "A hand-made map of Larder, a made-up meal-kit shop, so there is always a city to explore.",
-   "loc": 202
+   "loc": 202,
+   "exports": [
+    "larder L138"
+   ]
   },
   {
    "p": "src/maps/types.ts",
    "n": "maps.collection",
    "name": "Map rulebook",
    "d": "Spells out what a map must contain: parts, files, connections, journeys and warnings.",
-   "loc": 92
+   "loc": 96
   },
   {
    "p": "src/menu.ts",
    "n": "table.welcome",
    "name": "Start menu",
    "d": "Shows a card for each map over the desk, one of them a map of this app itself; pinch a card to open that city.",
-   "loc": 71
+   "loc": 71,
+   "exports": [
+    "MenuSystem L11"
+   ]
   },
   {
    "p": "src/network.ts",
    "n": "table.city",
    "name": "Trip types",
    "d": "Tells what each step of a journey costs: crossing the network, touching stored data, or the code working on its own.",
-   "loc": 65
+   "loc": 65,
+   "exports": [
+    "HOP_COLORS L25",
+    "HOP_TAGS L33",
+    "classifyHop L40"
+   ]
   },
   {
    "p": "src/notes/desk.ts",
    "n": "talk.notes",
    "name": "Notes panel",
    "d": "The panel in the notes room: your newest notes, word-for-word or talk-it-over mode, and undo, read back, microphone and done buttons.",
-   "loc": 180
+   "loc": 180,
+   "exports": [
+    "NotesDesk L29",
+    "sameWords L193",
+    "clip L198"
+   ]
   },
   {
    "p": "src/notes/scribe.ts",
    "n": "talk.notes",
    "name": "Note taker",
    "d": "Everything the note taker knows: its instructions to the AI, how to read a reply into what to say and what to write, the spoken commands like \"scratch that\", and how the list is written out.",
-   "loc": 157
+   "loc": 157,
+   "exports": [
+    "NOTES_ROOM L13",
+    "NOTES_NODE L16",
+    "MAX_SAID L36",
+    "MAX_NOTE L37",
+    "NOTES_IN_PROMPT L39",
+    "noteCommand L55",
+    "partNamed L67",
+    "scribePrompt L80",
+    "parseScribe L123",
+    "notesMarkdown L150",
+    "readBack L166"
+   ]
   },
   {
    "p": "src/notes/store.ts",
    "n": "talk.notes",
    "name": "Notes keeper",
    "d": "Keeps your notes on the device and sends them to the project folder, and asks the server to talk an idea over.",
-   "loc": 98
+   "loc": 98,
+   "exports": [
+    "loadNotes L17",
+    "storeNotes L27",
+    "loadMode L35",
+    "storeMode L43",
+    "saveToProject L56",
+    "appendNote L75",
+    "talkOver L86"
+   ]
   },
   {
    "p": "src/panels.ts",
    "n": "table.desk",
    "name": "Card show and hide",
    "d": "Shows or hides a floating card, and makes sure a hidden card cannot be pressed by accident.",
-   "loc": 18
+   "loc": 18,
+   "exports": [
+    "setPanelShown L7"
+   ]
   },
   {
    "p": "src/passthrough.ts",
    "n": "table.desk",
    "name": "Mixed reality check",
    "d": "Says whether the headset is showing your real room around the city.",
-   "loc": 9
+   "loc": 9,
+   "exports": [
+    "inPassthrough L7"
+   ]
   },
   {
    "p": "src/pause.ts",
    "n": "table.welcome",
    "name": "Pause switch",
    "d": "Lets every part of the app know when you cannot see or hear it, such as when the headset comes off, so nothing talks or listens until you are back.",
-   "loc": 32
+   "loc": 32,
+   "exports": [
+    "isPaused L14",
+    "setPaused L16",
+    "whenResumed L23",
+    "onPause L34"
+   ]
   },
   {
    "p": "src/peek.ts",
    "n": "table.city",
    "name": "Roof lift",
    "d": "Lifts the roof off the building you pick, like a lid, to show a lit miniature of the room and robots inside.",
-   "loc": 241
+   "loc": 241,
+   "exports": [
+    "makeBot L53",
+    "easeOutBack L78",
+    "Peek L83"
+   ]
   },
   {
    "p": "src/placement.ts",
    "n": "table.desk",
    "name": "Near or far desk",
    "d": "Decides how far away the desk sits: within reach on a Quest headset, further back on Meta VR Glasses so everything fits their narrower view.",
-   "loc": 42
+   "loc": 42,
+   "exports": [
+    "NEAR L12",
+    "FAR L13",
+    "placement L15",
+    "pressWord L42",
+    "aimWord L45"
+   ]
   },
   {
    "p": "src/rays.ts",
    "n": "table.desk",
    "name": "Pointer pass-through",
    "d": "Stops decorations such as thin outlines from getting in the way of your pointing hand.",
-   "loc": 24
+   "loc": 24,
+   "exports": [
+    "ignoreRays L11",
+    "takeRays L24"
+   ]
   },
   {
    "p": "src/reach.ts",
    "n": "table.desk",
    "name": "Within reach",
    "d": "Brings the side panels and the start menu within arm's reach when you use your hands, so their buttons can be tapped with a fingertip.",
-   "loc": 65
+   "loc": 65,
+   "exports": [
+    "setInspectorShift L40",
+    "setPanelsWithinReach L47"
+   ]
   },
   {
    "p": "src/rooftops.ts",
    "n": "table.city",
    "name": "Rooftop details",
    "d": "Puts a telling feature on every roof (an antenna, chimneys, a dome, a billboard) so the kind of each part reads at a glance.",
-   "loc": 136
+   "loc": 136,
+   "exports": [
+    "buildRooftops L31"
+   ]
   },
   {
    "p": "src/rooms/character.ts",
    "n": "rooms.robots",
    "name": "Robot body",
    "d": "Brings the robot to life: it walks, waves, gives a thumbs up, carries things, and moves its mouth in time with its voice.",
-   "loc": 262
+   "loc": 262,
+   "exports": [
+    "ROBOT_ASSET L30",
+    "mergeBody L58",
+    "RobotCharacter L140"
+   ]
   },
   {
    "p": "src/rooms/dressing.ts",
    "n": "rooms.builder",
    "name": "Room finishing touches",
    "d": "Adds the details every room has: ceiling and lights, floor markings, wall columns, swirling tube mouths and the light trail behind a flying packet.",
-   "loc": 241
+   "loc": 241,
+   "exports": [
+    "box L24",
+    "addCeiling L33",
+    "addWindows L55",
+    "addPilasters L119",
+    "addFloorMarkings L128",
+    "swirlTexture L171",
+    "makeSwirl L205",
+    "Trail L210"
+   ]
   },
   {
    "p": "src/rooms/lines.ts",
    "n": "rooms.robots",
    "name": "Thinking lines",
    "d": "Quick things a robot says straight away, such as \"let me check\", so the wait for the real answer feels like someone thinking.",
-   "loc": 53
+   "loc": 53,
+   "exports": [
+    "thinkingLine L52"
+   ]
   },
   {
    "p": "src/rooms/merge.ts",
    "n": "rooms.builder",
    "name": "Room speed-up",
    "d": "Fuses a room's hundreds of small pieces into a few large ones, so the headset can draw the room smoothly.",
-   "loc": 115
+   "loc": 115,
+   "exports": [
+    "mergeStatic L22",
+    "mergeGeometries L60",
+    "combine L66"
+   ]
   },
   {
    "p": "src/rooms/props.ts",
    "n": "rooms.themes",
    "name": "Furniture loader",
    "d": "Fetches the photo-scanned furniture a room needs just before the room is built, so the headset only downloads what you actually visit.",
-   "loc": 80
+   "loc": 80,
+   "exports": [
+    "loadProps L36",
+    "prop L62",
+    "propSize L84"
+   ]
   },
   {
    "p": "src/rooms/room.ts",
    "n": "rooms.builder",
    "name": "Room director",
    "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question.",
-   "loc": 1915
+   "loc": 1949,
+   "exports": [
+    "RoomSystem L218"
+   ]
   },
   {
    "p": "src/rooms/stations.ts",
    "n": "rooms.themes",
    "name": "Furniture arranger",
    "d": "Builds each work spot and decoration from photo-scanned furniture where a good piece exists, and otherwise leaves it to simple built-in shapes.",
-   "loc": 217
+   "loc": 217,
+   "exports": [
+    "propsForTheme L44",
+    "place L51",
+    "topOf L60",
+    "box L64",
+    "monitor L74",
+    "officeDesk L86",
+    "makePropStation L91",
+    "makePropDecor L198"
+   ]
   },
   {
    "p": "src/rooms/themes.ts",
    "n": "rooms.themes",
    "name": "Room themes",
    "d": "Picks a workplace for each room from the part's name and description, such as a warehouse, a post office or a lab, and sets the robots' jobs, work spots and decorations there.",
-   "loc": 597
+   "loc": 597,
+   "exports": [
+    "THEMES L123",
+    "hashString L180",
+    "seeded L190",
+    "proceduralOffice L217",
+    "pickTheme L243",
+    "makePalette L283",
+    "itemColor L298",
+    "box L320",
+    "cylinder L328",
+    "makeItem L337",
+    "makeStation L379",
+    "makeDecor L586"
+   ]
   },
   {
    "p": "src/rooms/worker.ts",
    "n": "rooms.robots",
    "name": "Speech bubble",
    "d": "Draws the floating bubble that shows what a robot is saying, growing taller as the text gets longer; the tour's card uses it too.",
-   "loc": 86
+   "loc": 87,
+   "exports": [
+    "Bubble L8"
+   ]
   },
   {
    "p": "src/scene-assets/desk.scene-asset.ts",
    "n": "table.desk",
    "name": "The desk",
    "d": "Builds the desk the city sits on, with legs long enough to reach the floor whether you sit or stand.",
-   "loc": 45
+   "loc": 45,
+   "exports": [
+    "DESK_WIDTH L9",
+    "DESK_DEPTH L10",
+    "createDesk L12",
+    "createFloor L41"
+   ]
   },
   {
    "p": "src/screen.ts",
    "n": "table.desk",
    "name": "Your screen",
    "d": "Shows your computer's screen on a monitor behind the city, so you can watch your coding agent work without taking the headset off.",
-   "loc": 135
+   "loc": 135,
+   "exports": [
+    "ScreenSystem L38"
+   ]
   },
   {
    "p": "src/state.ts",
    "n": "table.city",
    "name": "Visit tracker",
    "d": "Keeps track of which map is open, what you have picked, which journey is playing and whether you are at the desk or in a room, and tells every other part when that changes.",
-   "loc": 210
+   "loc": 211,
+   "exports": [
+    "app L15",
+    "onChange L52",
+    "emit L57",
+    "currentFlow L65",
+    "currentStep L69",
+    "select L73",
+    "startFlow L79",
+    "stopFlow L92",
+    "nextStep L99",
+    "cycleFlow L113",
+    "setMap L120",
+    "freshParts L142"
+   ]
   },
   {
    "p": "src/transition.ts",
    "n": "table.city",
    "name": "Step-inside timing",
    "d": "Keeps the city and the rooms in step during the dive: the building grows around you first, then the room fades in.",
-   "loc": 23
+   "loc": 23,
+   "exports": [
+    "dive L10",
+    "DIVE_SECONDS L22",
+    "DIVE_FADE_AT L24"
+   ]
   },
   {
    "p": "src/workspace.ts",
    "n": "table.desk",
    "name": "Desk placement",
    "d": "Puts the desk in front of you at a comfortable height when you enter virtual reality, and again when you press Recenter.",
-   "loc": 655
+   "loc": 667,
+   "exports": [
+    "squareUp L87",
+    "fit L94",
+    "WorkspaceSystem L118"
+   ]
   },
   {
    "p": "vite.config.ts",
    "n": "talk.server",
    "name": "Local server",
    "d": "Runs the app on your own computer and answers the headset's requests for answers, voices and speech, reading the secret keys from a private file that never reaches the headset.",
-   "loc": 299
+   "loc": 299,
+   "exports": [
+    "agentApi L16"
+   ]
   }
  ],
  "links": [
@@ -2428,7 +2795,8 @@
       "file": "server/agent-core.ts",
       "line": 99
      }
-    ]
+    ],
+    "excerpt": "  89   const text = str(v, max, field);\n  90   if (!/^[\\p{L}\\p{N} .,'&()\\/-]+$/u.test(text)) throw new AgentError(400, `${field} may only contain letters, numbers and simple punctuatio…\n  91   return text;\n  92 };\n  93\n  94 export function validate(body: unknown): AgentRequest {\n  95   if (!body || typeof body !== 'object') throw new AgentError(400, 'Expected a JSON body');\n  96   const b = body as Record<string, unknown>;\n  97   const mapId = str(b.mapId, 40, 'mapId');\n  98   const graph = MAPS[mapId];\n> 99   if (!graph) throw new AgentError(404, `Unknown map \"${mapId}\"`);\n 100   const nodeId = str(b.nodeId, 120, 'nodeId');\n 101   if (!graph.nodes.some((n) => n.id === nodeId)) throw new AgentError(404, `Unknown room \"${nodeId}\"`);\n 102   const p = (b.persona ?? {}) as Record<string, unknown>;\n 103   const persona = { name: phrase(p.name, 30, 'persona.name'), role: phrase(p.role, 40, 'persona.role'), place: phrase(p.place, 40, 'persona…\n 104   const history: ChatTurn[] = [];\n 105   if (Array.isArray(b.history)) {\n 106     for (const t of b.history.slice(-6)) {\n 107       const turn = t as Record<string, unknown>;\n 108       if ((turn.role === 'user' || turn.role === 'assistant') && typeof turn.content === 'string') {\n 109         history.push({ role: turn.role, content: turn.content.slice(0, 700) });"
    },
    {
     "id": "limits-forget-on-restart",
@@ -2441,7 +2809,8 @@
       "file": "server/rate-limit.ts",
       "line": 18
      }
-    ]
+    ],
+    "excerpt": "  8  * not an exact quota.\n  9  */\n 10\n 11 export interface Limiter {\n 12   /** True if this call is allowed; it then counts against the limit. */\n 13   allow(key: string): boolean;\n 14 }\n 15\n 16 /** At most `max` calls per `windowMs` for each key. */\n 17 export function createLimiter(max: number, windowMs: number): Limiter {\n>18   const recent = new Map<string, number[]>();\n 19   return {\n 20     allow(key) {\n 21       const now = Date.now();\n 22       const times = (recent.get(key) ?? []).filter((t) => now - t < windowMs);\n 23       if (times.length >= max) {\n 24         recent.set(key, times);\n 25         return false;\n 26       }\n 27       times.push(now);\n 28       recent.set(key, times);"
    },
    {
     "id": "unused-recorder",
@@ -2454,7 +2823,8 @@
       "file": "src/agent/recorder.ts",
       "line": 12
      }
-    ]
+    ],
+    "excerpt": "  2  * Push-to-talk microphone capture that produces a 16 kHz mono 16-bit WAV, the\n  3  * format Meta's transcription model accepts. Works in the Quest browser, which\n  4  * has a microphone but no built-in speech recognition.\n  5  */\n  6\n  7 const TARGET_RATE = 16000;\n  8 const MAX_SECONDS = 12;\n  9\n 10 export const canRecord = (): boolean => !!navigator.mediaDevices?.getUserMedia && 'AudioContext' in window;\n 11\n>12 export class Recorder {\n 13   private context: AudioContext | null = null;\n 14   private stream: MediaStream | null = null;\n 15   private processor: ScriptProcessorNode | null = null;\n 16   private chunks: Float32Array[] = [];\n 17   private timer: ReturnType<typeof setTimeout> | null = null;\n 18   /** Called if recording stops on its own after MAX_SECONDS. */\n 19   onAutoStop: (() => void) | null = null;\n 20\n 21   get recording(): boolean {\n 22     return this.context !== null;"
    },
    {
     "id": "shortcuts-assume-sample",
@@ -2465,9 +2835,10 @@
     "locations": [
      {
       "file": "src/index.ts",
-      "line": 102
+      "line": 118
      }
-    ]
+    ],
+    "excerpt": " 108\n 109   void landingReady(world);\n 110\n 111   // Development shortcuts for testing without a headset. Stripped from builds.\n 112   if (import.meta.env.DEV) {\n 113     console.log(\n 114       '[rooms] ' +\n 115         app.graph.nodes.map((n) => `${n.label} -> ${pickTheme(app.graph, n.id).place}`).join(' | '),\n 116     );\n 117     window.addEventListener('keydown', (e) => {\n>118       if (e.key === 'i') enterRoom(app.flowSteps[app.stepIndex]?.nodeId ?? app.selected ?? 'api.payments');\n 119       if (e.key === 't') leaveRoom();\n 120       if (e.key === 'p') startFlow();\n 121       if (e.key === 'n') nextStep();\n 122       if (e.key === 'o') select('api.orders');\n 123       if (e.key === 'f') select('api.payments');\n 124       if (e.key === 'h') select('shared');\n 125       if (e.key === 'a') select('admin');\n 126       if (e.key === 'w') world.getSystem(RoomSystem)?.debugTalk();\n 127       // `: talk to the lead robot (the one that carries a flow's request), as pinching it would.\n 128       if (e.key === '`') world.getSystem(RoomSystem)?.debugTalk(0);"
    }
   ]
  }

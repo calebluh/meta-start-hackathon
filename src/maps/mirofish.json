@@ -238,7 +238,10 @@
    "n": "api",
    "name": "Server setup",
    "d": "Builds the web server, opens it to all origins, registers the graph, simulation and report endpoints, and adds a health check.",
-   "loc": 61
+   "loc": 61,
+   "exports": [
+    "create_app L19"
+   ]
   },
   {
    "p": "backend/app/api/__init__.py",
@@ -252,28 +255,73 @@
    "n": "api.routes",
    "name": "Graph endpoints",
    "d": "Handles project upload, ontology generation, knowledge graph building, task progress, graph data and project/graph deletion.",
-   "loc": 825
+   "loc": 825,
+   "exports": [
+    "GraphInUseError L36",
+    "_active_graph_consumers L40",
+    "_delete_cloud_graph_if_present L76",
+    "_clear_project_graph_reference L97",
+    "_project_build_lock L105",
+    "_project_has_active_build L110",
+    "allowed_file L122",
+    "get_project L133",
+    "list_projects L152",
+    "delete_project L167",
+    "_delete_project_impl L172",
+    "reset_project L214"
+   ]
   },
   {
    "p": "backend/app/api/report.py",
    "n": "api.routes",
    "name": "Report endpoints",
    "d": "Starts report generation, serves report sections, progress and logs, handles downloads, and runs report-agent chat.",
-   "loc": 969
+   "loc": 969,
+   "exports": [
+    "generate_report L33",
+    "get_generate_status L323",
+    "get_report L397",
+    "get_report_by_simulation L439",
+    "list_reports L478",
+    "download_report L518",
+    "delete_report L564",
+    "chat_with_report_agent L592",
+    "get_report_progress L689",
+    "get_report_sections L730",
+    "get_single_section L781",
+    "check_report_status L827"
+   ]
   },
   {
    "p": "backend/app/api/simulation.py",
    "n": "api.routes",
    "name": "Simulation endpoints",
    "d": "Creates, prepares, starts and stops simulations, serves personas, posts and timelines, and relays agent interviews.",
-   "loc": 2450
+   "loc": 2450,
+   "exports": [
+    "_get_default_platform L30",
+    "optimize_interview_prompt L58",
+    "get_graph_entities L79",
+    "get_entity_detail L124",
+    "get_entities_by_type L157",
+    "create_simulation L196",
+    "_check_simulation_prepared L270",
+    "prepare_simulation L390",
+    "get_prepare_status L678",
+    "get_simulation L791",
+    "list_simulations L824",
+    "_get_report_id_for_simulation L852"
+   ]
   },
   {
    "p": "backend/app/config.py",
    "n": "api",
    "name": "Settings",
    "d": "Loads API keys, model name, upload limits, OASIS action lists and report agent settings from the .env file.",
-   "loc": 61
+   "loc": 61,
+   "exports": [
+    "Config L17"
+   ]
   },
   {
    "p": "backend/app/models/__init__.py",
@@ -287,14 +335,24 @@
    "n": "api.core",
    "name": "Project store",
    "d": "Saves each project's uploaded files, extracted text, ontology and graph status to disk.",
-   "loc": 256
+   "loc": 256,
+   "exports": [
+    "ProjectStatus L17",
+    "Project L27",
+    "ProjectManager L107"
+   ]
   },
   {
    "p": "backend/app/models/task.py",
    "n": "api.core",
    "name": "Task tracker",
    "d": "Keeps in-memory progress records for long background jobs like graph building and simulation preparation.",
-   "loc": 160
+   "loc": 160,
+   "exports": [
+    "TaskStatus L16",
+    "Task L25",
+    "TaskManager L56"
+   ]
   },
   {
    "p": "backend/app/services/__init__.py",
@@ -308,84 +366,164 @@
    "n": "api.graph",
    "name": "Graph builder",
    "d": "Creates a Zep Cloud graph, applies the ontology, uploads text chunks in batches and waits for ingestion.",
-   "loc": 772
+   "loc": 772,
+   "exports": [
+    "GraphInfo L35",
+    "BatchSubmission L52",
+    "GraphBuilderService L61"
+   ]
   },
   {
    "p": "backend/app/services/oasis_profile_generator.py",
    "n": "api.personas",
    "name": "Persona generator",
    "d": "Turns graph entities into detailed social-media personas for Twitter and Reddit, enriched by graph search and the LLM.",
-   "loc": 1053
+   "loc": 1053,
+   "exports": [
+    "_coerce_to_str L34",
+    "_coerce_to_str_list L58",
+    "OasisAgentProfile L80",
+    "OasisProfileGenerator L205"
+   ]
   },
   {
    "p": "backend/app/services/ontology_generator.py",
    "n": "api.intake",
    "name": "Ontology designer",
    "d": "Asks the LLM to read the documents and choose which kinds of people, groups and relationships the graph should hold.",
-   "loc": 609
+   "loc": 609,
+   "exports": [
+    "_to_pascal_case L22",
+    "_to_upper_snake_case L35",
+    "OntologyGenerator L194"
+   ]
   },
   {
    "p": "backend/app/services/report_agent.py",
    "n": "api.report",
    "name": "Report agent",
    "d": "Plans and writes the prediction report section by section using graph tools, and answers follow-up chat questions.",
-   "loc": 2175
+   "loc": 2175,
+   "exports": [
+    "ReportLogger L36",
+    "ReportConsoleLogger L307",
+    "ReportStatus L389",
+    "ReportSection L399",
+    "ReportOutline L419",
+    "Report L442",
+    "ReportAgent L871",
+    "ReportManager L1931"
+   ]
   },
   {
    "p": "backend/app/services/simulation_config_generator.py",
    "n": "api.personas",
    "name": "Simulation planner",
    "d": "Uses the LLM to decide simulated time, events, posting activity per agent and platform settings.",
-   "loc": 828
+   "loc": 828,
+   "exports": [
+    "AgentActivityConfig L53",
+    "TimeSimulationConfig L85",
+    "EventConfig L115",
+    "PlatformConfig L131",
+    "SimulationParameters L148",
+    "SimulationConfigGenerator L201"
+   ]
   },
   {
    "p": "backend/app/services/simulation_ipc.py",
    "n": "api.simulation",
    "name": "Simulation messenger",
    "d": "Passes commands such as interview requests between the server and the running simulation through files on disk.",
-   "loc": 323
+   "loc": 323,
+   "exports": [
+    "CommandType L25",
+    "CommandStatus L32",
+    "IPCCommand L41",
+    "IPCResponse L67",
+    "SimulationIPCClient L95",
+    "SimulationIPCServer L288"
+   ]
   },
   {
    "p": "backend/app/services/simulation_manager.py",
    "n": "api.simulation",
    "name": "Simulation manager",
    "d": "Creates simulations and runs preparation: reads entities, generates personas and writes the simulation config.",
-   "loc": 467
+   "loc": 467,
+   "exports": [
+    "SimulationStatus L25",
+    "PlatformType L38",
+    "SimulationState L45",
+    "SimulationManager L128"
+   ]
   },
   {
    "p": "backend/app/services/simulation_runner.py",
    "n": "api.simulation",
    "name": "Simulation runner",
    "d": "Launches the OASIS simulation as a child process, watches its action logs, tracks progress and stops it.",
-   "loc": 1751
+   "loc": 1751,
+   "exports": [
+    "RunnerStatus L40",
+    "SimulationStopPending L52",
+    "AgentAction L57",
+    "RoundSummary L84",
+    "SimulationRunState L110",
+    "SimulationRunner L204"
+   ]
   },
   {
    "p": "backend/app/services/text_processor.py",
    "n": "api.intake",
    "name": "Text cleaner",
    "d": "Cleans extracted document text and cuts it into overlapping chunks for graph ingestion.",
-   "loc": 55
+   "loc": 55,
+   "exports": [
+    "TextProcessor L9"
+   ]
   },
   {
    "p": "backend/app/services/zep_entity_reader.py",
    "n": "api.graph",
    "name": "Entity reader",
    "d": "Reads people and organisations out of the Zep graph, filtered by type, with their relationships.",
-   "loc": 372
+   "loc": 372,
+   "exports": [
+    "EntityNode L22",
+    "FilteredEntities L54",
+    "ZepEntityReader L70"
+   ]
   },
   {
    "p": "backend/app/services/zep_graph_memory_updater.py",
    "n": "api.graph",
    "name": "Graph memory updater",
    "d": "Feeds what simulated agents do back into the Zep graph as new memories during a run.",
-   "loc": 675
+   "loc": 675,
+   "exports": [
+    "AgentActivity L26",
+    "_DrainDeadlineExceeded L207",
+    "ZepGraphMemoryUpdater L213",
+    "ZepGraphMemoryManager L643"
+   ]
   },
   {
    "p": "backend/app/services/zep_tools.py",
    "n": "api.graph",
    "name": "Report research tools",
    "d": "Gives the report agent graph search tools (deep insight, panorama, quick search) and agent interviews.",
-   "loc": 1442
+   "loc": 1442,
+   "exports": [
+    "SearchResult L33",
+    "NodeInfo L63",
+    "EdgeInfo L87",
+    "InsightForgeResult L144",
+    "PanoramaResult L220",
+    "AgentInterview L290",
+    "InterviewResult L346",
+    "ZepToolsService L406"
+   ]
   },
   {
    "p": "backend/app/utils/__init__.py",
@@ -399,245 +537,529 @@
    "n": "api.intake",
    "name": "Document reader",
    "d": "Extracts text from uploaded PDF, Markdown and text files, guessing the encoding when needed.",
-   "loc": 157
+   "loc": 157,
+   "exports": [
+    "_read_text_with_fallback L11",
+    "FileParser L61",
+    "split_text_into_chunks L161"
+   ]
   },
   {
    "p": "backend/app/utils/llm_client.py",
    "n": "api.core",
    "name": "LLM client",
    "d": "Single wrapper for calling the OpenAI-compatible model, including reliable JSON answers and retries.",
-   "loc": 244
+   "loc": 244,
+   "exports": [
+    "LLMResponseError L19",
+    "_is_response_format_unsupported L27",
+    "_clean_chat_text L67",
+    "_contains_additional_json_container L77",
+    "LLMClient L91"
+   ]
   },
   {
    "p": "backend/app/utils/locale.py",
    "n": "api.core",
    "name": "Translations",
    "d": "Looks up interface and error messages in the user's language and tells the LLM which language to use.",
-   "loc": 52
+   "loc": 52,
+   "exports": [
+    "set_locale L23",
+    "get_locale L28",
+    "t L35",
+    "get_language_instruction L66"
+   ]
   },
   {
    "p": "backend/app/utils/logger.py",
    "n": "api.core",
    "name": "Logging",
    "d": "Sets up log output to console and files, with Windows-safe text encoding.",
-   "loc": 95
+   "loc": 95,
+   "exports": [
+    "_ensure_utf8_stdout L13",
+    "setup_logger L30",
+    "get_logger L91",
+    "debug L112",
+    "info L115",
+    "warning L118",
+    "error L121",
+    "critical L124"
+   ]
   },
   {
    "p": "backend/app/utils/ontology.py",
    "n": "api.intake",
    "name": "Ontology checker",
    "d": "Cleans and caps the LLM-designed entity and relationship types so Zep will accept them.",
-   "loc": 81
+   "loc": 81,
+   "exports": [
+    "normalize_ontology_attribute L26",
+    "normalize_ontology_attributes L52",
+    "normalize_ontology_source_targets L73"
+   ]
   },
   {
    "p": "backend/app/utils/openai_chat_compat.py",
    "n": "api.core",
    "name": "Model compatibility",
    "d": "Adjusts request settings so both GPT-5 and older chat models accept the same calls.",
-   "loc": 78
+   "loc": 78,
+   "exports": [
+    "is_gpt5_family L13",
+    "create_chat_completion L20",
+    "extract_chat_completion_text L60"
+   ]
   },
   {
    "p": "backend/app/utils/retry.py",
    "n": "api.core",
    "name": "Retry helper",
    "d": "Retries failed external API calls with growing waits between attempts.",
-   "loc": 190
+   "loc": 190,
+   "exports": [
+    "retry_with_backoff L15",
+    "retry_with_backoff_async L80",
+    "RetryableAPIClient L132"
+   ]
   },
   {
    "p": "backend/app/utils/zep.py",
    "n": "api.graph",
    "name": "Zep connection",
    "d": "Shared Zep Cloud client with timeouts, search limits and retry rules for rate limits.",
-   "loc": 128
+   "loc": 128,
+   "exports": [
+    "normalize_zep_search_query L33",
+    "normalize_zep_search_limit L44",
+    "_cached_zep_client L57",
+    "get_zep_client L65",
+    "clear_zep_client_cache L86",
+    "is_retryable_zep_error L92",
+    "_retry_after_seconds L107",
+    "call_zep_read_with_retry L126"
+   ]
   },
   {
    "p": "backend/app/utils/zep_lifecycle.py",
    "n": "api.graph",
    "name": "Graph locks",
    "d": "Stops a graph from being deleted or reset while a report or simulation is still using it.",
-   "loc": 35
+   "loc": 35,
+   "exports": [
+    "graph_lifecycle_lock L17",
+    "register_graph_reader L26",
+    "unregister_graph_reader L35",
+    "get_graph_readers L47"
+   ]
   },
   {
    "p": "backend/app/utils/zep_paging.py",
    "n": "api.graph",
    "name": "Graph paging",
    "d": "Fetches every node and edge from a Zep graph page by page.",
-   "loc": 135
+   "loc": 135,
+   "exports": [
+    "_fetch_page_with_retry L21",
+    "_header_value L39",
+    "_fetch_all L55",
+    "fetch_all_nodes L121",
+    "fetch_all_edges L142"
+   ]
   },
   {
    "p": "backend/run.py",
    "n": "api",
    "name": "Backend launcher",
    "d": "Checks that the LLM and Zep keys are set, then starts the Flask server on port 5001.",
-   "loc": 38
+   "loc": 38,
+   "exports": [
+    "main L25"
+   ]
   },
   {
    "p": "backend/scripts/action_logger.py",
    "n": "runners",
    "name": "Action logger",
    "d": "Writes each simulated agent action to per-platform log files the backend reads for live progress.",
-   "loc": 249
+   "loc": 249,
+   "exports": [
+    "PlatformActionLogger L22",
+    "SimulationLogManager L119",
+    "ActionLogger L201",
+    "get_logger L295"
+   ]
   },
   {
    "p": "backend/scripts/run_parallel_simulation.py",
    "n": "runners",
    "name": "Dual-platform simulation",
    "d": "Runs Twitter and Reddit OASIS simulations side by side, logs actions and answers interview commands afterwards.",
-   "loc": 1409
+   "loc": 1409,
+   "exports": [
+    "MaxTokensWarningFilter L106",
+    "disable_oasis_logging L120",
+    "init_logging_for_simulation L141",
+    "CommandType L210",
+    "ParallelIPCHandler L217",
+    "load_config L604",
+    "get_agent_names_from_config L633",
+    "fetch_new_actions_from_db L657",
+    "_enrich_action_context L749",
+    "_get_post_info L857",
+    "_get_user_name L903",
+    "_get_comment_info L938"
+   ]
   },
   {
    "p": "backend/scripts/run_reddit_simulation.py",
    "n": "runners",
    "name": "Reddit simulation",
    "d": "Runs a Reddit-only OASIS simulation from a config file and stays available for interviews.",
-   "loc": 624
+   "loc": 624,
+   "exports": [
+    "UnicodeFormatter L53",
+    "MaxTokensWarningFilter L70",
+    "setup_oasis_logging L84",
+    "CommandType L139",
+    "IPCHandler L146",
+    "RedditSimulationRunner L385",
+    "main L695",
+    "setup_signal_handlers L737"
+   ]
   },
   {
    "p": "backend/scripts/run_twitter_simulation.py",
    "n": "runners",
    "name": "Twitter simulation",
    "d": "Runs a Twitter-only OASIS simulation from a config file and stays available for interviews.",
-   "loc": 633
+   "loc": 633,
+   "exports": [
+    "UnicodeFormatter L53",
+    "MaxTokensWarningFilter L70",
+    "setup_oasis_logging L84",
+    "CommandType L139",
+    "IPCHandler L146",
+    "TwitterSimulationRunner L385",
+    "main L707",
+    "setup_signal_handlers L749"
+   ]
   },
   {
    "p": "backend/scripts/test_profile_format.py",
    "n": "tools",
    "name": "Persona format check",
    "d": "Manual script that checks generated personas match the CSV and JSON formats OASIS expects.",
-   "loc": 139
+   "loc": 139,
+   "exports": [
+    "test_profile_formats L20",
+    "show_expected_formats L130"
+   ]
   },
   {
    "p": "backend/scripts/validate_zep_cloud_integration.py",
    "n": "tools",
    "name": "Zep live check",
    "d": "Manual end-to-end test against real Zep Cloud using a temporary graph that it cleans up afterwards.",
-   "loc": 829
+   "loc": 829,
+   "exports": [
+    "SourceEpisode L42",
+    "_uuid L216",
+    "_status_code L220",
+    "_require_process_api_key L226",
+    "_drain_updater_after_failure L234",
+    "_cleanup_graph L253",
+    "_wait_for_episode L291",
+    "_list_batch_items L301",
+    "_raw_pages L317",
+    "_edge_view L338",
+    "_node_view L353",
+    "_search_view L363"
+   ]
   },
   {
    "p": "backend/tests/test_llm_json_responses.py",
    "n": "tests",
    "name": "LLM JSON tests",
    "d": "Checks that truncated, empty or noisy model replies are retried or rejected safely.",
-   "loc": 204
+   "loc": 204,
+   "exports": [
+    "CompletionSequence L8",
+    "ProviderError L21",
+    "_response L28",
+    "_client_for L40",
+    "test_chat_json_retries_truncated_completion_without_token_cap L49",
+    "test_chat_json_omits_token_cap_when_requested L67",
+    "test_chat_json_retries_empty_content_once L78",
+    "test_chat_json_accepts_complete_object_before_trailing_text L94",
+    "test_chat_json_rejects_a_second_json_document L113",
+    "test_chat_json_rejects_top_level_array L123",
+    "test_chat_json_error_does_not_echo_partial_model_output L134",
+    "test_chat_json_falls_back_only_for_explicit_response_format_rejection L152"
+   ]
   },
   {
    "p": "backend/tests/test_ontology_api_errors.py",
    "n": "tests",
    "name": "Ontology error tests",
    "d": "Checks the upload endpoint returns safe error messages and marks the project failed.",
-   "loc": 55
+   "loc": 55,
+   "exports": [
+    "_post_ontology L9",
+    "test_ontology_api_returns_safe_truncation_error_and_failed_project L20",
+    "test_ontology_api_does_not_expose_provider_error_body L49"
+   ]
   },
   {
    "p": "backend/tests/test_ontology_attributes.py",
    "n": "tests",
    "name": "Ontology rules tests",
    "d": "Checks ontology attributes and type pairs are cleaned and capped correctly.",
-   "loc": 207
+   "loc": 207,
+   "exports": [
+    "test_normalize_string_attribute L15",
+    "test_preserve_valid_dictionary_attribute L23",
+    "test_reject_unusable_attribute_shapes L29",
+    "test_attribute_list_is_non_empty_and_capped_for_zep L34",
+    "test_generator_normalizes_entity_and_edge_attributes L50",
+    "test_generator_adds_a_property_to_empty_custom_types L68",
+    "test_graph_builder_safety_net_accepts_strings_and_skips_invalid_values L78",
+    "test_graph_builder_emits_a_pinned_zep_sdk_compatible_schema L102",
+    "test_graph_builder_passes_an_empty_entity_mapping_for_edge_only_ontology L150",
+    "test_graph_builder_deduplicates_and_caps_edge_source_targets_for_zep L174",
+    "test_generator_ignores_invalid_entries_and_normalizes_edge_names L209",
+    "test_generator_caps_after_discarding_invalid_edge_endpoints L240"
+   ]
   },
   {
    "p": "backend/tests/test_ontology_generator.py",
    "n": "tests",
    "name": "Ontology generator tests",
    "d": "Checks long documents are sampled sensibly before being sent to the LLM.",
-   "loc": 58
+   "loc": 58,
+   "exports": [
+    "RecordingLLMClient L4",
+    "_generator_for_test L17",
+    "test_short_ontology_context_keeps_original_text L27",
+    "test_long_ontology_context_samples_across_document L36",
+    "test_very_long_ontology_context_selects_representative_chunks L52",
+    "test_ontology_generation_does_not_cap_structured_output_tokens L68"
+   ]
   },
   {
    "p": "backend/tests/test_openai_chat_compat.py",
    "n": "tests",
    "name": "Model compat tests",
    "d": "Checks GPT-5 and older models get correctly shaped requests.",
-   "loc": 99
+   "loc": 99,
+   "exports": [
+    "CompletionRecorder L12",
+    "client_for L25",
+    "test_gpt5_uses_completion_token_limit_without_temperature L29",
+    "test_legacy_model_preserves_original_request_shape L53",
+    "test_provider_error_is_propagated_without_guessing_or_retrying L77",
+    "test_gpt5_family_detection L103",
+    "test_extracts_text_from_supported_content_shapes L107"
+   ]
   },
   {
    "p": "backend/tests/test_platform_profiles.py",
    "n": "tests",
    "name": "Platform persona tests",
    "d": "Checks the right Twitter or Reddit persona file is served for each simulation.",
-   "loc": 39
+   "loc": 39,
+   "exports": [
+    "_manager L9",
+    "test_twitter_default_reads_generated_csv L23",
+    "test_reddit_default_preserves_json_behavior L33",
+    "test_explicit_platform_overrides_dual_platform_default L41",
+    "test_invalid_platform_is_rejected L51"
+   ]
   },
   {
    "p": "backend/tests/test_profile_field_normalization.py",
    "n": "tests",
    "name": "Persona field tests",
    "d": "Checks messy LLM persona fields are normalised into clean text and lists.",
-   "loc": 63
+   "loc": 63,
+   "exports": [
+    "test_text_coercion_handles_none_nested_objects_and_lists L12",
+    "test_list_coercion_flattens_nested_values_and_drops_missing_items L19",
+    "test_profile_construction_is_the_single_normalization_boundary L26",
+    "test_normalized_profile_serializes_to_twitter_and_reddit L50"
+   ]
   },
   {
    "p": "backend/tests/test_report_tool_result_sanitizer.py",
    "n": "tests",
    "name": "Report sanitizer tests",
    "d": "Checks fake tool results invented by the model are stripped from report text.",
-   "loc": 22
+   "loc": 22,
+   "exports": [
+    "test_strip_fake_tool_results L21",
+    "test_preserves_legitimate_text_without_tool_result_tags L25"
+   ]
   },
   {
    "p": "backend/tests/test_simulation_prepare_failure.py",
    "n": "tests",
    "name": "Preparation failure tests",
    "d": "Checks failed simulation preparation is saved and shown to the frontend.",
-   "loc": 87
+   "loc": 87,
+   "exports": [
+    "_write_failed_state L16",
+    "test_realtime_endpoints_expose_terminal_failure L34",
+    "test_zero_entities_persists_failed_state_and_raises L62"
+   ]
   },
   {
    "p": "backend/tests/test_zep_cloud_contracts.py",
    "n": "tests",
    "name": "Zep contract tests",
    "d": "Checks search limits, edge reading and error handling against the Zep Cloud SDK.",
-   "loc": 413
+   "loc": 413,
+   "exports": [
+    "test_report_search_caps_the_query_sent_to_zep L16",
+    "test_profile_context_search_caps_both_queries_sent_to_zep L34",
+    "test_entity_context_includes_incoming_edges_from_the_full_graph L59",
+    "test_entity_reader_does_not_turn_auth_failure_into_missing_entity L123",
+    "test_entity_reader_does_not_turn_edge_failure_into_empty_data L138",
+    "test_report_tools_do_not_turn_zep_read_failures_into_empty_data L155",
+    "test_episode_processing_timeout_fails_instead_of_reporting_success L174",
+    "test_document_ingestion_uses_current_batch_api_and_persists_identity L192",
+    "test_graph_create_persists_identity_before_post_and_reconciles_timeout L237",
+    "test_batch_create_timeout_is_reconciled_by_operation_metadata L266",
+    "test_batch_add_timeout_recovers_a_fully_accepted_group_without_replay L312",
+    "test_batch_wait_validates_terminal_items_and_opaque_zero_cursor L352"
+   ]
   },
   {
    "p": "backend/tests/test_zep_cloud_validation_script.py",
    "n": "tests",
    "name": "Zep script tests",
    "d": "Checks the live Zep validation script keeps the right key and cleans up graphs safely.",
-   "loc": 90
+   "loc": 90,
+   "exports": [
+    "test_validation_script_preserves_the_process_key_across_app_config_import L9",
+    "test_validation_cleanup_retains_graph_when_updater_cannot_drain L48",
+    "test_validation_cleanup_deletes_graph_after_confirmed_drain L83"
+   ]
   },
   {
    "p": "backend/tests/test_zep_edge_paging.py",
    "n": "tests",
    "name": "Graph paging tests",
    "d": "Checks edge pagination follows cursors, respects caps and detects repeated pages.",
-   "loc": 84
+   "loc": 84,
+   "exports": [
+    "_client L6",
+    "test_edge_cap_stops_pagination_at_requested_limit L18",
+    "test_existing_positional_retry_arguments_keep_their_meaning L44",
+    "test_pagination_uses_the_current_opaque_response_cursor L60",
+    "test_pagination_fails_if_the_service_repeats_a_cursor L95"
+   ]
   },
   {
    "p": "backend/tests/test_zep_entity_reader_edges.py",
    "n": "tests",
    "name": "Entity edge tests",
    "d": "Checks the entity reader uses the supported Zep method for node edges.",
-   "loc": 34
+   "loc": 34,
+   "exports": [
+    "test_pinned_zep_sdk_exposes_get_edges_not_get_entity_edges L7",
+    "test_get_node_edges_uses_the_supported_sdk_method L12"
+   ]
   },
   {
    "p": "backend/tests/test_zep_graph_lifecycle.py",
    "n": "tests",
    "name": "Graph lifecycle tests",
    "d": "Checks graph reset, delete and rebuild are blocked or reused correctly while in use.",
-   "loc": 351
+   "loc": 351,
+   "exports": [
+    "_project L14",
+    "_json_result L30",
+    "test_project_reset_deletes_the_cloud_graph_before_clearing_reference L38",
+    "test_project_reset_refuses_a_graph_with_an_active_simulation L73",
+    "test_graph_delete_cannot_discard_an_updater_during_finalization L95",
+    "test_repeated_build_request_reuses_the_existing_task L119",
+    "test_stale_build_after_restart_is_recoverable_instead_of_reused L150",
+    "test_stale_build_resumes_a_persisted_processing_batch L186",
+    "test_project_delete_removes_cloud_graph_before_local_files L247",
+    "test_completed_build_request_is_idempotent_without_force L288",
+    "test_force_must_be_a_json_boolean L310",
+    "test_graph_reset_and_memory_start_cannot_cross_between_delete_and_clear L331"
+   ]
   },
   {
    "p": "backend/tests/test_zep_graph_memory_updater.py",
    "n": "tests",
    "name": "Memory updater tests",
    "d": "Checks agent activity is written to the graph safely and failures are reported.",
-   "loc": 187
+   "loc": 187,
+   "exports": [
+    "_activity L15",
+    "_client L27",
+    "_updater L38",
+    "test_stop_drains_an_immediately_queued_tail_activity L50",
+    "test_network_write_happens_outside_the_buffer_lock L66",
+    "test_activity_episode_has_provenance_time_and_a_safe_size L86",
+    "test_failed_non_idempotent_write_is_reported_by_stop L109",
+    "test_failed_simulation_action_is_not_ingested L123",
+    "test_stop_cannot_finish_between_acceptance_check_and_enqueue L144",
+    "test_pending_episode_wait_has_a_deadline L180",
+    "test_explicit_graph_destruction_can_discard_a_stopped_failed_updater L198",
+    "test_flush_deadline_keeps_unattempted_platform_for_a_safe_retry L212"
+   ]
   },
   {
    "p": "backend/tests/test_zep_report_barrier.py",
    "n": "tests",
    "name": "Report wait tests",
    "d": "Checks reports wait for graph ingestion to finish and never use stale data.",
-   "loc": 266
+   "loc": 266,
+   "exports": [
+    "_json_result L18",
+    "test_report_generation_waits_for_zep_ingestion L26",
+    "test_active_rerun_does_not_return_a_stale_completed_report L67",
+    "test_failed_ingestion_cannot_generate_a_report_after_restart L113",
+    "test_report_reader_lease_blocks_graph_start_and_delete L149"
+   ]
   },
   {
    "p": "backend/tests/test_zep_retry_and_client.py",
    "n": "tests",
    "name": "Zep retry tests",
    "d": "Checks permanent Zep errors fail fast and rate limits are retried politely.",
-   "loc": 82
+   "loc": 82,
+   "exports": [
+    "test_permanent_zep_errors_fail_without_retry L10",
+    "test_rate_limit_retry_respects_retry_after L27",
+    "test_zep_client_is_shared_and_uses_an_explicit_timeout L52",
+    "test_zep_client_rejects_self_hosted_endpoint_override L75",
+    "test_zep_client_uses_internal_timeout_and_ignores_env_overrides L82",
+    "test_zep_timeout_policy_is_not_exposed_in_env_example L107"
+   ]
   },
   {
    "p": "backend/tests/test_zep_simulation_barrier.py",
    "n": "tests",
    "name": "Simulation wait tests",
    "d": "Checks a simulation is not marked finished until its graph memory writes complete.",
-   "loc": 432
+   "loc": 432,
+   "exports": [
+    "test_manual_stop_surfaces_graph_ingestion_failure L18",
+    "test_platform_completion_does_not_publish_terminal_success_before_barrier L58",
+    "test_manual_stop_timeout_leaves_monitor_owned_state_stopping L82",
+    "test_failed_ingestion_finalization_can_be_retried L118",
+    "test_stop_api_keeps_pending_finalization_out_of_failed_state L156",
+    "test_simulation_start_rejects_string_booleans L195",
+    "test_force_restart_does_not_continue_while_old_ingestion_is_pending L208",
+    "test_monitor_start_failure_terminates_the_spawned_process L273",
+    "test_shutdown_terminates_producer_before_tail_read_and_updater_drain L339",
+    "test_shutdown_drain_failure_remains_failed_and_retryable L428"
+   ]
   },
   {
    "p": "frontend/src/App.vue",
@@ -651,7 +1073,14 @@
    "n": "web.client",
    "name": "Graph API calls",
    "d": "Frontend calls for uploading documents, building the graph, checking progress and fetching graph data.",
-   "loc": 61
+   "loc": 61,
+   "exports": [
+    "generateOntology L8",
+    "buildGraph L24",
+    "getTaskStatus L37",
+    "getGraphData L49",
+    "getProject L61"
+   ]
   },
   {
    "p": "frontend/src/api/index.js",
@@ -665,14 +1094,36 @@
    "n": "web.client",
    "name": "Report API calls",
    "d": "Frontend calls for starting reports, reading report logs and content, and chatting with the report agent.",
-   "loc": 45
+   "loc": 45,
+   "exports": [
+    "generateReport L7",
+    "getReportStatus L15",
+    "getAgentLog L24",
+    "getConsoleLog L33",
+    "getReport L41",
+    "chatWithReport L49"
+   ]
   },
   {
    "p": "frontend/src/api/simulation.js",
    "n": "web.client",
    "name": "Simulation API calls",
    "d": "Frontend calls for creating, preparing, running and stopping simulations, reading results and interviewing agents.",
-   "loc": 167
+   "loc": 167,
+   "exports": [
+    "createSimulation L7",
+    "prepareSimulation L15",
+    "getPrepareStatus L23",
+    "getSimulation L31",
+    "getSimulationProfiles L40",
+    "getSimulationProfilesRealtime L50",
+    "getSimulationConfig L59",
+    "getSimulationConfigRealtime L68",
+    "listSimulations L76",
+    "startSimulation L85",
+    "stopSimulation L93",
+    "getRunStatus L101"
+   ]
   },
   {
    "p": "frontend/src/components/GraphPanel.vue",
@@ -756,7 +1207,12 @@
    "n": "web",
    "name": "Upload hand-off",
    "d": "Temporarily holds chosen files and the prediction question while moving from home to the process screen.",
-   "loc": 28
+   "loc": 28,
+   "exports": [
+    "setPendingUpload L13",
+    "getPendingUpload L19",
+    "clearPendingUpload L27"
+   ]
   },
   {
    "p": "frontend/src/views/Home.vue",
@@ -819,28 +1275,67 @@
    "n": "upkeep",
    "name": "Star count fetcher",
    "d": "Repo maintenance: fetches the GitHub star count for the README chart; not part of the product.",
-   "loc": 117
+   "loc": 117,
+   "exports": [
+    "FetchError L25",
+    "NoRedirectHandler L29",
+    "_build_opener L36",
+    "_status_error L40",
+    "_read_response L56",
+    "fetch_star_count L72",
+    "main L126"
+   ]
   },
   {
    "p": "scripts/star_history.py",
    "n": "upkeep",
    "name": "Star history chart",
    "d": "Repo maintenance: records star counts and renders the README star-history chart; not part of the product.",
-   "loc": 1335
+   "loc": 1335,
+   "exports": [
+    "StarHistoryError L151",
+    "StargazerEdge L156",
+    "StargazerPage L162",
+    "Result L171",
+    "Clock L177",
+    "GitHubGateway L181",
+    "CommandRunner L185",
+    "SystemClock L189",
+    "SubprocessCommandRunner L194",
+    "GhGraphQLGateway L211",
+    "_strict_non_negative_int L301",
+    "_parse_github_timestamp L307"
+   ]
   },
   {
    "p": "tests/test_local_star_count_fetch.py",
    "n": "upkeep",
    "name": "Star fetch tests",
    "d": "Tests the star count fetcher's output and error handling.",
-   "loc": 296
+   "loc": 296,
+   "exports": [
+    "RecordingHandler L18",
+    "LocalHttpServer L37",
+    "FetchStarCountTests L65"
+   ]
   },
   {
    "p": "tests/test_local_star_history.py",
    "n": "upkeep",
    "name": "Star chart tests",
    "d": "Tests the star-history backfill, paging and chart rendering.",
-   "loc": 876
+   "loc": 876,
+   "exports": [
+    "FixedClock L23",
+    "FakeGitHub L33",
+    "FakeRunner L43",
+    "edge L53",
+    "page L60",
+    "state_with_snapshots L70",
+    "seed_workspace L85",
+    "StarHistoryBehaviorTests L97",
+    "GitHubAdapterTests L867"
+   ]
   }
  ],
  "links": [
@@ -2558,7 +3053,8 @@
       "file": "backend/app/__init__.py",
       "line": 43
      }
-    ]
+    ],
+    "excerpt": " 33     is_reloader_process = os.environ.get('WERKZEUG_RUN_MAIN') == 'true'\n 34     debug_mode = app.config.get('DEBUG', False)\n 35     should_log_startup = not debug_mode or is_reloader_process\n 36\n 37     if should_log_startup:\n 38         logger.info(\"=\" * 50)\n 39         logger.info(\"MiroFish Backend 启动中...\")\n 40         logger.info(\"=\" * 50)\n 41\n 42     # 启用CORS\n>43     CORS(app, resources={r\"/api/*\": {\"origins\": \"*\"}})\n 44\n 45     # 注册模拟进程清理函数（确保服务器关闭时终止所有模拟进程）\n 46     from .services.simulation_runner import SimulationRunner\n 47     SimulationRunner.register_cleanup()\n 48     if should_log_startup:\n 49         logger.info(\"已注册模拟进程清理函数\")\n 50\n 51     # 请求日志中间件\n 52     @app.before_request\n 53     def log_request():"
    },
    {
     "id": "traceback-leak",
@@ -2571,7 +3067,8 @@
       "file": "backend/app/api/simulation.py",
       "line": 119
      }
-    ]
+    ],
+    "excerpt": " 109         return jsonify({\n 110             \"success\": True,\n 111             \"data\": result.to_dict()\n 112         })\n 113\n 114     except Exception as e:\n 115         logger.error(f\"获取图谱实体失败: {str(e)}\")\n 116         return jsonify({\n 117             \"success\": False,\n 118             \"error\": str(e),\n>119             \"traceback\": traceback.format_exc()\n 120         }), 500\n 121\n 122\n 123 @simulation_bp.route('/entities/<graph_id>/<entity_uuid>', methods=['GET'])\n 124 def get_entity_detail(graph_id: str, entity_uuid: str):\n 125     \"\"\"获取单个实体的详细信息\"\"\"\n 126     try:\n 127         if not Config.ZEP_API_KEY:\n 128             return jsonify({\n 129                 \"success\": False,"
    },
    {
     "id": "unbounded-profile-threads",
@@ -2584,7 +3081,8 @@
       "file": "backend/app/api/simulation.py",
       "line": 499
      }
-    ]
+    ],
+    "excerpt": " 489             return jsonify({\n 490                 \"success\": False,\n 491                 \"error\": t('api.projectMissingRequirement')\n 492             }), 400\n 493\n 494         # 获取文档文本\n 495         document_text = ProjectManager.get_extracted_text(state.project_id) or \"\"\n 496\n 497         entity_types_list = data.get('entity_types')\n 498         use_llm_for_profiles = data.get('use_llm_for_profiles', True)\n>499         parallel_profile_count = data.get('parallel_profile_count', 5)\n 500\n 501         # ========== 同步获取实体数量（在后台任务启动前） ==========\n 502         # 这样前端在调用prepare后立即就能获取到预期Agent总数\n 503         try:\n 504             logger.info(f\"同步获取实体数量: graph_id={state.graph_id}\")\n 505             reader = ZepEntityReader()\n 506             # 快速读取实体（不需要边信息，只统计数量）\n 507             filtered_preview = reader.filter_defined_entities(\n 508                 graph_id=state.graph_id,\n 509                 defined_entity_types=entity_types_list,"
    },
    {
     "id": "default-secret-key",
@@ -2597,7 +3095,8 @@
       "file": "backend/app/config.py",
       "line": 21
      }
-    ]
+    ],
+    "excerpt": " 11     load_dotenv(project_root_env, override=True)\n 12 else:\n 13     # 如果根目录没有 .env，尝试加载环境变量（用于生产环境）\n 14     load_dotenv(override=True)\n 15\n 16\n 17 class Config:\n 18     \"\"\"Flask配置类\"\"\"\n 19\n 20     # Flask配置\n>21     SECRET_KEY = os.environ.get('SECRET_KEY', 'mirofish-secret-key')\n 22     DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'\n 23\n 24     # JSON配置 - 禁用ASCII转义，让中文直接显示\n 25     JSON_AS_ASCII = False\n 26\n 27     # LLM配置（统一使用OpenAI格式）\n 28     LLM_API_KEY = os.environ.get('LLM_API_KEY')\n 29     LLM_BASE_URL = os.environ.get('LLM_BASE_URL', 'https://api.openai.com/v1')\n 30     LLM_MODEL_NAME = os.environ.get('LLM_MODEL_NAME', 'gpt-4o-mini')\n 31"
    },
    {
     "id": "tasks-never-cleaned",
@@ -2610,7 +3109,8 @@
       "file": "backend/app/models/task.py",
       "line": 174
      }
-    ]
+    ],
+    "excerpt": " 164         )\n 165\n 166     def list_tasks(self, task_type: Optional[str] = None) -> list:\n 167         \"\"\"列出任务\"\"\"\n 168         with self._task_lock:\n 169             tasks = list(self._tasks.values())\n 170             if task_type:\n 171                 tasks = [t for t in tasks if t.task_type == task_type]\n 172             return [t.to_dict() for t in sorted(tasks, key=lambda x: x.created_at, reverse=True)]\n 173\n>174     def cleanup_old_tasks(self, max_age_hours: int = 24):\n 175         \"\"\"清理旧任务\"\"\"\n 176         from datetime import timedelta\n 177         cutoff = datetime.now() - timedelta(hours=max_age_hours)\n 178\n 179         with self._task_lock:\n 180             old_ids = [\n 181                 tid for tid, task in self._tasks.items()\n 182                 if task.created_at < cutoff and task.status in [TaskStatus.COMPLETED, TaskStatus.FAILED]\n 183             ]\n 184             for tid in old_ids:"
    },
    {
     "id": "report-status-method-mismatch",
@@ -2623,7 +3123,8 @@
       "file": "frontend/src/api/report.js",
       "line": 16
      }
-    ]
+    ],
+    "excerpt": "  6  */\n  7 export const generateReport = (data) => {\n  8   return service.post('/api/report/generate', data)\n  9 }\n 10\n 11 /**\n 12  * 获取报告生成状态\n 13  * @param {string} reportId\n 14  */\n 15 export const getReportStatus = (reportId) => {\n>16   return service.get(`/api/report/generate/status`, { params: { report_id: reportId } })\n 17 }\n 18\n 19 /**\n 20  * 获取 Agent 日志（增量）\n 21  * @param {string} reportId\n 22  * @param {number} fromLine - 从第几行开始获取\n 23  */\n 24 export const getAgentLog = (reportId, fromLine = 0) => {\n 25   return service.get(`/api/report/${reportId}/agent-log`, { params: { from_line: fromLine } })\n 26 }"
    }
   ]
  }
