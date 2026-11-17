@@ -28,7 +28,12 @@ import { createLimiter } from './rate-limit.js';
  */
 
 export const MODEL_API_BASE = 'https://api.meta.ai/v1';
-const DEFAULT_MODEL = 'muse-spark-1.3';
+/**
+ * Muse Ember answers a robot's question in about 1.2 s (median of 8 at the
+ * server, 16 Nov 2026) against 4.2 s for muse-spark-1.3, and moved, left and
+ * played flows as reliably in the same trials. MODEL_NAME overrides it.
+ */
+const DEFAULT_MODEL = 'muse-ember-1.0';
 const UPSTREAM_TIMEOUT_MS = 14_000;
 /** A spoken answer shorter than this, with nowhere to go, is treated as unfinished. */
 const THIN_ANSWER = 90;

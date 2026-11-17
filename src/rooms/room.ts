@@ -758,7 +758,7 @@ export class RoomSystem extends createSystem({
         if (!w || this.waiting || this.isEcho(text)) return;
         // The visitor is cutting in: stop talking and listen.
         if (w.mood === 'talking') {
-          if (text.trim().split(/s+/).length < 2) return;
+          if (text.trim().split(/\s+/).length < 2) return;
           this.interrupt(w);
         }
         w.bubble.setText(text, 'YOU');

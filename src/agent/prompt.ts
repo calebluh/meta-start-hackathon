@@ -256,6 +256,9 @@ function promiseAt(answer: string): number {
   return -1;
 }
 
+/** The robot says it will play a flow: "I'll run the whole ...", "I'll walk you through ...". */
+const FLOW_PROMISE = /\b(?:I|we)(?:'|’)?ll (?:run|roll|play|start|walk|show you|take you through)\b/i;
+
 /** The one flow a lower-case question names, if any. */
 function flowNamed(graph: GraphData, question: string): string | null {
   const said = /\b(flow|play)\b/.test(question);
@@ -286,7 +289,9 @@ export function plainRequest(graph: GraphData, nodeId: string, question: string,
   if (asksToLeave(question)) return { type: 'back_to_city' };
   const q = question.toLowerCase();
   if (WATCH.test(q)) {
-    const flowId = flowNamed(graph, q);
+    // "Show me the whole simulation" names a flow only in part; a robot that
+    // answers "I'll walk you through the simulation run" names the rest.
+    const flowId = flowNamed(graph, q) ?? (promiseAt(answer) >= 0 || FLOW_PROMISE.test(answer) ? flowNamed(graph, `${q} ${answer.toLowerCase()}`) : null);
     if (flowId) return { type: 'play_flow', flowId };
   }
   const promise = promiseAt(answer);
@@ -347,7 +352,7 @@ export function validateActions(
       const file = graph.files.find((f) => f.p === args.path && f.n === nodeId);
       if (file && !actions.some((a) => a.type === 'show_file')) actions.push({ type: 'show_file', path: file.p });
     } else if (name === 'add_note') {
-      const text = typeof args.text === 'string' ? args.text.replace(/s+/g, ' ').trim().slice(0, 300) : '';
+      const text = typeof args.text === 'string' ? args.text.replace(/\s+/g, ' ').trim().slice(0, 300) : '';
       if (text && !actions.some((a) => a.type === 'add_note')) actions.push({ type: 'add_note', text });
     } else if (name === 'back_to_city') {
       actions.push({ type: 'back_to_city' });
