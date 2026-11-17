@@ -3,7 +3,9 @@ import { canRecord } from './agent/recorder.js';
 import { unlock } from './audio/sound.js';
 import { anchorsWanted } from './desk-anchor.js';
 import { HACKATHON } from './edition.js';
-import { buildRepoCity } from './maps/repo.js';
+import { MAPS } from './maps/index.js';
+import { buildRepoCity, restoreRepoMap } from './maps/repo.js';
+import type { GraphData } from './maps/types.js';
 import { chooseDemo } from './state.js';
 
 /**
@@ -162,14 +164,32 @@ function setupRepoForm(): void {
       say(result.error, 'bad');
       return;
     }
-    const parts = result.graph.nodes.filter((n) => n.kind !== 'external').length;
-    chooseDemo(result.id);
-    // A reload, or this link shared, opens the same city (kept in this browser).
-    const url = new URL(location.href);
-    url.searchParams.set('map', result.id);
-    history.replaceState(null, '', url);
-    say(`${result.graph.project.name} is ready: ${parts} buildings. Press Enter VR or Mixed reality to step inside.`, 'ok');
+    ready(result.id, result.graph);
   };
+  const ready = (id: string, graph: GraphData) => {
+    const parts = graph.nodes.filter((n) => n.kind !== 'external').length;
+    chooseDemo(id);
+    // The address now names the repository: a reload, or the link shared
+    // with anyone, opens the same city (rebuilt, or kept in this browser).
+    const url = new URL(location.href);
+    url.searchParams.delete('map');
+    const repo = graph.source?.repo?.replace(/^github\.com\//, '');
+    if (repo) url.searchParams.set('repo', repo);
+    history.replaceState(null, '', url);
+    say(`${graph.project.name} is ready: ${parts} buildings. Press Enter VR or Mixed reality to step inside.`, 'ok');
+  };
+  // A link with ?repo=owner/name opens that repository's city straight away.
+  const asked = new URLSearchParams(location.search).get('repo')?.trim();
+  if (asked) {
+    input.value = asked;
+    const kept = restoreRepoMap();
+    const keptGraph = kept ? MAPS[kept] : undefined;
+    if (kept && keptGraph && keptGraph.source?.repo?.toLowerCase() === `github.com/${asked.replace(/^https?:\/\/(www\.)?github\.com\//, '').replace(/\/+$/, '')}`.toLowerCase()) {
+      ready(kept, keptGraph);
+    } else {
+      void build(asked);
+    }
+  }
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     void build(input.value);
