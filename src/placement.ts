@@ -19,6 +19,7 @@ export const placement: {
   mixed: boolean;
   onTable: boolean;
   recentre: () => void;
+  returnToTable: () => void;
 } = {
   ...NEAR,
   gaze: false,
@@ -28,6 +29,13 @@ export const placement: {
   onTable: false,
   /** Puts the desk back in front of the viewer (set by WorkspaceSystem; does nothing outside VR). */
   recentre: () => undefined,
+  /**
+   * Back from a room: the desk goes back where the visitor had put it (on
+   * their real table, or wherever they dragged it), unless they have turned
+   * away from it in the room; then it comes round in front of them.
+   * (Set by WorkspaceSystem; does nothing outside VR.)
+   */
+  returnToTable: () => undefined,
 };
 
 /** How a button is pressed: tapped with a fingertip by hand, pinched where the eyes do the aiming. */

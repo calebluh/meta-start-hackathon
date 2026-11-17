@@ -1254,9 +1254,9 @@ export class DioramaSystem extends createSystem({
   private updateDive(delta: number): void {
     if (this.surfaceFrom && !dive.roomShown) {
       // The room is gone behind the dark: start huge and shrink to the desk.
-      // The visitor may have turned around inside the room, so the desk
-      // comes back in front of them first, unseen.
-      placement.recentre();
+      // The desk goes back where the visitor had it (their real table, or
+      // where they dragged it), or comes round if they turned away, unseen.
+      placement.returnToTable();
       const from = this.surfaceFrom;
       this.surfaceFrom = null;
       this.root.object3D!.visible = true;

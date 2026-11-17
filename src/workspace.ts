@@ -21,7 +21,7 @@ import { guideNote } from './guide.js';
 import { inPassthrough } from './passthrough.js';
 import { FAR, NEAR, placement } from './placement.js';
 import { setPanelsWithinReach } from './reach.js';
-import { app } from './state.js';
+import { app, onChange } from './state.js';
 import { dive } from './transition.js';
 
 /** Frames to wait after entering VR so the headset pose has settled. */
@@ -52,6 +52,13 @@ const FOOT_FRONT = 0.3;
 const TABLE_SQUARE = 0.52;
 /** Dragging the bar this close to the table top keeps the city on the table. */
 const TABLE_STICK = 0.12;
+/**
+ * Back from a room, the desk returns to its spot if that spot is still in
+ * front of the visitor (cosine of the angle off straight ahead, about 55
+ * degrees) and within this many metres of the head; otherwise it comes round.
+ */
+const RETURN_FACING = 0.57;
+const RETURN_REACH = 1.4;
 /** Surfaces the headset has named that are not for standing a city on. */
 const NOT_TABLES = new Set(['floor', 'ceiling', 'couch', 'bed', 'wall', 'wall face', 'door', 'door frame', 'window', 'window frame', 'screen', 'lamp', 'plant']);
 
@@ -109,6 +116,9 @@ export class WorkspaceSystem extends createSystem({}) {
   /** Height of the real table the city stands on, and which way its edges run. */
   private tableY = 0;
   private tableAxis = 0;
+  /** Where the desk stood when the visitor stepped into a room. */
+  private saved: { position: Vector3; yaw: number; onTable: boolean; axis: number; tableY: number } | null = null;
+  private lastMode: 'table' | 'room' = 'table';
   private planeMatrix = new Matrix4();
   private planeInverse = new Matrix4();
   private spot = new Vector3();
@@ -153,7 +163,22 @@ export class WorkspaceSystem extends createSystem({}) {
     placement.recentre = () => {
       if (this.immersive) this.placeInFrontOfHead();
     };
-    this.cleanupFuncs.push(() => (placement.recentre = () => undefined));
+    placement.returnToTable = () => {
+      if (this.immersive) this.returnToTable();
+    };
+    this.cleanupFuncs.push(() => {
+      placement.recentre = () => undefined;
+      placement.returnToTable = () => undefined;
+    });
+    // Stepping into a room: remember where the desk was, to put it back after.
+    this.cleanupFuncs.push(
+      onChange(() => {
+        if (app.mode === 'room' && this.lastMode === 'table' && this.immersive && this.workspace) {
+          this.saved = { position: this.workspace.position.clone(), yaw: this.workspace.rotation.y, onTable: placement.onTable, axis: this.tableAxis, tableY: this.tableY };
+        }
+        this.lastMode = app.mode;
+      }),
+    );
     this.floor = this.world.getSceneObject('floor');
 
     const recenter = this.world.getSceneObject<UIKitMLAsset>('controls-panel')?.getElementById('btn-recenter');
@@ -252,8 +277,45 @@ export class WorkspaceSystem extends createSystem({}) {
     object.rotation.set(0, this.workspace.rotation.y, 0);
   }
 
+  /**
+   * Back from a room. The desk returns to where it stood before, so a city
+   * set on the real table, or dragged to a spot, stays there. Only if the
+   * visitor has turned away from that spot (or it is out of reach) does the
+   * desk come round in front of them instead.
+   */
+  private returnToTable(): void {
+    const saved = this.saved;
+    this.saved = null;
+    if (!saved || !this.workspace) {
+      this.placeInFrontOfHead();
+      return;
+    }
+    this.player.head.getWorldPosition(this.head);
+    this.player.head.getWorldQuaternion(this.headQuat);
+    this.euler.setFromQuaternion(this.headQuat, 'YXZ');
+    this.forward.set(-Math.sin(this.euler.y), 0, -Math.cos(this.euler.y));
+    this.offset.set(saved.position.x - this.head.x, 0, saved.position.z - this.head.z);
+    const distance = this.offset.length();
+    const facing = distance > 1e-3 ? this.offset.dot(this.forward) / distance : 1;
+    // On a real table the city stays even if the visitor looks away: the table is where it belongs.
+    const fits = saved.onTable || (facing > RETURN_FACING && distance < RETURN_REACH);
+    if (import.meta.env.DEV) console.log(`[table] back from a room: ${fits ? 'desk stays where it was' : 'desk comes round'} (facing ${facing.toFixed(2)}, ${distance.toFixed(2)} m)`);
+    if (!fits) {
+      this.placeInFrontOfHead();
+      return;
+    }
+    this.workspace.position.copy(saved.position);
+    this.workspace.rotation.set(0, saved.yaw, 0);
+    placement.onTable = saved.onTable;
+    this.tableAxis = saved.axis;
+    this.tableY = saved.tableY;
+    this.tableSearch = 0;
+  }
+
   private placeInFrontOfHead(): void {
     if (!this.workspace) return;
+    // Recentred on purpose (inside a room too): that is where the desk goes now.
+    this.saved = null;
     // A session that was granted gaze tracking is running on glasses.
     const gaze = this.world.session?.enabledFeatures?.includes('gaze-tracking') ?? false;
     const { reach, drop } = gaze ? FAR : NEAR;

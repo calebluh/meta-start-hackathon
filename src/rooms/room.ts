@@ -736,11 +736,20 @@ export class RoomSystem extends createSystem({
     this.askPanel = panel;
     if (!panel) return;
     this.showAskPanel(false);
-    const on = (id: string, handler: () => void) => {
+    // A pinch or a fingertip tap can land twice in a moment: a repeat inside
+    // `quiet` is ignored, so Quiz me and the mic do not switch on and straight off.
+    const on = (id: string, handler: () => void, quiet = 450) => {
       const el = panel.getElementById(id);
       if (!el) return;
-      el.addEventListener('click', handler);
-      this.cleanupFuncs.push(() => el.removeEventListener('click', handler));
+      let last = -Infinity;
+      const once = () => {
+        const now = performance.now();
+        if (now - last < quiet) return;
+        last = now;
+        handler();
+      };
+      el.addEventListener('click', once);
+      this.cleanupFuncs.push(() => el.removeEventListener('click', once));
     };
     for (let i = 0; i < 4; i += 1) on(`q-${i}`, () => {
       click();
@@ -751,9 +760,9 @@ export class RoomSystem extends createSystem({
       click();
       if (this.quiz) this.stopQuiz();
       else this.startQuiz();
-    });
+    }, 900);
     on('btn-done', () => this.endConversation());
-    on('btn-mic', () => this.toggleMic());
+    on('btn-mic', () => this.toggleMic(), 900);
     on('btn-expand', () => {
       click();
       this.askOpen = !this.askOpen;
@@ -1043,6 +1052,14 @@ export class RoomSystem extends createSystem({
       return;
     }
     if (quiz.marking || this.waiting || !this.builtNode) return;
+    // One of the three answers, said aloud, comes first: an answer can hold
+    // words that sound like "stop" ("...change plan or cancel").
+    const question = quiz.questions[quiz.index];
+    const picked = heardAnswer(quiz.order.map((i) => question.answers[i]), text);
+    if (picked !== null) {
+      this.answerQuiz(picked);
+      return;
+    }
     if (asksToStopQuiz(text)) {
       this.stopQuiz();
       return;
@@ -1053,10 +1070,7 @@ export class RoomSystem extends createSystem({
       void this.askQuestion(text);
       return;
     }
-    const question = quiz.questions[quiz.index];
-    const picked = heardAnswer(quiz.order.map((i) => question.answers[i]), text);
-    if (picked !== null) this.answerQuiz(picked);
-    else void this.markSpokenAnswer(text);
+    void this.markSpokenAnswer(text);
   }
 
   /** The worker tests the visitor on its own room: a few questions, three answers each. */

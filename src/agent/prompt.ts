@@ -181,12 +181,22 @@ const LEAVE_PATTERNS = [
   /\bback to (the |my )?(city|desk|diorama)\b/i,
   // "go back to the table", as a request and not in the middle of a question
   /(^|[.,!?] ?)(please |ok(ay)?,? |thanks,? )*(go|head) back to (the |my )?(city|table|desk|map)\b/i,
-  // "I'd like to leave", "can we go back", "let's step out"
-  /\b(i'?d like to|i would like to|i want to|can i|can we|let'?s|let me|i'?ll|time to) (leave|exit|go back|head back|step out)\b/i,
+  // "I'd like to leave", "can we go back out", "let's step out": only when
+  // nothing follows but the place itself or a "now" or "please". "Can I leave
+  // a tip?", "let me go back a step" and "can we go back to what you said"
+  // are not asking to leave.
+  /\b(i'?d like to|i would like to|i want to|can i|can we|let'?s|let me|i'?ll|time to) (leave|exit|step out|go (back )?out(side)?|head (back )?out(side)?)( (this|the) (room|building|place))?( (now|here|please))*( |,)*([.!?]|$)/i,
   // "leave this room", as a request
   /(^|[.,!?] ?)(please |ok(ay)?,? |thanks,? )*(leave|exit) (this|the) (room|building)\b/i,
 ];
 export const asksToLeave = (question: string): boolean => LEAVE_PATTERNS.some((p) => p.test(question));
+
+/**
+ * The visitor asked to be taken somewhere or shown something, rather than
+ * asked a question: the robot answers "On it", not "Let me check the
+ * ledger". The same tests the server uses to act on such a request.
+ */
+export const asksToGo = (question: string): boolean => asksToLeave(question) || GO_PLAIN.test(question) || WATCH.test(question);
 
 /** Words that do not tell one room or flow from another. */
 const SMALL_WORDS = new Set(['the', 'and', 'for', 'with', 'from', 'into', 'this', 'that', 'your', 'room']);
@@ -291,7 +301,15 @@ export function plainRequest(graph: GraphData, nodeId: string, question: string,
   if (WATCH.test(q)) {
     // "Show me the whole simulation" names a flow only in part; a robot that
     // answers "I'll walk you through the simulation run" names the rest.
-    const flowId = flowNamed(graph, q) ?? (promiseAt(answer) >= 0 || FLOW_PROMISE.test(answer) ? flowNamed(graph, `${q} ${answer.toLowerCase()}`) : null);
+    let flowId = flowNamed(graph, q);
+    if (!flowId && (promiseAt(answer) >= 0 || FLOW_PROMISE.test(answer))) {
+      // Only a flow the question itself already began to name: "show me what
+      // you do here", answered "I'll walk you through it ... on billing day",
+      // is not a request to watch billing day.
+      const named = flowNamed(graph, `${q} ${answer.toLowerCase()}`);
+      const title = graph.flows.find((f) => f.id === named)?.title ?? '';
+      if (named && nameWords(title).some((w) => wordAt(q, w) >= 0)) flowId = named;
+    }
     if (flowId) return { type: 'play_flow', flowId };
   }
   const promise = promiseAt(answer);

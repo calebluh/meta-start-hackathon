@@ -240,5 +240,19 @@ export function parseVerdict(text: string): { right: boolean; say: string } | nu
 /** True when the visitor asks for the quiz ("quiz me", "test me on this"). */
 export const asksForQuiz = (text: string): boolean => /\b(quiz|test) me\b|\b(start|take|do|try|give me) (a|the|your|that) (quiz|test)\b|^\W*quiz\W*$/i.test(text);
 
-/** True when the visitor wants out of the quiz. */
-export const asksToStopQuiz = (text: string): boolean => /\b(stop|end|quit|cancel|enough|no more)\b/i.test(text) && text.length < 60;
+/**
+ * True when the visitor wants out of the quiz. Only a whole short command
+ * counts ("stop", "end the quiz", "I'm done", "no more questions"): answers
+ * contain these words too ("...change plan or cancel", "...at the end").
+ */
+const STOP_QUIZ = [
+  /^(ok(ay)?,? |um,? |please |can we |can you |let'?s |i want to |i'?d like to )*(stop|end|quit|cancel|finish)( (the|this|my|your))?( (quiz|test|it|questions?|now|there|here))*(,? please)?$/,
+  /^(ok(ay)?,? )?(i'?m|i am|we'?re|we are) (done|finished)( (now|with (the|this) (quiz|test)))?$/,
+  /^(ok(ay)?,? )?(that'?s|that is) enough( (quiz|questions?))?( for now)?(,? thanks?( you)?)?$/,
+  /^(ok(ay)?,? )?(no more|enough) (quiz|questions?|quizzes)( please)?$/,
+  /\b(stop|end|quit|cancel) (the|this) (quiz|test)\b/,
+];
+export const asksToStopQuiz = (text: string): boolean => {
+  const said = text.toLowerCase().replace(/[^a-z' ,]+/g, ' ').replace(/\s+/g, ' ').replace(/[ ,]+$/, '').trim();
+  return said.length < 60 && STOP_QUIZ.some((p) => p.test(said));
+};
