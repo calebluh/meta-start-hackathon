@@ -34,7 +34,8 @@ Paste each part into the matching Devpost field. Everything marked
    buttons, or tap Flask, Express or SWR, and press Build city. About ten
    seconds later that repository is a city; Enter VR walks straight into it.
    Inside VR, the start menu (the **Demos** button) has the same one-tap
-   Flask, Express and SWR, plus the last repository you built.
+   Flask, Express and SWR, plus the last repository you built. A link like
+   https://diorama.calebluh.com/?repo=facebook/react opens that city directly.
 4. Stay seated. Three cards appear in front of you, within reach. Tap
    **Larder**, the small one, with a fingertip for a first visit. Buttons
    are tapped like a touch screen; things further away are pointed at and
