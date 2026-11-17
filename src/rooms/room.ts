@@ -31,7 +31,7 @@ import { canRecord } from '../agent/recorder.js';
 import { asksToLeave, leavesRoom, plainRequest, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { NotesDesk } from '../notes/desk.js';
 import { MAX_SAID, noteCommand, type Note, type NoteMode, NOTES_IN_PROMPT, NOTES_NODE, NOTES_ROOM, readBack } from '../notes/scribe.js';
-import { talkOver } from '../notes/store.js';
+import { appendNote, talkOver } from '../notes/store.js';
 import { answerOrder, asksForQuiz, asksToStopQuiz, heardAnswer, quizRound, type QuizQuestion } from '../agent/quiz.js';
 import { Carryable, Pipe, Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
@@ -1241,6 +1241,13 @@ export class RoomSystem extends createSystem({
         { kind: 'face', at: new Vector3(0, 0, 0) },
       );
     } else w.rig.gesture('Yes');
+    // A suggested fix goes on the project's notes list, under this room's name.
+    const note = reply.actions.find((a) => a.type === 'add_note');
+    if (note?.type === 'add_note') {
+      const room = app.graph.nodes.find((n) => n.id === nodeId)?.label;
+      appendNote(app.mapId, app.graph, note.text, room);
+      if (import.meta.env.DEV) console.log(`[notes] added from ${w.name}: ${note.text.slice(0, 80)}`);
+    }
     const file = reply.actions.find((a) => a.type === 'show_file');
     if (file?.type === 'show_file') this.showFileCard(file.path);
 

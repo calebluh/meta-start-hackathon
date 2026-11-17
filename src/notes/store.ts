@@ -1,5 +1,6 @@
 import type { Persona } from '../agent/prompt.js';
-import type { ChatTurn, Note, NoteMode, ScribeReply } from './scribe.js';
+import type { GraphData } from '../maps/types.js';
+import { notesMarkdown, partNamed, type ChatTurn, type Note, type NoteMode, type ScribeReply } from './scribe.js';
 
 /**
  * Where notes live. They are kept in the browser (so they are still there the
@@ -66,6 +67,14 @@ export async function saveToProject(mapId: string, markdown: string): Promise<st
   } catch {
     return null;
   }
+}
+
+/** Adds one note from outside the notes room (a robot suggesting a fix), and saves it the same ways. */
+export function appendNote(mapId: string, graph: GraphData, text: string, part?: string): void {
+  const notes = loadNotes(mapId);
+  notes.push({ text, at: Date.now(), how: 'talk', part: part ?? partNamed(graph, text) });
+  storeNotes(mapId, notes);
+  void saveToProject(mapId, notesMarkdown(graph, notes));
 }
 
 /**

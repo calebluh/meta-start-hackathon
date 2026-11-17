@@ -84,12 +84,14 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '- Speak in the first person as the worker, warm and plain-spoken, for someone who may not be a programmer. Use the building metaphor lightly, but name real files and requests when they help. Sound like a person talking, not a document: contractions, no lists, no markdown.',
     '- Keep it to 2-4 short sentences; your words appear in a speech bubble in VR and are read aloud.',
     '- You have already said hello and given your name and job. Do not do that again, and do not announce what you are about to say ("here is what I do", "I am on it"). Your first sentence is already the answer.',
-    '- Only use the facts above. If something is not covered, say you do not know and suggest which room to ask.',
+    '- Use only the facts above for what the code does. If something is not covered, say you do not know and suggest which room to ask.',
+    '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
     '- You can act, using your tools, in the same reply as your words. Acting never replaces talking: still give your full 2-4 sentence spoken answer, then act. Never write tool calls as text.',
     '  - go_to_room when the visitor asks to go somewhere or to see another part, or agrees to your suggestion. Say you are sending them over.',
     '  - play_flow when they want to watch how something happens from start to finish.',
     '  - point_to_room when you mention a neighbouring room (never your own).',
     '  - show_file when you talk about one of your files in detail.',
+    '  - add_note when you suggest a fix or improvement, or the visitor asks you to remember something.',
     '  - back_to_city when the visitor wants to leave, step outside, or go back to the city, the table or the map. Say goodbye first.',
     '- After your answer, write exactly one more line: FOLLOWUPS: <question> | <question>',
     '  Those are two short questions (under 8 words) the visitor might ask you next.',
@@ -133,6 +135,18 @@ export const AGENT_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'add_note',
+      description: 'Write a line on the visitor’s notes list for this project: a fix or improvement to make, for their coding agent to pick up.',
+      parameters: {
+        type: 'object',
+        properties: { text: { type: 'string', description: 'One or two sentences: what to change, where, and why' } },
+        required: ['text'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'back_to_city',
       description: 'Take the visitor out of the building, back to the little city on their desk.',
       parameters: { type: 'object', properties: {} },
@@ -146,6 +160,7 @@ export type AgentAction =
   | { type: 'play_flow'; flowId: string }
   | { type: 'point_to_room'; roomId: string }
   | { type: 'show_file'; path: string }
+  | { type: 'add_note'; text: string }
   | { type: 'back_to_city' };
 
 /** An action that ends the conversation because the visitor goes elsewhere. */
@@ -331,6 +346,9 @@ export function validateActions(
     } else if (name === 'show_file') {
       const file = graph.files.find((f) => f.p === args.path && f.n === nodeId);
       if (file && !actions.some((a) => a.type === 'show_file')) actions.push({ type: 'show_file', path: file.p });
+    } else if (name === 'add_note') {
+      const text = typeof args.text === 'string' ? args.text.replace(/s+/g, ' ').trim().slice(0, 300) : '';
+      if (text && !actions.some((a) => a.type === 'add_note')) actions.push({ type: 'add_note', text });
     } else if (name === 'back_to_city') {
       actions.push({ type: 'back_to_city' });
     }
@@ -338,6 +356,27 @@ export function validateActions(
   // Leaving the room or starting a flow ends the conversation; keep only the first.
   const leave = actions.findIndex(leavesRoom);
   return actions.filter((a, i) => (leavesRoom(a) ? i === leave : true));
+}
+
+/** The visitor asked how to fix, improve or solve something. */
+export const asksForFix = (question: string): boolean =>
+  /\b(fix|fixed|fixing|solve|repair|improve|patch|resolve|deal with|get rid of|clean (it |this |that )?up|make (it|this|that) better)\b/i.test(question);
+
+/** Sentences that are about the note or the map, not the fix itself. */
+const ABOUT_THE_NOTE = /suggestion from the map|can'?t see the code|cannot see the code|notes? list|coding agent|put (it|that) on|added (it|that)/i;
+
+/**
+ * The fix in a worker's answer, as a note: the sentences that say what to
+ * change, without the ones about the map or the notes list. Null when the
+ * answer holds no suggestion (it says it does not know, or is very short).
+ */
+export function fixNote(answer: string): string | null {
+  // Split only where a stop is followed by a space, so "simulation.py" stays whole.
+  const sentences = answer.split(/(?<=[.!?])\s+/);
+  const kept = sentences.map((s) => s.trim()).filter((s) => s && !ABOUT_THE_NOTE.test(s));
+  const text = kept.join(' ').replace(/\s+/g, ' ').trim();
+  if (text.length < 40 || /\b(i )?(do not|don'?t) know\b/i.test(text)) return null;
+  return text.length > 300 ? `${text.slice(0, 297).replace(/\s+\S*$/, '')}...` : text;
 }
 
 /** Starter questions for a room, before any conversation. */
@@ -348,7 +387,7 @@ export function suggestedQuestions(graph: GraphData, nodeId: string): string[] {
   const warned = (graph.health?.issues ?? []).some((i) =>
     (i.locations ?? []).some((loc) => resolveRef(graph, loc.file) === nodeId),
   );
-  questions.push(warned ? 'What is the warning about?' : 'What could go wrong here?');
+  questions.push(warned ? 'How would I fix the warning?' : 'What could go wrong here?');
   questions.push('Who do you work with?');
   return questions;
 }

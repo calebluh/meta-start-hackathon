@@ -1,5 +1,7 @@
 import {
   AGENT_TOOLS,
+  asksForFix,
+  fixNote,
   leavesRoom,
   parseReply,
   plainRequest,
@@ -251,6 +253,12 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // Promises to move are checked above against the full words; only now is it
   // safe to drop an opening line that talks about the answer.
   if (!actions.some(leavesRoom)) reply.answer = dropLeadIn(reply.answer);
+  // Asked how to fix something, the model gives a fix but rarely calls
+  // add_note (and sometimes says it did). Keep the fix on the notes list.
+  if (asksForFix(req.question) && !actions.some((a) => a.type === 'add_note')) {
+    const note = fixNote(reply.answer);
+    if (note) actions.push({ type: 'add_note', text: note });
+  }
   return { ...reply, actions };
 }
 
