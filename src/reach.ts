@@ -21,11 +21,12 @@ interface Pose {
 }
 
 const WITHIN_REACH: Record<string, Pose> = {
-  // Left and right of the city, clear of the buttons along the desk's front edge, facing straight
-  // ahead: turned in toward the head, the panel is met side-on by a fingertip and taps miss.
-  'ask-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
-  'notes-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
-  'inspector-panel': { position: [0.39, 0.29, 0.2], yawDeg: 0, scale: 0.088 },
+  // Left and right of the city, clear of the buttons along the desk's front edge, turned to face the
+  // seated head (it sits about 0.5 m behind and 0.4 m above them). The visitor prefers them facing
+  // them; in the emulator a fingertip tap on a turned panel often missed, pointing and pinching did not.
+  'ask-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 38, scale: 0.088 },
+  'notes-panel': { position: [-0.39, 0.29, 0.2], yawDeg: 38, scale: 0.088 },
+  'inspector-panel': { position: [0.39, 0.29, 0.2], yawDeg: -38, scale: 0.088 },
   // The start menu is three wide cards: a little smaller, and much nearer.
   'menu-panel': { position: [0, 0.27, 0.14], scale: 0.085 },
 };
