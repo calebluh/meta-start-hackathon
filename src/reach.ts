@@ -31,10 +31,20 @@ const WITHIN_REACH: Record<string, Pose> = {
 };
 
 const authored = new Map<string, { position: Vector3; quaternion: Quaternion; scale: Vector3 }>();
+/** Extra sideways offset for the info panel (the notes room moves it right), and the last placement asked for. */
+let inspectorShift = 0;
+let lastNear = false;
+
+/** Moves the info panel sideways by `dx` metres (desk space) on top of wherever it stands. */
+export function setInspectorShift(world: World, dx: number): void {
+  inspectorShift = dx;
+  setPanelsWithinReach(world, lastNear);
+}
 const UP = new Vector3(0, 1, 0);
 
 /** Moves the tappable panels within arm's reach, or back to where the scene has them. */
 export function setPanelsWithinReach(world: World, near: boolean): void {
+  lastNear = near;
   for (const [id, pose] of Object.entries(WITHIN_REACH)) {
     const panel = world.getSceneObject<Object3D>(id);
     if (!panel) continue;
@@ -43,13 +53,16 @@ export function setPanelsWithinReach(world: World, near: boolean): void {
       home = { position: panel.position.clone(), quaternion: panel.quaternion.clone(), scale: panel.scale.clone() };
       authored.set(id, home);
     }
+    const shift = id === 'inspector-panel' ? inspectorShift : 0;
     if (!near) {
       panel.position.copy(home.position);
+      panel.position.x += shift;
       panel.quaternion.copy(home.quaternion);
       panel.scale.copy(home.scale);
       continue;
     }
     panel.position.set(...pose.position);
+    panel.position.x += shift;
     if (pose.yawDeg !== undefined) panel.quaternion.setFromAxisAngle(UP, (pose.yawDeg * Math.PI) / 180);
     if (pose.scale !== undefined) panel.scale.setScalar(pose.scale);
   }

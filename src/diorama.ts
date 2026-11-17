@@ -20,9 +20,11 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  type Object3D,
   OctahedronGeometry,
   PlaneGeometry,
   Pressed,
+  Ray,
   Quaternion,
   QuadraticBezierCurve3,
   RayInteractable,
@@ -67,6 +69,7 @@ import { buildLayout, resolveRef, type DioramaLayout, type District as Lot, type
 import type { GraphData, HealthIssue, NodeKind } from './maps/types.js';
 import { hashString, pickTheme } from './rooms/themes.js';
 import { NOTES_NODE, NOTES_ROOM } from './notes/scribe.js';
+import { setInspectorShift } from './reach.js';
 import { loadNotes } from './notes/store.js';
 import {
   app,
@@ -122,6 +125,29 @@ const PEG_HEIGHT = 0.05;
 const PEG_OUTSET = 0.014;
 /** A pinch begun this soon (ms) after a peg was pointed at takes it, though the closing fingers swung the ray off. */
 const PEG_HOVER_GRACE_MS = 300;
+/** Fingers closed within this distance (metres) of a peg take it, with no pointing. */
+const NEAR_TAKE_REACH = 0.06;
+/** How close a hand's own ray must pass to count as aimed at a peg, a Turn button or a disc (metres; a disc is life size). */
+const AIM_PEG = 0.04;
+const AIM_TURN = 0.07;
+const AIM_DISC = 0.6;
+/**
+ * A hand pinch made at the buttons or panels is meant for them: with the
+ * fingertip within this margin of a panel (metres), or the hand's ray
+ * passing through a panel padded by UI_PAD, it never picks a building or
+ * walks the street, even when the press itself just misses a button.
+ */
+const UI_MARGIN = 0.1;
+const UI_PAD = 0.03;
+const UI_REACH = 0.35;
+/** Panels a stray pinch must not pass through to the city. */
+const UI_PANELS = ['controls-panel', 'inspector-panel', 'ask-panel', 'notes-panel', 'menu-panel'];
+/** After changing between map, street and room, presses on the city wait this long (ms): a double pinch must not walk you into a wall. */
+const MODE_QUIET_MS = 1200;
+const HANDS = ['left', 'right'] as const;
+/** In the notes room the info panel moves this far right (metres, desk space), clear of the note taker's bubble. */
+const NOTES_INSPECTOR_SHIFT = 0.1;
+type Peg = { entity: Entity; mesh: Mesh; material: MeshStandardMaterial };
 const PEG_COLOR = '#7ee0ff';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 3;
@@ -411,9 +437,6 @@ export class DioramaSystem extends createSystem({
   /** Half the board's diagonal at 1x, and the city size the pegs were last placed for. */
   private pegReach = 0;
   private pegScale = -1;
-  /** The peg last pointed at, and when: a pinch starting just after takes it. */
-  private pegHover: { entity: Entity; mesh: Mesh; material: MeshStandardMaterial } | null = null;
-  private pegHoverAt = -Infinity;
 
   /**
    * Stands the pegs on the board's diagonals, just beyond its corners at the
@@ -471,11 +494,28 @@ export class DioramaSystem extends createSystem({
   /** Where the Turn buttons were last placed: the head's turn then, and the street move they belong to. */
   private turnAnchorYaw = 0;
   private turnAnchorAt = -1;
-  /** The Turn button and the disc spot a ray was last on, and when (for hand pinches; see onSelectStart). */
-  private turnHover: 1 | -1 = 1;
-  private turnHoverAt = -Infinity;
-  private waypointHover = new Vector3();
-  private waypointHoverAt = -Infinity;
+  /**
+   * What each hand's own ray is on (a peg, a Turn button or a disc), and
+   * when it last was: a hand pinch takes what that hand was aiming at a
+   * moment ago, since closing the fingers swings the ray off a small target.
+   * Per hand, so an idle hand's ray never decides the other hand's pinch.
+   */
+  private handAim: Record<'left' | 'right', { kind: 'peg' | 'turn' | 'disc' | 'building' | null; peg: Peg | null; dir: 1 | -1; point: Vector3; building: string | null; at: number }> = {
+    left: { kind: null, peg: null, dir: 1, point: new Vector3(), building: null, at: -Infinity },
+    right: { kind: null, peg: null, dir: 1, point: new Vector3(), building: null, at: -Infinity },
+  };
+  /** When a pinch was last taken by a peg, button or disc, or made at the panels: the city ignores that same pinch. */
+  private pinchTakenAt = -Infinity;
+  /** When the city last changed between map, street and room. */
+  private modeChangedAt = -Infinity;
+  private aimOrigin = new Vector3();
+  private aimDir = new Vector3();
+  private aimPoint = new Vector3();
+  private aimQuat = new Quaternion();
+  private uiBox = new Box3();
+  private uiBoxPart = new Box3();
+  private uiRay = new Ray();
+  private inspectorShifted = false;
   private stickTurned = false;
   private streetExtrasShown = false;
   private headQuat = new Quaternion();
@@ -519,19 +559,8 @@ export class DioramaSystem extends createSystem({
       const hand = handOf(event);
       if (!hand) return;
       this.lastSelectHand = hand;
-      // Closing the fingers swings a hand's ray a little, often off a small
-      // peg before the press lands. A pinch that begins while a peg is
-      // pointed at (or was a moment ago) takes that peg.
-      if (this.pegsShown && this.pegHover && performance.now() - this.pegHoverAt < PEG_HOVER_GRACE_MS) this.pegHolds.set(hand, this.pegHover);
-      if ((event as Event & { inputSource?: XRInputSource }).inputSource?.hand) {
-        this.nearPinch = hand;
-        // The same swing in the street: a Turn button or a disc pointed at a moment ago takes the pinch.
-        if (this.streetExtrasShown) {
-          const now = performance.now();
-          if (now - this.turnHoverAt < PEG_HOVER_GRACE_MS) this.turnHit = this.turnHover;
-          else if (now - this.waypointHoverAt < PEG_HOVER_GRACE_MS) this.waypointHit = this.waypointHover.clone();
-        }
-      }
+      if (!(event as Event & { inputSource?: XRInputSource }).inputSource?.hand) return;
+      this.handPinch(hand);
     };
     const onSelectEnd = (event: Event) => {
       const hand = handOf(event);
@@ -577,8 +606,12 @@ export class DioramaSystem extends createSystem({
       this.queries.pressed.subscribe('qualify', (e) => {
         if (app.mode !== 'table') return;
         const id = e.getValue(District, 'nodeId') as string;
-        // The same pinch already picked a building by touch (see nearPick).
-        if (performance.now() - this.nearPickAt < NEAR_PICK_QUIET_MS) return;
+        // The same pinch already picked a building by touch (see nearPick), or
+        // was taken by a peg, a button or a disc, or was made at the panels.
+        const now = performance.now();
+        if (now - this.nearPickAt < NEAR_PICK_QUIET_MS || now - this.pinchTakenAt < NEAR_PICK_QUIET_MS) return;
+        // Just after changing between map, street and room, the city waits.
+        if (now - this.modeChangedAt < MODE_QUIET_MS) return;
         if (app.street) {
           // Decided next frame, once the pinch's landing point is known.
           this.streetPressed = id;
@@ -622,7 +655,7 @@ export class DioramaSystem extends createSystem({
     for (const [x, z] of [[-halfW, -halfD], [halfW, -halfD], [-halfW, halfD], [halfW, halfD]]) {
       const material = new MeshStandardMaterial({ color: PEG_COLOR, emissive: new Color(PEG_COLOR), emissiveIntensity: 1, roughness: 0.4 });
       const mesh = new Mesh(geometry, material);
-      mesh.name = 'board-peg';
+      mesh.name = `peg-${z < 0 ? 'back' : 'front'}-${x < 0 ? 'left' : 'right'}`;
       mesh.userData.corner = new Vector3(x, 0, z).normalize();
       // A wider invisible column around the peg, easy to point at.
       mesh.add(new Mesh(hitGeometry, HIT_MATERIAL));
@@ -636,12 +669,236 @@ export class DioramaSystem extends createSystem({
   }
 
   /**
+   * A bare-hand pinch, in order: fingers closed on a peg take it; then
+   * whatever this hand's own ray was on a moment ago (a peg, a Turn button,
+   * a disc); a pinch made at the buttons or panels goes no further; and only
+   * then may it pick the building the fingertip is at (nearPick, next frame).
+   */
+  private handPinch(hand: 'left' | 'right'): void {
+    const now = performance.now();
+    if (import.meta.env.DEV) console.log(`[pinch] ${hand} begins (aim ${this.handAim[hand].kind} ${Math.round(now - this.handAim[hand].at)} ms ago)`);
+    if (this.pegsShown) {
+      this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
+      let best: Peg | null = null;
+      let bestDistance = NEAR_TAKE_REACH;
+      for (const peg of this.pegs) {
+        peg.mesh.getWorldPosition(this.aimPoint);
+        this.aimPoint.y += PEG_HEIGHT / 2;
+        const distance = this.aimPoint.distanceTo(this.nearTip);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          best = peg;
+        }
+      }
+      if (best) {
+        this.pegHolds.set(hand, best);
+        this.pinchTakenAt = now;
+        return;
+      }
+    }
+    const aim = this.handAim[hand];
+    if (now - aim.at < PEG_HOVER_GRACE_MS) {
+      if (aim.kind === 'peg' && aim.peg && this.pegsShown) {
+        this.pegHolds.set(hand, aim.peg);
+        this.pinchTakenAt = now;
+        return;
+      }
+      if (aim.kind === 'turn' && this.streetExtrasShown) {
+        this.turnHit = aim.dir;
+        this.pinchTakenAt = now;
+        return;
+      }
+    }
+    if (this.nearUi(hand)) {
+      this.pinchTakenAt = now;
+      if (import.meta.env.DEV) console.log(`[pinch] ${hand} hand at the panels: not for the city`);
+      return;
+    }
+    // Fingers at a building: that building (picked next frame, see nearPick), whatever the ray was on.
+    if (!app.street && !this.streetShown && !app.menu && this.buildingAtFingertip(hand)) {
+      this.nearPinch = hand;
+      return;
+    }
+    // The building this hand's own ray was on: the closing fingers often
+    // swing the ray off a small building into the alley. Never the one
+    // already picked: its Step inside button floats right over it, and a
+    // pinch on the button must not close the building first (the ordinary
+    // press still puts a picked building back).
+    if (aim.kind === 'building' && aim.building && aim.building !== app.selected && now - aim.at < PEG_HOVER_GRACE_MS && !app.street && !this.streetShown && !app.menu) {
+      this.nearPickAt = now;
+      this.pick(aim.building);
+      if (import.meta.env.DEV) console.log(`[pinch] ${hand} hand picked ${aim.building} (aimed)`);
+      return;
+    }
+    if (aim.kind === 'disc' && now - aim.at < PEG_HOVER_GRACE_MS && this.streetExtrasShown) {
+      this.waypointHit = aim.point.clone();
+      this.pinchTakenAt = now;
+      return;
+    }
+    this.nearPinch = hand;
+  }
+
+  /** The fingertip is at a visible panel, or the hand's ray passes through one (a press that just missed a button). */
+  private nearUi(hand: 'left' | 'right'): boolean {
+    this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
+    this.handRay(hand);
+    this.uiRay.set(this.aimOrigin, this.aimDir);
+    for (const id of UI_PANELS) {
+      const panel = this.world.getSceneObject(id);
+      if (!panel?.visible) continue;
+      this.panelBox(panel);
+      if (this.uiBox.isEmpty()) continue;
+      this.uiBox.expandByScalar(UI_PAD);
+      // Through a panel the hand is reaching towards: a press that just missed a
+      // button. (Aiming past a panel from further back, at the street, is not.)
+      if (this.uiRay.intersectsBox(this.uiBox) && this.uiBox.distanceToPoint(this.nearTip) < UI_REACH) return true;
+      this.uiBox.expandByScalar(UI_MARGIN - UI_PAD);
+      if (this.uiBox.containsPoint(this.nearTip)) return true;
+    }
+    return false;
+  }
+
+  /**
+   * A panel's bounds, into uiBox, from its ordinary meshes. Box3.setFromObject
+   * throws on the UI library's text meshes (they have no bounding box it can
+   * read), so those are skipped: the panel's background covers its area.
+   */
+  private panelBox(panel: Object3D): void {
+    this.uiBox.makeEmpty();
+    panel.updateWorldMatrix(true, true);
+    panel.traverseVisible((o) => {
+      const mesh = o as Mesh & { isMesh?: boolean; isInstancedMesh?: boolean };
+      if (!mesh.isMesh || mesh.isInstancedMesh) return;
+      const geometry = mesh.geometry;
+      if (!geometry?.attributes?.position) return;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      if (!geometry.boundingBox) return;
+      this.uiBoxPart.copy(geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+      this.uiBox.union(this.uiBoxPart);
+    });
+  }
+
+  /** A hand's pointing ray in world space, into aimOrigin and aimDir. */
+  private handRay(hand: 'left' | 'right'): void {
+    const space = this.player.raySpaces[hand];
+    space.getWorldPosition(this.aimOrigin);
+    space.getWorldQuaternion(this.aimQuat);
+    this.aimDir.set(0, 0, -1).applyQuaternion(this.aimQuat);
+  }
+
+  /** The nearest building or outside tower on the ray (aimOrigin, aimDir), with its hit margin, or null. */
+  private buildingOnRay(): string | null {
+    this.uiRay.set(this.aimOrigin, this.aimDir);
+    let best: string | null = null;
+    let bestDistance = Infinity;
+    for (const site of this.sitesById.values()) {
+      if (this.layout.districts.has(site.id) && !site.lot) continue; // a plinth, not a building
+      const geometry = site.mesh.geometry;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      this.uiBoxPart.copy(geometry.boundingBox!).applyMatrix4(site.mesh.matrixWorld).expandByScalar(HIT_PAD_SIDE);
+      if (!this.uiRay.intersectBox(this.uiBoxPart, this.aimPoint)) continue;
+      const distance = this.aimPoint.distanceToSquared(this.aimOrigin);
+      if (distance < bestDistance) {
+        bestDistance = distance;
+        best = site.id;
+      }
+    }
+    return best;
+  }
+
+  /** How far `point` lies from a ray (aimOrigin, aimDir), or Infinity when it is behind. */
+  private rayDistance(point: Vector3): number {
+    this.scratch.copy(point).sub(this.aimOrigin);
+    const along = this.scratch.dot(this.aimDir);
+    if (along < 0) return Infinity;
+    return Math.sqrt(Math.max(0, this.scratch.lengthSq() - along * along));
+  }
+
+  /** Records, for each hand, the peg, Turn button or disc its own ray is on now. */
+  private updateHandAims(): void {
+    if (!this.pegsShown && !this.streetExtrasShown) return;
+    const now = performance.now();
+    for (const hand of HANDS) {
+      const aim = this.handAim[hand];
+      this.handRay(hand);
+      if (this.pegsShown) {
+        let onPeg = false;
+        for (const peg of this.pegs) {
+          peg.mesh.getWorldPosition(this.aimPoint);
+          this.aimPoint.y += PEG_HEIGHT / 2;
+          if (this.rayDistance(this.aimPoint) < AIM_PEG) {
+            aim.kind = 'peg';
+            aim.peg = peg;
+            aim.at = now;
+            onPeg = true;
+          }
+        }
+        // Otherwise the nearest building this hand's ray passes through.
+        if (!onPeg) {
+          const building = this.buildingOnRay();
+          if (building) {
+            aim.kind = 'building';
+            aim.building = building;
+            aim.at = now;
+          }
+        }
+        continue;
+      }
+      for (const b of this.turnButtons) {
+        if (this.rayDistance(b.mesh.position) < AIM_TURN) {
+          aim.kind = 'turn';
+          aim.dir = b.dir;
+          aim.at = now;
+        }
+      }
+      // Discs: where the ray meets the ground they lie on, and the nearest disc to that point.
+      const first = this.waypointSpots[0];
+      if (!first || aim.at === now || this.aimDir.y > -1e-3) continue;
+      const obj = this.root.object3D!;
+      this.aimPoint.copy(first);
+      obj.localToWorld(this.aimPoint);
+      const t = (this.aimPoint.y - this.aimOrigin.y) / this.aimDir.y;
+      if (t <= 0) continue;
+      this.scratch.copy(this.aimDir).multiplyScalar(t).add(this.aimOrigin);
+      for (const spot of this.waypointSpots) {
+        this.aimPoint.copy(spot);
+        obj.localToWorld(this.aimPoint);
+        if (this.aimPoint.distanceTo(this.scratch) < AIM_DISC) {
+          aim.kind = 'disc';
+          aim.point.copy(this.aimPoint);
+          aim.at = now;
+          break;
+        }
+      }
+    }
+  }
+
+  /** In the notes room the info panel steps a little further right, clear of the note taker's speech bubble. */
+  private shiftInspectorForNotes(): void {
+    const want = app.mode === 'room' && app.roomNode === NOTES_ROOM;
+    if (want === this.inspectorShifted) return;
+    this.inspectorShifted = want;
+    setInspectorShift(this.world, want ? NOTES_INSPECTOR_SHIFT : 0);
+  }
+
+  /**
    * A pinch with the fingertip at a building picks it. The city takes no
    * near grab (it is turned with its pegs), so without this a pinch made
    * right on a building would do nothing: the pointing ray starts at the
    * hand and is not aimed at what the fingers are touching.
    */
   private nearPick(hand: 'left' | 'right'): void {
+    const best = this.buildingAtFingertip(hand);
+    if (import.meta.env.DEV) console.log(`[near] ${best ?? 'nothing in reach'}`);
+    if (!best) return;
+    this.nearPickAt = performance.now();
+    // Never puts back the building already picked: a pinch on its Step inside
+    // button, which floats right over it, must not close it first.
+    if (best !== app.selected) this.pick(best);
+  }
+
+  /** The building or outside tower within reach of this hand's fingertip, nearest first. */
+  private buildingAtFingertip(hand: 'left' | 'right'): string | null {
     this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
     let best: string | null = null;
     let bestDistance = NEAR_PICK_REACH;
@@ -656,12 +913,7 @@ export class DioramaSystem extends createSystem({
         best = site.id;
       }
     }
-    if (import.meta.env.DEV) console.log(`[near] ${best ?? 'nothing in reach'}`);
-    if (!best) return;
-    this.nearPickAt = performance.now();
-    // Never puts back the building already picked: a pinch on its Step inside
-    // button, which floats right over it, must not close it first.
-    if (best !== app.selected) this.pick(best);
+    return best;
   }
 
   /** Pegs show only with the city at rest on the desk: not in the menu, a room, a dive or street view. */
@@ -704,12 +956,7 @@ export class DioramaSystem extends createSystem({
       // Brighter when pointed at, brightest while held.
       let holding = peg.entity.hasComponent(Pressed);
       for (const held of this.pegHolds.values()) if (held === peg) holding = true;
-      const hovered = peg.entity.hasComponent(Hovered);
-      if (hovered) {
-        this.pegHover = peg;
-        this.pegHoverAt = performance.now();
-      }
-      peg.material.emissiveIntensity = holding ? 2.4 : hovered ? 1.8 : 1;
+      peg.material.emissiveIntensity = holding ? 2.4 : peg.entity.hasComponent(Hovered) ? 1.8 : 1;
     }
     const obj = this.root.object3D!;
     if (held >= 2) {
@@ -1250,7 +1497,7 @@ export class DioramaSystem extends createSystem({
     // Recenter also puts the city back to its starting place and size (the
     // desk itself is moved by WorkspaceSystem).
     on('btn-recenter', () => this.resetBoard());
-    on('btn-street', () => setStreet(!app.street), 800);
+    on('btn-street', () => setStreet(!app.street), 1200);
     // The notes room belongs to the whole project, so it is on the desk, not in a building.
     on('btn-notes', () => {
       if (app.mode === 'room' && app.roomNode === NOTES_ROOM) leaveRoom();
@@ -1393,6 +1640,7 @@ export class DioramaSystem extends createSystem({
       // The desk goes back where the visitor had it (their real table, or
       // where they dragged it), or comes round if they turned away, unseen.
       placement.returnToTable();
+      this.modeChangedAt = performance.now();
       const from = this.surfaceFrom;
       this.surfaceFrom = null;
       this.root.object3D!.visible = true;
@@ -1777,6 +2025,7 @@ export class DioramaSystem extends createSystem({
     this.poseBoard(move.focus, this.streetAt, move.fromYaw + (move.toYaw - move.fromYaw) * u, scale);
     if (move.t < 1) return;
     this.streetMoving = false;
+    this.modeChangedAt = performance.now();
     this.streetShown = move.toStreet;
     // Name signs sized for the desk would be billboards at life size.
     for (const label of this.labels) label.scale.setScalar(move.toStreet ? STREET_LABEL_SCALE : 1);
@@ -1811,7 +2060,7 @@ export class DioramaSystem extends createSystem({
   private streetPress(id: string): void {
     const now = performance.now();
     // A hand pinch often registers twice, and after a move the ray points somewhere new.
-    if (this.streetMoving || now - this.streetMovedAt < STREET_QUIET_MS) return;
+    if (this.streetMoving || now - this.streetMovedAt < STREET_QUIET_MS || now - this.modeChangedAt < MODE_QUIET_MS) return;
     const d = this.layout.districts.get(id);
     if (!d) {
       select(id); // an outside service: just show what it is
@@ -1862,12 +2111,6 @@ export class DioramaSystem extends createSystem({
     const events = mesh as unknown as { addEventListener(type: string, fn: (e: { point?: Vector3 }) => void): void };
     events.addEventListener('pointerdown', (e) => {
       if (e.point) this.waypointHit = e.point.clone();
-    });
-    // Where a ray last touched the discs, for a hand pinch whose ray swings off as it closes.
-    events.addEventListener('pointermove', (e) => {
-      if (!e.point) return;
-      this.waypointHover.copy(e.point);
-      this.waypointHoverAt = performance.now();
     });
     this.streetExtrasShown = true;
     this.showStreetExtras(false);
@@ -1937,12 +2180,7 @@ export class DioramaSystem extends createSystem({
         b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - TURN_BUTTON_DROP, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
       }
       b.mesh.lookAt(this.headWorld);
-      const hovered = b.entity.hasComponent(Hovered);
-      if (hovered) {
-        this.turnHover = b.dir;
-        this.turnHoverAt = performance.now();
-      }
-      b.mesh.scale.setScalar(hovered ? 1.15 : 1);
+      b.mesh.scale.setScalar(b.entity.hasComponent(Hovered) ? 1.15 : 1);
     }
   }
 
@@ -1953,7 +2191,7 @@ export class DioramaSystem extends createSystem({
    */
   private updateStreetTurn(): void {
     const now = performance.now();
-    const quiet = now - this.streetMovedAt < STREET_QUIET_MS;
+    const quiet = now - this.streetMovedAt < STREET_QUIET_MS || now - this.modeChangedAt < MODE_QUIET_MS;
     // A pinch that lands twice on a Turn button turns once.
     let dir: number = quiet ? 0 : this.turnHit;
     this.turnHit = 0;
@@ -2026,6 +2264,11 @@ export class DioramaSystem extends createSystem({
       this.applyVisibility();
     }
     this.updateDive(delta);
+    // What shows and takes a pinch follows the state every frame, not only its changes.
+    const atRest = app.mode === 'table' && this.diveDir === 0 && !app.menu && !this.streetMoving && !this.surfaceFrom;
+    this.showPegs(atRest && !app.street && !this.streetShown);
+    this.showStreetExtras(atRest && this.streetShown);
+    this.shiftInspectorForNotes();
     if (app.mode !== 'table' || this.diveDir !== 0) {
       // A pinch made in a room or mid-dive is not one at the city.
       this.nearPinch = null;
@@ -2065,11 +2308,10 @@ export class DioramaSystem extends createSystem({
       this.updateStreetWalk(delta);
       this.updateStreetTurn();
     }
-    this.showStreetExtras(this.streetShown && !this.streetMoving && !app.menu);
     if (this.streetExtrasShown) this.placeTurnButtons();
+    this.updateHandAims();
 
     // The corner pegs: hold one to turn the city, two to resize it.
-    this.showPegs(!app.menu && !app.street && !this.streetShown && !this.streetMoving && !this.surfaceFrom);
     const grabbed = this.pegsShown && this.updatePegs(delta);
 
     // Controllers: the right thumbstick spins the city (left and right) and

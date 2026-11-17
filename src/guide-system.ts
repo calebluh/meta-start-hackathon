@@ -19,6 +19,7 @@ import type { GraphData } from './maps/types.js';
 import { ignoreRays } from './rays.js';
 import { Bubble } from './rooms/worker.js';
 import { app } from './state.js';
+import { NOTES_ROOM } from './notes/scribe.js';
 import { HACKATHON } from './edition.js';
 import { isPaused } from './pause.js';
 import { aimWord, placement, pressWord } from './placement.js';
@@ -292,7 +293,8 @@ export class GuideSystem extends createSystem({
     // The card floats over the board, turned to the viewer; it steps aside
     // during a dive.
     const workspace = this.world.getSceneObject('workspace');
-    const hidden = dive.active || !workspace;
+    // The notes room explains itself (its panel and the side panel): no guide card there.
+    const hidden = dive.active || !workspace || (app.mode === 'room' && app.roomNode === NOTES_ROOM);
     this.holder.visible = !hidden;
     this.world.camera.getWorldPosition(this.head);
     if (workspace && !hidden) {

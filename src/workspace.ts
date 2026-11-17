@@ -44,6 +44,12 @@ const STRIP_GRIP_OFFSET = new Vector3(0.665, 0.006, 0);
  * grip takes it: closing the fingers swings a hand's ray off a small target.
  */
 const HAND_GRAB_GRACE_MS = 300;
+/** Fingers closed this close (metres) to the bar or the grip take it, with no pointing. */
+const HAND_TAKE_REACH = 0.06;
+/** A hand's own ray passing this close (metres) counts as aimed at the bar or the grip. */
+const HAND_AIM = 0.045;
+/** Half the bar's length, along the desk's front edge (see buildHandle). */
+const BAR_HALF = 0.12;
 const GRAB = { movementMode: MovementMode.MoveAtSource, translate: true, rotate: false, scale: false };
 /** Mixed reality: keep looking for a real table this long after the desk is placed (the room's surfaces arrive a little after the session starts). */
 const TABLE_SEARCH_SECONDS = 5;
@@ -135,8 +141,16 @@ export class WorkspaceSystem extends createSystem({}) {
    * handle were when the pinch began, and when each was last pointed at.
    */
   private handDrag: { what: 'desk' | 'strip'; hand: 'left' | 'right'; tip: Vector3; from: Vector3 } | null = null;
-  private deskPointedAt = -Infinity;
-  private stripPointedAt = -Infinity;
+  /** What each hand's own ray was last on (the bar or the grip), and when. */
+  private handAim: Record<'left' | 'right', { what: 'desk' | 'strip' | null; at: number }> = {
+    left: { what: null, at: -Infinity },
+    right: { what: null, at: -Infinity },
+  };
+  private aimOrigin = new Vector3();
+  private aimDir = new Vector3();
+  private aimQuat = new Quaternion();
+  private aimTmp = new Vector3();
+  private barEnd = new Vector3();
   private dragTip = new Vector3();
   private floor: Object3D | undefined;
   private passthrough = false;
@@ -187,9 +201,11 @@ export class WorkspaceSystem extends createSystem({}) {
       const source = handOf(event);
       if (!source?.hand || (source.handedness !== 'left' && source.handedness !== 'right')) return;
       const now = performance.now();
-      const what = now - this.stripPointedAt < HAND_GRAB_GRACE_MS ? 'strip' : now - this.deskPointedAt < HAND_GRAB_GRACE_MS ? 'desk' : null;
+      // Fingers closed on the bar or the grip, or this hand's own ray on one a moment ago.
+      const aim = this.handAim[source.handedness];
+      const what = this.touching(source.handedness) ?? (now - aim.at < HAND_GRAB_GRACE_MS ? aim.what : null);
       const object = what === 'strip' ? this.stripGrip?.object3D : what === 'desk' ? this.handle?.object3D : null;
-      if (import.meta.env.DEV) console.log(`[grip] hand pinch: ${what ?? 'none'} (strip pointed ${Math.round(now - this.stripPointedAt)} ms ago, desk ${Math.round(now - this.deskPointedAt)} ms ago)`);
+      if (import.meta.env.DEV && what) console.log(`[grip] ${source.handedness} hand took the ${what === 'strip' ? 'strip grip' : 'desk bar'}`);
       if (!what || !object) return;
       const tip = new Vector3();
       this.player.indexTipSpaces[source.handedness].getWorldPosition(tip);
@@ -269,6 +285,7 @@ export class WorkspaceSystem extends createSystem({}) {
     }
     this.updateHandle();
     this.updateStripGrip();
+    this.updateHandAims();
     // Mixed reality: the real floor is the floor.
     const passthrough = this.immersive && inPassthrough(this.world);
     if (passthrough !== this.passthrough) {
@@ -314,7 +331,6 @@ export class WorkspaceSystem extends createSystem({}) {
       if (this.handDrag?.what === 'strip') this.handDrag = null;
       return;
     }
-    if (grip.hasComponent(Hovered)) this.stripPointedAt = performance.now();
     const byHand = this.followHand('strip', object);
     const grabbed = byHand || grip.hasComponent(Grabbed);
     this.stripGripMaterial.color.set(grabbed || grip.hasComponent(Hovered) ? HANDLE_LIVE : HANDLE_IDLE);
@@ -329,6 +345,71 @@ export class WorkspaceSystem extends createSystem({}) {
     object.position.copy(this.strip.position).add(STRIP_GRIP_OFFSET);
     this.workspace.localToWorld(object.position);
     object.rotation.set(0, this.workspace.rotation.y, 0);
+  }
+
+  /** The bar or the grip within reach of this hand's fingertip, nearest first. */
+  private touching(hand: 'left' | 'right'): 'desk' | 'strip' | null {
+    this.player.indexTipSpaces[hand].getWorldPosition(this.aimTmp);
+    let best: 'desk' | 'strip' | null = null;
+    let bestDistance = HAND_TAKE_REACH;
+    const grip = this.stripGrip?.object3D;
+    if (grip?.visible) {
+      const d = grip.position.distanceTo(this.aimTmp);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = 'strip';
+      }
+    }
+    const bar = this.handle?.object3D;
+    if (bar?.visible && this.distanceToBar(bar, this.aimTmp) < bestDistance) best = 'desk';
+    return best;
+  }
+
+  /** Distance from a point to the bar's centre line (it lies along the desk's front edge). */
+  private distanceToBar(bar: Object3D, point: Vector3): number {
+    let best = Infinity;
+    for (let i = -2; i <= 2; i += 1) {
+      this.barEnd.set((i / 2) * BAR_HALF, 0, 0).applyAxisAngle(UP, bar.rotation.y).add(bar.position);
+      best = Math.min(best, this.barEnd.distanceTo(point));
+    }
+    return best;
+  }
+
+  /** Records, for each hand, whether its own ray is on the bar or the grip. */
+  private updateHandAims(): void {
+    const bar = this.handle?.object3D;
+    const grip = this.stripGrip?.object3D;
+    if (!bar?.visible && !grip?.visible) return;
+    const now = performance.now();
+    for (const hand of ['left', 'right'] as const) {
+      const space = this.player.raySpaces[hand];
+      space.getWorldPosition(this.aimOrigin);
+      space.getWorldQuaternion(this.aimQuat);
+      this.aimDir.set(0, 0, -1).applyQuaternion(this.aimQuat);
+      const aim = this.handAim[hand];
+      if (grip?.visible && this.rayDistance(grip.position) < HAND_AIM) {
+        aim.what = 'strip';
+        aim.at = now;
+        continue;
+      }
+      if (!bar?.visible) continue;
+      for (let i = -2; i <= 2; i += 1) {
+        this.barEnd.set((i / 2) * BAR_HALF, 0, 0).applyAxisAngle(UP, bar.rotation.y).add(bar.position);
+        if (this.rayDistance(this.barEnd) < HAND_AIM) {
+          aim.what = 'desk';
+          aim.at = now;
+          break;
+        }
+      }
+    }
+  }
+
+  /** How far a point lies from the ray (aimOrigin, aimDir), or Infinity when behind it. */
+  private rayDistance(point: Vector3): number {
+    this.aimTmp.copy(point).sub(this.aimOrigin);
+    const along = this.aimTmp.dot(this.aimDir);
+    if (along < 0) return Infinity;
+    return Math.sqrt(Math.max(0, this.aimTmp.lengthSq() - along * along));
   }
 
   /** A bare hand holding this handle: move it with the fingertip. Returns true while held. */
@@ -380,7 +461,6 @@ export class WorkspaceSystem extends createSystem({}) {
       return;
     }
 
-    if (handle.hasComponent(Hovered)) this.deskPointedAt = performance.now();
     const byHand = this.followHand('desk', object);
     const grabbed = byHand || handle.hasComponent(Grabbed);
     // The visitor is placing the desk themselves: stop looking for a table.

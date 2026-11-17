@@ -25,7 +25,7 @@ import {
   type UIKitMLAsset,
   Vector3,
 } from '@iwsdk/core';
-import { ask, markSpoken, speak, speakingSeconds, stopSpeaking, voiceLevel } from '../agent/client.js';
+import { ask, markSpoken, speak, speakingSeconds, stopSpeaking, voiceLevel, voiceMissing } from '../agent/client.js';
 import { LiveMic } from '../agent/live-mic.js';
 import { canRecord } from '../agent/recorder.js';
 import { asksToLeave, leavesRoom, plainRequest, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
@@ -861,7 +861,9 @@ export class RoomSystem extends createSystem({
   }
 
   private titleFor(w: WorkerState, suffix = ''): string {
-    return `${w.name} | ${this.theme?.role ?? ''}${suffix}`;
+    // Once it is clear this device cannot speak, the bubble says so, so silence is never a mystery.
+    const quiet = voiceMissing() ? ' | no voice here' : '';
+    return `${w.name} | ${this.theme?.role ?? ''}${suffix}${quiet}`;
   }
 
   /** The worker walks over to talk, faces the viewer and greets them. */

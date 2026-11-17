@@ -165,6 +165,9 @@ export function blip(at?: Vector3): void {
 
 /** A soft click for panel buttons and selections. */
 export function click(): void {
+  // Every button press is a gesture, a fingertip tap included (it fires no
+  // pinch and no page pointerdown): start the audio here too, inside it.
+  unlock();
   const out = output(undefined, 0.35);
   if (!out) return;
   tone(1400, ctx!.currentTime, 0.04, out, 'square', 0.15);
