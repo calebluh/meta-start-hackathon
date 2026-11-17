@@ -4,8 +4,9 @@ Step inside a codebase. A real software project becomes a little city on
 your desk in VR: every part of the code is a building, and you can walk into
 any of them. Inside, robot workers run that part of the code. Packets of data
 travel from room to room along the code's real flows. You can point at any
-robot and ask it a question, out loud or with a pinch, and it answers about
-the actual code. When you think you know a room, pinch **Quiz me**: the
+robot and ask it a question, out loud or with a pinch, and it answers from
+a map of the code: what each file is for, what talks to what, and the flows
+through it. When you think you know a room, pinch **Quiz me**: the
 robot tests you on it and corrects what you get wrong.
 
 Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start

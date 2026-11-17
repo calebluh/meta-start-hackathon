@@ -1861,7 +1861,8 @@ export class DioramaSystem extends createSystem({
   private updateStreetTurn(): void {
     const now = performance.now();
     const quiet = now - this.streetMovedAt < STREET_QUIET_MS;
-    let dir: number = this.turnHit;
+    // A pinch that lands twice on a Turn button turns once.
+    let dir: number = quiet ? 0 : this.turnHit;
     this.turnHit = 0;
     const stick = this.input.xr.gamepads.right?.getAxesValues(InputComponent.Thumbstick);
     if (stick) {

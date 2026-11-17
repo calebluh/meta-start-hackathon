@@ -100,7 +100,8 @@ desk.
   that does the same job: payments is a cashier's office, storage is a
   warehouse, messaging is a post office. Robots work there.
 - **The robots.** Pinch a robot, or just talk, and cut in whenever you
-  like. It answers about the actual code in its room, in its own voice, and
+  like. It answers from a map of the code in its room (what each file is
+  for, what it talks to, the flows through it), in its own voice, and
   it acts on what you ask: it walks you to another room, plays a flow,
   points at the pipe that leads next door, hands you a card about a file, or
   takes you back to the city. When it sends you on, it names the colleague
@@ -118,8 +119,9 @@ desk.
   the tray on it: square with the table's edges, inside them, with a soft
   shadow on the real wood. The grab bar slides it along the table top. In a
   room with no table, or one the headset has never scanned, the city floats
-  within reach and you place it yourself. The rooms you step into still
-  surround you, with your real room around them.
+  within reach and you place it yourself. Step into a room and it surrounds
+  you completely; come back out and the city is on your table where you left
+  it.
   `[FILL IN after trying it on a Quest 3 or 3S: keep the table sentences
   only if the city landed on your real desk. So far this was verified in the
   IWSDK emulator's furnished room, where the emulated headset's desk, side
@@ -141,8 +143,10 @@ so it runs from a link in the Quest Browser with nothing to install.
   that file by reading a repository without running it. The city, the rooms,
   the robots' names and jobs, and every answer are generated from the map.
 - **City and rooms.** Buildings, rooms and props are built in code from
-  simple shapes, with a few CC0 models. Sound is all synthesized in the
-  browser and placed in 3D, so a till rings from where the till stands.
+  simple shapes, with a few CC0 models. Sound effects are synthesized in
+  the browser and placed in 3D, so a till rings from where the till stands;
+  the robots' voices come from a text-to-speech service, or the browser's
+  own voice when that is not set up.
   The whole city's neon edges are one mesh and its pools of light another,
   so the look costs two draw calls, not two per building.
 - **The real room.** Mixed reality uses WebXR plane detection, the browser's
@@ -214,13 +218,15 @@ Development was done with Claude Code as a pair programmer.
   Quest 2 before it drew a frame. Eye tracking is now only requested when
   the link asks for it.
 - **Hand input is noisy.** One pinch often arrives twice, which made buttons
-  start and stop at once and buildings select and deselect. Every control now
-  ignores a repeat that arrives too soon.
+  start and stop at once and buildings select and deselect. The buttons that
+  switch something on and off, and picking a building, now ignore a repeat
+  that arrives too soon.
 - **A pinch that picked up the whole city.** Reaching out and pinching a
   building, the most natural thing to do, took hold of the board instead,
-  because a pinch made close to the city is a grab. A hold that is short and
-  goes nowhere is now read as what it was: a pinch on the building under
-  your fingers.
+  because a pinch made close to the city is a grab. The city no longer takes
+  a grab at all: a pinch on or near a building picks it, and the city turns
+  and resizes with four pegs at its corners (hold one to turn it, two to
+  resize it).
 - **A robot that talks has to stay visible.** Side panels, a speech bubble
   and the guide card all want the same space in front of you. The robot now
   walks to a spot between the panels, and the card drops to the desk.
