@@ -40,7 +40,8 @@ function render(rel) {
   const data = fs.readFileSync(path.join(SOURCE, rel));
   if (rel !== 'SKILL.md') return data;
   const text = data.toString('utf8');
-  const renamed = text.replace(/^name: map$/m, `name: ${NAME}`);
+  // Tolerates Windows line endings, which git may write on checkout.
+  const renamed = text.replace(/^name: map(\r?)$/m, `name: ${NAME}$1`);
   if (renamed === text) throw new Error('SKILL.md has no "name: map" line to rename');
   return Buffer.from(renamed, 'utf8');
 }
