@@ -1,6 +1,44 @@
 import { CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from '@iwsdk/core';
 import { ignoreRays } from '../rays.js';
 
+/** Lines of code under a card's text: `mark` is the index of the flagged line, -1 for none. */
+export interface CodeBlock {
+  lines: string[];
+  numbers: string[];
+  mark: number;
+}
+
+const CODE_FONT = '500 22px "Cascadia Mono", Consolas, "DejaVu Sans Mono", "Roboto Mono", monospace';
+const CODE_LINE = 30;
+/** Room for the line numbers, in canvas pixels. */
+const CODE_GUTTER = 64;
+/** Code lines shown on a card, centred on the flagged one. */
+const CODE_LINES = 9;
+/** Writing the headset may have no font for (Chinese, Japanese, Korean), shown as an ellipsis. */
+const NO_FONT = /[⺀-鿿가-힯豈-﫿＀-￯　-〿]+/g;
+
+/**
+ * A warning's excerpt from the map ("  41 code", flagged line ">43 code") as
+ * a card's code block: a window centred on the flagged line, the shared
+ * indent taken off, writing without a font replaced.
+ */
+export function codeBlock(excerpt: string): CodeBlock | undefined {
+  const rows = excerpt
+    .split('\n')
+    .map((l) => /^([ >])\s*(\d+) ?(.*)$/.exec(l))
+    .filter((m): m is RegExpExecArray => m !== null);
+  const at = rows.findIndex((m) => m[1] === '>');
+  if (at < 0) return undefined;
+  const from = Math.max(0, Math.min(at - Math.floor(CODE_LINES / 2), rows.length - CODE_LINES));
+  const window = rows.slice(from, from + CODE_LINES);
+  const indent = Math.min(...window.filter((m) => m[3].trim()).map((m) => /^\s*/.exec(m[3])![0].length));
+  return {
+    lines: window.map((m) => m[3].slice(Number.isFinite(indent) ? indent : 0).replace(NO_FONT, '…')),
+    numbers: window.map((m) => m[2]),
+    mark: at - from,
+  };
+}
+
 /**
  * A speech bubble on a canvas texture. `setText` redraws it; the plane keeps
  * a fixed width and grows in height with the number of wrapped lines.
@@ -29,8 +67,8 @@ export class Bubble {
     this.mesh.visible = false;
   }
 
-  setText(text: string, title?: string): void {
-    const key = `${title ?? ''}|${text}`;
+  setText(text: string, title?: string, code?: CodeBlock): void {
+    const key = `${title ?? ''}|${text}|${code?.lines.join('\n') ?? ''}`;
     if (key === this.text) return;
     this.text = key;
     if (!text) {
@@ -55,7 +93,8 @@ export class Bubble {
     const shown = lines.slice(0, this.maxLines);
     if (import.meta.env.DEV && lines.length > this.maxLines) console.warn(`[bubble] ${lines.length} lines, only ${this.maxLines} shown: ${text.slice(0, 60)}`);
     const top = title ? 70 : 32;
-    const h = top + shown.length * 44 + 30;
+    const codeTop = top + shown.length * 44 + 14;
+    const h = code ? codeTop + code.lines.length * CODE_LINE + 30 : top + shown.length * 44 + 30;
     const resized = this.canvas.height !== h;
     if (resized) this.canvas.height = h;
     ctx.clearRect(0, 0, w, h);
@@ -75,12 +114,42 @@ export class Bubble {
     ctx.font = font;
     ctx.fillStyle = '#f0f3f6';
     shown.forEach((l, i) => ctx.fillText(l, 32, top + i * 44));
+    if (code) this.drawCode(ctx, code, codeTop, w);
     // A new canvas size needs a new GPU texture; the same size is just re-uploaded
     // (text types out a few characters at a time, so this runs many times a line).
     if (resized) this.texture.dispose();
     this.texture.needsUpdate = true;
     this.mesh.scale.set(this.widthMeters, (this.widthMeters * h) / w, 1);
     this.mesh.visible = true;
+  }
+
+  /** Code lines as written (never wrapped): a dark well, line numbers, the flagged line lit in the accent colour. */
+  private drawCode(ctx: CanvasRenderingContext2D, code: CodeBlock, top: number, w: number): void {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.roundRect(20, top - 8, w - 40, code.lines.length * CODE_LINE + 12, 12);
+    ctx.fill();
+    ctx.font = CODE_FONT;
+    const room = w - 64 - CODE_GUTTER;
+    code.lines.forEach((line, i) => {
+      const y = top + i * CODE_LINE;
+      const marked = i === code.mark;
+      if (marked) {
+        ctx.fillStyle = this.accent;
+        ctx.globalAlpha = 0.28;
+        ctx.fillRect(24, y - 3, w - 48, CODE_LINE);
+        ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = marked ? this.accent : '#7d8590';
+      ctx.fillText(`${marked ? '>' : ' '}${code.numbers[i]}`, 28, y);
+      ctx.fillStyle = marked ? '#ffffff' : '#c9d1d9';
+      let text = line;
+      if (ctx.measureText(text).width > room) {
+        while (text.length > 1 && ctx.measureText(`${text}…`).width > room) text = text.slice(0, -1);
+        text += '…';
+      }
+      ctx.fillText(text, 32 + CODE_GUTTER, y);
+    });
   }
 
   dispose(): void {

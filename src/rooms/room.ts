@@ -50,7 +50,7 @@ import { loadProps } from './props.js';
 import { makePropDecor, makePropStation, propsForTheme } from './stations.js';
 import { makeDecor, makeItem, makePalette, makeStation, pickTheme, type Theme } from './themes.js';
 import { type Mood, RobotCharacter } from './character.js';
-import { Bubble } from './worker.js';
+import { Bubble, codeBlock } from './worker.js';
 
 const ROOM_RADIUS = 5.2;
 const WALL_HEIGHT = 3.4;
@@ -132,6 +132,8 @@ const TALK_ARC_NARROW = 0.06;
 const CHARS_PER_SECOND = 16;
 /** A ready answer waits at most this long for the "let me check" line to finish. */
 const ACK_GRACE_MS = 1500;
+/** Where a file card showing code floats, in the room: up and to the left, clear of the robot and its speech bubble. */
+const CODE_CARD = new Vector3(-0.62, 1.55, -1.0);
 /** The shortest time a flow step's note stays up, even if the voice was cut off. */
 const MIN_NOTE_SECONDS = 2.5;
 /**
@@ -1410,9 +1412,18 @@ export class RoomSystem extends createSystem({
     const file = app.graph.files.find((f) => f.p === path);
     if (!file || !this.roomGroup || !this.theme) return;
     this.hideFileCard();
-    const card = new Bubble(0.7, this.theme.accent, 8);
-    card.setText(`${file.d} (${file.loc} lines, ${file.p})`, `File: ${file.name}`);
-    card.mesh.position.set(-0.32, 1.42, -1.15); // up and left of centre, clear of the side panels
+    // A file with a warning shows the flagged lines under its description (maps built with code excerpts).
+    const issue = app.graph.health?.issues.find((i) => i.excerpt && i.locations?.[0]?.file === path);
+    const code = issue?.excerpt ? codeBlock(issue.excerpt) : undefined;
+    const card = new Bubble(0.7, this.theme.accent, code ? 3 : 8);
+    if (code && issue) {
+      // The flagged lines: just the file and the warning in words above them, so the card stays clear of the robot.
+      card.setText(`Line ${issue.locations?.[0]?.line ?? '?'}: ${issue.title}. (${file.p})`, `File: ${file.name}`, code);
+      card.mesh.position.set(CODE_CARD.x, CODE_CARD.y, CODE_CARD.z);
+    } else {
+      card.setText(`${file.d} (${file.loc} lines, ${file.p})`, `File: ${file.name}`);
+      card.mesh.position.set(-0.32, 1.42, -1.15); // up and left of centre, clear of the side panels
+    }
     this.roomGroup.add(card.mesh);
     this.bubbles.push(card);
     this.fileCard = card;

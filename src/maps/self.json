@@ -61,7 +61,7 @@
    "summary": "Builds the round room you step into and runs everything that happens there: the robots' errands, packets arriving through the wall tubes, and your conversation with a robot.",
    "stats": {
     "files": 3,
-    "loc": 2305
+    "loc": 2316
    }
   },
   {
@@ -83,7 +83,7 @@
    "summary": "The robot crew shared by every room: how they walk, wave and move their mouths in time with their voice, plus their speech bubbles and the small things they say while thinking.",
    "stats": {
     "files": 3,
-    "loc": 402
+    "loc": 467
    }
   },
   {
@@ -1003,9 +1003,9 @@
    "n": "rooms.builder",
    "name": "Room director",
    "d": "Builds the room around you and runs it: robots going about their errands, packets flying in and out of the tubes, and the whole conversation when you ask a robot a question.",
-   "loc": 1949,
+   "loc": 1960,
    "exports": [
-    "RoomSystem L218"
+    "RoomSystem L220"
    ]
   },
   {
@@ -1051,9 +1051,10 @@
    "n": "rooms.robots",
    "name": "Speech bubble",
    "d": "Draws the floating bubble that shows what a robot is saying, growing taller as the text gets longer; the tour's card uses it too.",
-   "loc": 87,
+   "loc": 152,
    "exports": [
-    "Bubble L8"
+    "codeBlock L25",
+    "Bubble L46"
    ]
   },
   {
