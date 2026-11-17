@@ -13,3 +13,7 @@ these fill the gaps.
 
 The emulator's hands are drawn as white outlines. Say "simulator footage" in
 the video wherever these clips appear.
+
+| Clip | Use | Notes |
+| --- | --- | --- |
+| `06-anchor-return.mp4` (10 s) | Mixed reality again, seated about 25 cm further right than last time: the city is back on the spot it was left on, and "Back where you left it" shows for the first 1.5 s. Good for the persistent-anchor beat at 2:32. | The cue lasts 6 s in the app; the recorder started late. |

@@ -133,11 +133,11 @@ Two things to decide while you paste:
 ## Rolling back the 17 November evening changes
 
 The build before the "persistent anchor" work is tagged `safe-2026-11-17`.
-If the new build misbehaves on the headset, undo the anchor commit (6d07a17) and push.
+If the new build misbehaves on the headset, undo the two anchor commits and push.
 That redeploys the judged link in about a minute:
 
 ```bash
-git revert --no-edit 6d07a17
+git revert --no-edit 0332232 6d07a17
 git push
 ```
 
