@@ -253,6 +253,7 @@ export async function codeForIdea(graph: GraphData, mapId: string, said: string)
     '```',
     ...lines,
     '```',
+    'Then finish, as always, with the one last line: NOTE: ..., REVISE: ... or NOTE: none.',
   ].join('\n');
 }
 
