@@ -291,8 +291,8 @@ so it runs from a link in the Quest Browser with nothing to install.
   The same goes for notes: when you ask how to fix or improve something, or
   a robot says it put a fix on your notes list, the server makes sure the
   suggestion is there and says which file and lines it is about. And a
-  robot that stops after one line to use a tool is given the turn back
-  until it has said its answer.
+  robot that stops after one line to use a tool is given up to two more
+  turns to say its answer.
 - **Without the AI.** If the model cannot be reached, the robots answer from
   the map instead, and asking to change room, watch a flow or leave still
   works. The quiz is written from the map too: its questions and pinched

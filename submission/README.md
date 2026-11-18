@@ -116,8 +116,9 @@ emulator. This is the most important step left.
      and whose fix should then be on the wall in **Notes**.
      In **Notes**, say "billing day
      should retry a declined card three times": the note taker should say
-     what the retry code does today, and the note should end with
-     [retryDeclined, jobs/src/retry.ts line 20]. Then pinch the small grey
+     what the retry code does today, and the note should end with where the
+     work is, such as [retryDeclined, jobs/src/retry.ts line 29] (the line
+     it names can differ). Then pinch the small grey
      bar over the ask panel, over a speech bubble or under the code card,
      and drag: the thing should follow your hand, keep facing you and stay
      put. **Recenter** should put everything back. On the ask panel,
@@ -255,7 +256,7 @@ git revert --no-edit 7fde689 b2f9e90
 git push
 ```
 
-Then take the last two sentences ("The same goes for notes ... said its
+Then take the last two sentences ("The same goes for notes ... to say its
 answer.") out of "Robots that keep their word" in `devpost.md`.
 
 The robots and the note taker reading real code altogether (if answers get
