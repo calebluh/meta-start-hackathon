@@ -119,6 +119,11 @@ const WAYPOINT_COLOR = '#7ee0ff';
 /** The Turn buttons float this far out to either side, low, and this far below the eyes (metres). */
 const TURN_BUTTON_OUT = 0.55;
 const TURN_BUTTON_DROP = 0.18;
+/** The Forward button stands straight ahead, this far below the eyes (negative: above). */
+const FORWARD_BUTTON_DROP = -0.12;
+/** Forward walks to the nearest disc within this angle (radians) of where the visitor faces, at least FORWARD_MIN metres away. */
+const FORWARD_CONE = 0.8;
+const FORWARD_MIN = 0.8;
 const TURN_BUTTON_ANGLE = 1.0;
 /** The Turn buttons come round again only when the head turns this far (radians) from where they were placed. */
 const TURN_BUTTON_FOLLOW = 1.6;
@@ -311,7 +316,7 @@ export function makeLabel(text: string, height: number, accent: string): Mesh {
 
 /** The "Step inside" button that floats over a picked building: a bright pill, `height` meters tall. */
 /** A round button with a curved arrow, for turning left (-1) or right (1) in street view. */
-function makeTurnButton(dir: -1 | 1): Mesh {
+function makeTurnButton(dir: -1 | 1 | 0): Mesh {
   const size = 160;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
@@ -323,6 +328,28 @@ function makeTurnButton(dir: -1 | 1): Mesh {
   ctx.strokeStyle = '#7ee0ff';
   ctx.lineWidth = 6;
   ctx.stroke();
+  if (dir === 0) {
+    // A straight arrow up the middle: step forward.
+    ctx.lineWidth = 12;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(size / 2, size * 0.62);
+    ctx.lineTo(size / 2, size * 0.3);
+    ctx.stroke();
+    ctx.fillStyle = '#7ee0ff';
+    ctx.beginPath();
+    ctx.moveTo(size / 2, size * 0.14);
+    ctx.lineTo(size / 2 - 22, size * 0.36);
+    ctx.lineTo(size / 2 + 22, size * 0.36);
+    ctx.closePath();
+    ctx.fill();
+    ctx.font = '700 24px Inter, "Segoe UI", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Forward', size / 2, size * 0.82);
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    return new Mesh(new PlaneGeometry(0.11, 0.11), new MeshBasicMaterial({ map: texture, transparent: true, depthWrite: false }));
+  }
   // A curved arrow round the middle, pointing the way it turns.
   ctx.lineWidth = 12;
   ctx.lineCap = 'round';
@@ -517,8 +544,10 @@ export class DioramaSystem extends createSystem({
   private waypoints: InstancedMesh | null = null;
   private waypointSpots: Vector3[] = [];
   private waypointHit: Vector3 | null = null;
-  private turnButtons: { entity: Entity; mesh: Mesh; dir: 1 | -1 }[] = [];
+  private turnButtons: { entity: Entity; mesh: Mesh; dir: 1 | -1 | 0 }[] = [];
   private turnHit: 1 | -1 | 0 = 0;
+  /** The Forward button was pinched: walk to the nearest disc ahead. */
+  private forwardHit = false;
   /** Where the Turn buttons were last placed: the head's turn then, and the street move they belong to. */
   private turnAnchorYaw = 0;
   private turnAnchorAt = -1;
@@ -528,7 +557,7 @@ export class DioramaSystem extends createSystem({
    * moment ago, since closing the fingers swings the ray off a small target.
    * Per hand, so an idle hand's ray never decides the other hand's pinch.
    */
-  private handAim: Record<'left' | 'right', { kind: 'peg' | 'turn' | 'disc' | 'building' | null; peg: Peg | null; dir: 1 | -1; point: Vector3; building: string | null; at: number }> = {
+  private handAim: Record<'left' | 'right', { kind: 'peg' | 'turn' | 'disc' | 'building' | null; peg: Peg | null; dir: 1 | -1 | 0; point: Vector3; building: string | null; at: number }> = {
     left: { kind: null, peg: null, dir: 1, point: new Vector3(), building: null, at: -Infinity },
     right: { kind: null, peg: null, dir: 1, point: new Vector3(), building: null, at: -Infinity },
   };
@@ -748,7 +777,8 @@ export class DioramaSystem extends createSystem({
         return;
       }
       if (aim.kind === 'turn' && this.streetExtrasShown) {
-        this.turnHit = aim.dir;
+        if (aim.dir === 0) this.forwardHit = true;
+        else this.turnHit = aim.dir;
         this.pinchTakenAt = now;
         return;
       }
@@ -2402,13 +2432,14 @@ export class DioramaSystem extends createSystem({
 
   /** Two buttons, low to the left and right, that turn the view 30 degrees: for hands, with no thumbstick. */
   private buildTurnButtons(): void {
-    for (const dir of [-1, 1] as const) {
+    for (const dir of [-1, 1, 0] as const) {
       const mesh = makeTurnButton(dir);
-      mesh.name = dir < 0 ? 'turn-left' : 'turn-right';
+      mesh.name = dir < 0 ? 'turn-left' : dir > 0 ? 'turn-right' : 'step-forward';
       mesh.visible = false;
       const entity = this.world.createTransformEntity(mesh, { persistent: true });
       (mesh as unknown as { addEventListener(type: string, fn: () => void): void }).addEventListener('pointerdown', () => {
-        this.turnHit = dir;
+        if (dir === 0) this.forwardHit = true;
+        else this.turnHit = dir;
       });
       this.turnButtons.push({ entity, mesh, dir });
     }
@@ -2469,7 +2500,8 @@ export class DioramaSystem extends createSystem({
     for (const b of this.turnButtons) {
       if (replace) {
         const a = this.turnAnchorYaw - b.dir * TURN_BUTTON_ANGLE;
-        b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - TURN_BUTTON_DROP, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
+        const drop = b.dir === 0 ? FORWARD_BUTTON_DROP : TURN_BUTTON_DROP;
+        b.mesh.position.set(this.headWorld.x - Math.sin(a) * TURN_BUTTON_OUT, this.headWorld.y - drop, this.headWorld.z - Math.cos(a) * TURN_BUTTON_OUT);
       }
       b.mesh.lookAt(this.headWorld);
       b.mesh.scale.setScalar(b.entity.hasComponent(Hovered) ? 1.15 : 1);
@@ -2506,6 +2538,12 @@ export class DioramaSystem extends createSystem({
       click();
       return;
     }
+    const forward = this.forwardHit;
+    this.forwardHit = false;
+    if (forward && !quiet) {
+      this.stepForward();
+      return;
+    }
     const hit = this.waypointHit;
     this.waypointHit = null;
     if (!hit || quiet) return;
@@ -2524,6 +2562,40 @@ export class DioramaSystem extends createSystem({
     if (!best) return;
     if (import.meta.env.DEV) console.log(`[street] walked to the disc at ${best.x.toFixed(3)}, ${best.z.toFixed(3)} (board)`);
     this.standAt(this.streetSpot.copy(best));
+  }
+
+  /**
+   * The Forward button: walk to the nearest disc ahead (within FORWARD_CONE of
+   * where the head faces). Discs stand only on open street, so this never
+   * walks into a building. With no disc ahead, nothing happens.
+   */
+  private stepForward(): void {
+    const obj = this.root.object3D!;
+    obj.updateWorldMatrix(true, false);
+    this.world.camera.getWorldPosition(this.headWorld);
+    this.world.camera.getWorldDirection(this.streetTmp);
+    this.streetTmp.add(this.headWorld);
+    obj.worldToLocal(this.streetTmp);
+    obj.worldToLocal(this.streetSpot.copy(this.headWorld));
+    const fx = this.streetTmp.x - this.streetSpot.x;
+    const fz = this.streetTmp.z - this.streetSpot.z;
+    const fl = Math.hypot(fx, fz);
+    if (fl < 1e-6) return;
+    const min = FORWARD_MIN / Math.max(obj.scale.x, 1e-6);
+    const cos = Math.cos(FORWARD_CONE);
+    let best: Vector3 | null = null;
+    let bestDistance = Infinity;
+    for (const spot of this.waypointSpots) {
+      const dx = spot.x - this.streetSpot.x;
+      const dz = spot.z - this.streetSpot.z;
+      const d = Math.hypot(dx, dz);
+      if (d < min || d >= bestDistance) continue;
+      if ((dx * fx + dz * fz) / (d * fl) < cos) continue;
+      bestDistance = d;
+      best = spot;
+    }
+    if (import.meta.env.DEV) console.log(`[street] forward ${best ? `to the disc at ${best.x.toFixed(3)}, ${best.z.toFixed(3)} (board)` : ': no disc ahead'}`);
+    if (best) this.standAt(this.streetSpot.copy(best));
   }
 
   /** Controllers and keyboard: the left thumbstick walks the streets. */
