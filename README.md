@@ -72,7 +72,7 @@ Then, inside the repository you want to see, ask Claude Code:
 
 The same skill is packaged for Codex and the ChatGPT desktop app, Cursor,
 Gemini CLI, Antigravity, GitHub Copilot and others. The install line for each
-is in the public repository's README (here: `editions/personal/README.md`).
+is in the README of [calebluh/walkthrough](https://github.com/calebluh/walkthrough).
 The packaging follows each tool's published format and has been installed
 only in Claude Code so far.
 
@@ -81,16 +81,13 @@ only in Claude Code so far.
 - **This one, [meta-start-hackathon](https://github.com/calebluh/meta-start-hackathon),**
   is the competition build. It opens on a start menu of three demo
   codebases: MiroFish, Larder, and "This app", Walkthrough's own source
-  mapped by its own plugin. The Devpost text, video script and a submission
-  checklist are in [submission/](submission/).
-- **[codebase-diorama](https://github.com/calebluh/walkthrough)** is the
+  mapped by its own plugin.
+- **[walkthrough](https://github.com/calebluh/walkthrough)** is the
   public viewer and the plugin for coding agents, and it is what the plugin installs.
   It has no demo menu and no MiroFish. It opens straight onto your own maps.
 
-All work happens here. `node scripts/export-personal.mjs <folder>` writes the
-public repository into a checkout of it. It leaves out the hackathon-only
-files and applies the replacements in `editions/personal/`. To preview the
-public edition without exporting, add `VITE_EDITION=personal` to `.env.local`.
+To preview the public edition from this repository, add `VITE_EDITION=personal`
+to `.env.local`.
 
 ## How it is built
 

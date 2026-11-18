@@ -61,3 +61,20 @@ maps-src/
 
 # Emulator video clips (large; kept local)
 submission/video-clips/*.mp4
+
+# Kept locally, not published: AI-assistant setup, internal submission notes,
+# the plugin-repo edition files and the stale plugin zip.
+/.claude/
+/.agents/skills/
+/.codex/
+/.cursor/
+/.github/instructions/
+/AGENTS.md
+/CLAUDE.md
+/src/AGENTS.md
+/public/scenes/AGENTS.md
+/public/ui/AGENTS.md
+/opencode.json
+/submission/
+/editions/
+/public/downloads/
