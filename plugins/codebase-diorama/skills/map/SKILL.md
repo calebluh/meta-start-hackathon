@@ -74,7 +74,7 @@ labels like "Payments", "Inventory" or "Email" get fitting rooms.
 
 ## 4. Write the two map files
 
-Run `mkdir -p "$VIEWER_DIR/maps-src/<id>"`, then create `map.mjs` and
+Run `mkdir -p "<target repo path>/walkthrough"`, then create `map.mjs` and
 `arch.json` in that folder. The exact formats, with a worked
 example, are in [references/map-format.md](references/map-format.md). Read it
 before writing. Start from the templates in `templates/`. (Both sit beside
@@ -106,10 +106,19 @@ named on screen.
 
 ```bash
 cd "$VIEWER_DIR"
-node scripts/build-map.mjs "<target repo path>" --map maps-src/<id>/map.mjs --arch maps-src/<id>/arch.json --out src/maps/custom/<id>.json
+node scripts/build-map.mjs "<target repo path>" --map "<target repo path>/walkthrough/map.mjs" --arch "<target repo path>/walkthrough/arch.json" --out src/maps/custom/<id>.json
 node plugins/codebase-diorama/skills/map/scripts/check-map.mjs src/maps/custom/<id>.json
 npm run typecheck
 ```
+
+Everything about the map lives in the target repo's `walkthrough/` folder:
+your `map.mjs` and `arch.json`, and from the build the map itself
+(`graph.json`), a short `README.md` and a `.gitignore` that keeps the whole
+folder out of git, so nothing needs committing and the repo's own
+`.gitignore` is not touched. The build also records which repository the
+map came from, so notes made in VR are written to `walkthrough/notes.md`
+there. Tell the user the folder exists and that `notes.md` is where their
+notes will appear.
 
 `build-map` throws if a file matches no part; reorder or widen part globs
 (most specific first). Fix everything `check-map` reports until it prints
@@ -167,7 +176,10 @@ When the code changes, re-read the changed files, update `map.mjs` and
 
 In the headset the user talks ideas over in the Notes room, and the robots
 put fixes they suggest on the same list. The viewer writes that list to
-`$VIEWER_DIR/notes/<id>.md`, one checklist line per note:
+`walkthrough/notes.md` in the target repo as it is said (or to
+`$VIEWER_DIR/notes/<id>.md` for a map whose repository the viewer does not
+know). The file opens with a count, then **To do** grouped by part of the
+code, then **Done**; each note is one checklist line:
 
 ```
 - [ ] Return a short error instead of the full traceback in simulation.py, report.py and graph.py. _(Endpoints, talked over, 2026-11-17 02:14)_

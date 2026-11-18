@@ -222,45 +222,12 @@ function agentApi(): Plugin {
             // The map id becomes a file name: plain names only, never a path.
             if (typeof body.mapId !== 'string' || !/^[\w-]{1,40}$/.test(body.mapId)) return send(400, { error: 'Bad map id' });
             if (typeof body.markdown !== 'string' || body.markdown.length > 200_000) return send(400, { error: 'Bad notes' });
-            const { mkdir, readFile, writeFile } = await import('node:fs/promises');
-            const { join } = await import('node:path');
-            await mkdir(join(process.cwd(), 'notes'), { recursive: true });
-            const file = join(process.cwd(), 'notes', `${body.mapId}.md`);
-            // A coding agent ticks notes off in this file (- [x]); the headset
-            // only knows the notes, not the ticks, so keep them when rewriting.
-            // Each device (the headset, a desktop browser) keeps its own list,
-            // so the file is a merge: a line another device wrote stays unless
-            // this device took it back (body.removed).
-            const key = (rest: string) => rest.replace(/ _\(.*\)_$/, '').trim();
-            const removed = new Set((Array.isArray(body.removed) ? body.removed : []).filter((r): r is string => typeof r === 'string').map((r) => r.replace(/\s+/g, ' ').trim()));
-            const done = new Set<string>();
-            const older: string[] = [];
-            const incoming = new Set<string>();
-            for (const line of body.markdown.split('\n')) {
-              const match = /^- \[ \] (.*)$/.exec(line);
-              if (match) incoming.add(key(match[1]));
-            }
-            try {
-              for (const line of (await readFile(file, 'utf8')).split(/\r?\n/)) {
-                const match = /^- \[([ xX])\] (.*)$/.exec(line);
-                if (!match) continue;
-                const k = key(match[2]);
-                if (match[1] !== ' ') done.add(k);
-                if (!incoming.has(k) && !removed.has(k)) older.push(line);
-              }
-            } catch {
-              // No file yet.
-            }
-            const lines = body.markdown.split('\n').map((line) => {
-              const match = /^- \[ \] (.*)$/.exec(line);
-              return match && done.has(key(match[1])) ? `- [x] ${match[1]}` : line;
-            });
-            // Lines only the file had go just before this device's notes.
-            const first = lines.findIndex((l) => l.startsWith('- ['));
-            if (older.length) lines.splice(first < 0 ? lines.length : first, 0, ...older);
-            const markdown = lines.join('\n');
-            await writeFile(file, markdown, 'utf8');
-            send(200, { path: `notes/${body.mapId}.md` });
+            // Kept in the mapped repository's own walkthrough/ folder when the viewer
+            // knows which repository the map came from, else in this folder's notes/.
+            // The file is a merge that keeps ticks and other devices' lines (server/notes-file.ts).
+            const { writeNotes } = (await server.ssrLoadModule('/server/notes-file.ts')) as typeof import('./server/notes-file');
+            const removed = (Array.isArray(body.removed) ? body.removed : []).filter((r): r is string => typeof r === 'string');
+            send(200, { path: await writeNotes(process.cwd(), body.mapId, body.markdown, removed) });
           } catch {
             send(400, { error: 'Could not save the notes' });
           }

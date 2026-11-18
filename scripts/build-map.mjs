@@ -38,6 +38,8 @@ const posix = (p) => p.split(path.sep).join('/');
 function walk(dir, list = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+    // The repository's own walkthrough/ folder (this map's sources, the built map, the notes) is not its code.
+    if (dir === repo && entry.name === 'walkthrough') continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) walk(full, list);
     else list.push(posix(path.relative(repo, full)));
@@ -283,6 +285,35 @@ const graph = {
 
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, JSON.stringify(graph, null, 1));
+
+// A map of someone's own repository (one built into src/maps/custom/) is also
+// kept in that repository, in a walkthrough/ folder beside its sources and the
+// notes made in VR. The viewer remembers which repository the map came from
+// (maps-src/targets.json), so those notes are written there
+// (server/notes-file.ts). The folder ignores itself in git.
+if (path.basename(path.dirname(out)) === 'custom') {
+  const id = path.basename(out, '.json');
+  const folder = path.join(repo, 'walkthrough');
+  fs.mkdirSync(folder, { recursive: true });
+  const keep = (name, text) => {
+    if (!fs.existsSync(path.join(folder, name))) fs.writeFileSync(path.join(folder, name), text);
+  };
+  keep('.gitignore', '# Made by Walkthrough: the map of this repository and your notes from VR.\n# Nothing in this folder needs committing, so the folder ignores itself.\n*\n');
+  keep('README.md', '# walkthrough/\n\nMade by Walkthrough, the VR walk-through of this codebase. Nothing in here\nneeds committing: the folder ignores itself in git.\n\n- `notes.md`: your notes from VR as a checklist: ideas you talked over, fixes\n  the robots suggested and the note taker\'s review. Start here.\n- `map.mjs` and `arch.json`: how this repository is described for the map (its\n  parts, files, journeys and warnings). Edit them and rebuild to change what\n  the city shows.\n- `graph.json`: the built map the viewer shows.\n');
+  fs.writeFileSync(path.join(folder, 'graph.json'), JSON.stringify(graph, null, 1));
+  const viewer = path.resolve(path.dirname(process.argv[1]), '..');
+  const targetsFile = path.join(viewer, 'maps-src', 'targets.json');
+  let targets = {};
+  try {
+    targets = JSON.parse(fs.readFileSync(targetsFile, 'utf8'));
+  } catch {
+    // The first map built here.
+  }
+  targets[id] = repo;
+  fs.mkdirSync(path.dirname(targetsFile), { recursive: true });
+  fs.writeFileSync(targetsFile, JSON.stringify(targets, null, 1));
+  console.log(`kept in ${folder}: graph.json beside map.mjs and arch.json; notes from VR go to notes.md there (the folder ignores itself in git)`);
+}
 console.log(`${files.length} files, ${graph.links.length} links (${matched} frontend calls matched to routes), ${graph.flows.length} flows, ${graph.health.issues.length} health notes`);
 if (missing.length) console.log(`no description for ${missing.length} file(s): ${missing.slice(0, 8).join(', ')}${missing.length > 8 ? ' ...' : ''}`);
 const unowned = config.nodes.filter((n) => n.kind !== 'external' && !stats.get(n.id).files && !config.nodes.some((c) => c.parent === n.id));

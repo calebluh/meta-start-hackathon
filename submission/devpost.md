@@ -183,8 +183,9 @@ seconds later you are walking into it.
   paste into a coding agent. You walk in with a repository name and walk
   out with a filed issue.
 - **Your coding agent picks up the list.** Running the viewer on your own
-  computer (the Claude Code plugin sets it up), the list is saved into the
-  project as a checklist. Ask your coding agent to work through your
+  computer (the Claude Code plugin sets it up), the list is saved into your
+  repository as it is said: a checklist in `walkthrough/notes.md`, in a
+  folder that also holds the map and keeps itself out of git. Ask your coding agent to work through your
   diorama notes: it checks each one against the real code, makes the
   change, ticks the line and updates the map.
 - **Your screen and a live city.** In that same local setup, open `/share`
