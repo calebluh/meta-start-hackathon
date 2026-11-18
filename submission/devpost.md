@@ -12,7 +12,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Track | Productivity |
 | Division | New Experience |
 | Special prize (if the form asks for one) | Best Agentic Interaction |
-| Public link | https://diorama.calebluh.com |
+| Public link | https://walkthrough.calebluh.com |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
 | Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/walkthrough (public viewer and Claude Code plugin, AGPL-3.0) |
 | Built with | IWSDK, WebXR, WebXR Plane Detection, WebXR Anchors (persistent), GitHub (public repositories), three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
@@ -35,7 +35,7 @@ Paste each part into the matching Devpost field. Everything marked
    seconds later that repository is a city; Enter VR walks straight into it.
    Inside VR, the start menu (the **Demos** button) has the same one-tap
    Flask, Express and SWR, plus the last repository you built. A link like
-   https://diorama.calebluh.com/?repo=facebook/react opens that city directly.
+   https://walkthrough.calebluh.com/?repo=facebook/react opens that city directly.
 4. Stay seated. Three cards appear in front of you, within reach. Tap
    **Larder**, the small one, with a fingertip for a first visit. Buttons
    are tapped like a touch screen; things further away are pointed at and

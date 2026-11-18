@@ -31,7 +31,7 @@ export function issueUrl(graph: GraphData, notes: Note[]): string | null {
   const repo = githubRepo(graph);
   if (!repo || notes.length === 0) return null;
   const title = notes.length === 1 ? line(notes[0]).slice(0, 90) : `Work order from a code walk-through (${notes.length} items)`;
-  const foot = `\n\n_Written while walking this repository in VR with Walkthrough: https://diorama.calebluh.com/?repo=${repo}_`;
+  const foot = `\n\n_Written while walking this repository in VR with Walkthrough: https://walkthrough.calebluh.com/?repo=${repo}_`;
   const base = `https://github.com/${repo}/issues/new?title=${encodeURIComponent(title)}&body=`;
   let kept = notes;
   for (;;) {
