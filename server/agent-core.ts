@@ -15,7 +15,7 @@ import {
 } from '../src/agent/prompt.js';
 import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
-import { codeFor, fileNamedIn, roomFiles } from './code-context.js';
+import { codeFor, codeForIdea, fileNamedIn, roomFiles } from './code-context.js';
 import { admitRepoMap } from './repo-map.js';
 import { findings, parseReview, plainReview, reviewPrompt, type ReviewReply } from './review.js';
 import type { GraphData } from '../src/maps/types.js';
@@ -192,8 +192,11 @@ export function validateScribe(body: unknown): ScribeRequest {
 /** Talks one idea over and returns what to say and what to write down. */
 export async function talkOver(req: ScribeRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<ScribeReply> {
   if (!apiKey) throw new AgentError(503, 'MODEL_API_KEY is not set on the server');
+  // Where the idea lands in the code, read from the project itself, so the note can say where the work is.
+  const code = await codeForIdea(MAPS[req.mapId], req.mapId, req.said).catch(() => null);
+  const prompt = scribePrompt(MAPS[req.mapId], req.persona, req.notes);
   const reply = await complete(
-    [{ role: 'system', content: scribePrompt(MAPS[req.mapId], req.persona, req.notes) }, ...req.history, { role: 'user', content: req.said }],
+    [{ role: 'system', content: code ? `${prompt}\n\n${code}` : prompt }, ...req.history, { role: 'user', content: req.said }],
     apiKey,
     model,
     UPSTREAM_TIMEOUT_MS,
