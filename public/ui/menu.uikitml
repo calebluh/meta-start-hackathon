@@ -3,6 +3,11 @@
   (1px = 1 mm), so this panel is about 76 cm wide in the headset. Each demo
   card is one big target to point at and pinch, or touch with a fingertip.
   Stats are filled in at runtime by MenuSystem.
+
+  The panel stands on the desk, centred on its own middle, so every row
+  added pushes its foot into the desk top: the GitHub repos are one line, and
+  what is happening while one builds is said on the hint line at the bottom.
+  (The stylesheet takes no comments; notes go here.)
 -->
 <style>
   .root {
@@ -12,8 +17,11 @@
 
   .content {
     flex-direction: column;
-    gap: 16px;
-    padding: 26px;
+    gap: 12px;
+    padding-left: 26px;
+    padding-right: 26px;
+    padding-top: 20px;
+    padding-bottom: 20px;
   }
 
   .eyebrow {
@@ -108,17 +116,9 @@
   }
 
   .repos {
-    flex-direction: column;
-    gap: 10px;
-    padding-top: 12px;
-    border-top-width: 1px;
-    border-color: #2b3440;
-  }
-
-  .repos-head {
     flex-direction: row;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
   }
 
   .repos-title {
@@ -133,15 +133,15 @@
 
   .chips {
     flex-direction: row;
-    gap: 12px;
+    gap: 10px;
   }
 
   .chip {
-    height: 58px;
-    width: 160px;
+    height: 50px;
+    width: 116px;
     align-items: center;
     justify-content: center;
-    border-radius: 29px;
+    border-radius: 25px;
     border-width: 2px;
     border-color: #2b3440;
     background-color: #161b22;
@@ -159,13 +159,8 @@
 
   .chip-text {
     color: #fafaf7;
-    font-size: 17px;
+    font-size: 16px;
     font-weight: 700;
-  }
-
-  .status {
-    width: 700px;
-    line-height: 1.3;
   }
 
   .hint-row {
@@ -224,17 +219,14 @@
       </div>
     </div>
     <div class="repos">
-      <div class="repos-head">
-        <GitBranch width="20" height="20" color="#4fd1c5"></GitBranch>
-        <span class="repos-title">Or step inside a GitHub repository</span>
-      </div>
+      <GitBranch width="20" height="20" color="#4fd1c5"></GitBranch>
+      <span class="repos-title">Or a GitHub repo:</span>
       <div class="chips">
         <div id="repo-flask" class="chip"><span class="chip-text">Flask</span></div>
         <div id="repo-express" class="chip"><span class="chip-text">Express</span></div>
         <div id="repo-swr" class="chip"><span class="chip-text">SWR</span></div>
         <div id="repo-last" class="chip last"><span id="repo-last-name" class="chip-text">Your repo</span></div>
       </div>
-      <span id="repo-status" class="hint status">Tap one to build its city (about 10 seconds). To use your own, type it on the page before entering VR.</span>
     </div>
     <div class="hint-row">
       <Hand width="20" height="20" color="#9aa3ad"></Hand>

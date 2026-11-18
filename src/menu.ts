@@ -12,6 +12,9 @@ import { app, chooseDemo, onChange } from './state.js';
  */
 export class MenuSystem extends createSystem({}) {
   private shown: boolean | null = null;
+  /** The line under the cards when nothing is being built: how to choose, for hands or for eyes. */
+  private hintIdle = 'Tap a card with a fingertip, or point at it and pinch your thumb and finger.';
+  private hint: UIKit.Text | undefined;
 
   init(): void {
     const panel = this.world.getSceneObject<UIKitMLAsset>('menu-panel');
@@ -49,19 +52,19 @@ export class MenuSystem extends createSystem({}) {
           ?.setProperties({ text: `${parts} rooms | ${graph.files.length} files | ${lines.toLocaleString('en-US')} lines` });
       }
     }
-    if (panel) this.wireRepoChips(panel);
     // Meta VR Glasses are aimed with the eyes (gaze), not a pointing hand.
     const hint = panel?.getElementById<UIKit.Text>('menu-hint');
+    this.hint = hint ?? undefined;
+    if (panel) this.wireRepoChips(panel);
     if (hint) {
       this.cleanupFuncs.push(
         this.world.visibilityState.subscribe((state) => {
           if (state === VisibilityState.NonImmersive) return;
           const gaze = this.world.session?.enabledFeatures?.includes('gaze-tracking') ?? false;
-          hint.setProperties({
-            text: gaze
-              ? 'Look at a card, then tap your thumb and finger together.'
-              : 'Tap a card with a fingertip, or point at it and pinch your thumb and finger.',
-          });
+          this.hintIdle = gaze
+            ? 'Look at a card, then tap your thumb and finger together.'
+            : 'Tap a card with a fingertip, or point at it and pinch your thumb and finger.';
+          hint.setProperties({ text: this.hintIdle });
         }),
       );
     }
@@ -77,21 +80,21 @@ export class MenuSystem extends createSystem({}) {
    */
   private wireRepoChips(panel: UIKitMLAsset): void {
     if (!HACKATHON) return;
-    const status = panel.getElementById<UIKit.Text>('repo-status');
-    const say = (text: string) => status?.setProperties({ text });
+    // What is happening is said on the hint line under the cards (the panel has no room for another).
+    const say = (text: string | null) => this.hint?.setProperties({ text: text ?? this.hintIdle });
     let busy = false;
     const open = async (repo: string, label: string) => {
       if (busy) return;
       busy = true;
       click();
-      say(`Building ${label}: downloading the code and drawing the city, about 10 seconds...`);
+      say(`Building ${label}: downloading the code and drawing its city, about 10 seconds...`);
       const result = await buildRepoCity(repo);
       busy = false;
       if ('error' in result) {
-        say(`${label}: ${result.error}.`);
+        say(`${label}: ${result.error}. Tap it again, or pick a card.`);
         return;
       }
-      say('Tap one to build its city (about 10 seconds). To use your own, type it on the page before entering VR.');
+      say(null);
       this.refreshLast(panel);
       chooseDemo(result.id);
     };
@@ -126,12 +129,14 @@ export class MenuSystem extends createSystem({}) {
   private refreshLast(panel: UIKitMLAsset): void {
     const saved = lastRepoMap();
     panel.getElementById('repo-last')?.setProperties({ display: saved ? 'flex' : 'none' });
-    if (saved) panel.getElementById<UIKit.Text>('repo-last-name')?.setProperties({ text: saved.name.slice(0, 14) });
+    if (saved) panel.getElementById<UIKit.Text>('repo-last-name')?.setProperties({ text: saved.name.slice(0, 11) });
   }
 
   private apply(): void {
     if (app.menu === this.shown) return;
     this.shown = app.menu;
+    // Coming back to the menu: the hint line says how to choose again, not an old message.
+    if (app.menu) this.hint?.setProperties({ text: this.hintIdle });
     setPanelShown(this.world, 'menu-panel', app.menu);
   }
 }
