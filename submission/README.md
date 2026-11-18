@@ -77,6 +77,13 @@ emulator. This is the most important step left.
      that repository's real files. Check that typing with the Quest keyboard
      is comfortable. Then, in VR, tap Demos: the menu has Flask, Express and
      SWR chips and one with your repo; each should open its city.
+   - **Review and work order (new, 17 Nov evening).** In any city tap Notes,
+     pinch the note taker, then tap **Review this project for me**. Within
+     about ten seconds three to five tasks should appear on the panel and
+     the wall and she sums them up. Exit VR: the page should show "Your work
+     order", **Open as a GitHub issue** (not for MiroFish) and **Copy for
+     your coding agent**. Check the copy button works in the Quest Browser;
+     if it cannot reach the clipboard it shows the text to select instead.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -169,6 +176,16 @@ under What it does, the "Any repository, on the spot" bullet, and "GitHub
 row back to: a wall of code in an editor, then back to the city, with the
 voice-over "Joining a project means weeks of reading. But people don't learn
 places by reading. They walk around, and they ask someone who works there."
+
+### Rolling back the review and work order
+
+```bash
+git revert --no-edit 82d6a2d
+git push
+```
+
+Then take out of `devpost.md` testing step 12 and the bullet "A review, and
+a work order to leave with".
 
 ### Rolling back the anchor
 

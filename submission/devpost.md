@@ -69,6 +69,11 @@ Paste each part into the matching Devpost field. Everything marked
     grab bar, then leave (Quest menu, Exit) and pinch **Mixed reality**
     again. The city comes back to the spot you left it on ("Back where you
     left it"): the headset kept a spatial anchor there.
+12. Tap **Notes** on the desk, then **Review this project for me**. The note
+    taker goes through the code's warnings and biggest files and writes a
+    short work order on the wall, most urgent first, each item naming a file
+    and line. Take the headset off: the page shows the same list, with
+    **Open as a GitHub issue** and **Copy for your coding agent**.
 
 No account, no install and no payment. The whole visit fits in ten minutes.
 Controllers work too: the trigger is a pinch, and the right thumbstick spins
@@ -168,6 +173,15 @@ seconds later you are walking into it.
   or after talking it over with you in a sentence or two. "Scratch that"
   takes it back, "read them back" reads the list. The robots' fixes land on
   the same list, pinned to the wall.
+- **A review, and a work order to leave with.** One tap on **Review this
+  project for me** and the note taker does the job a new joiner would ask a
+  senior for: it goes through the warnings, the longest files, the part
+  everything else leans on and whether there are tests, and writes three to
+  five tasks on the wall, most urgent first, each naming the file and line.
+  When the headset comes off, the page shows that work order with two ways
+  out: a GitHub issue already filled in for the repository, and a prompt to
+  paste into a coding agent. You walk in with a repository name and walk
+  out with a filed issue.
 - **Your coding agent picks up the list.** Running the viewer on your own
   computer (the Claude Code plugin sets it up), the list is saved into the
   project as a checklist. Ask your coding agent to work through your
