@@ -34,7 +34,7 @@ The viewer is an open-source WebXR app (Meta IWSDK). Keep one copy in the
 user's home directory and reuse it:
 
 ```bash
-VIEWER_REPO=https://github.com/calebluh/codebase-diorama
+VIEWER_REPO=https://github.com/calebluh/walkthrough
 VIEWER_DIR="$HOME/codebase-diorama"
 if [ -d "$VIEWER_DIR/.git" ]; then git -C "$VIEWER_DIR" pull --ff-only; else git clone "$VIEWER_REPO" "$VIEWER_DIR"; fi
 cd "$VIEWER_DIR" && npm install

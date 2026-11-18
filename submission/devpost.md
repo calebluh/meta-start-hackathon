@@ -14,7 +14,7 @@ Paste each part into the matching Devpost field. Everything marked
 | Special prize (if the form asks for one) | Best Agentic Interaction |
 | Public link | https://diorama.calebluh.com |
 | Demo video | `[FILL IN: YouTube or Vimeo link, public, under 3 minutes]` |
-| Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/codebase-diorama (public viewer and Claude Code plugin, AGPL-3.0) |
+| Source code | https://github.com/calebluh/meta-start-hackathon (competition build), https://github.com/calebluh/walkthrough (public viewer and Claude Code plugin, AGPL-3.0) |
 | Built with | IWSDK, WebXR, WebXR Plane Detection, WebXR Anchors (persistent), GitHub (public repositories), three.js, TypeScript, Vite, UIKit, Meta Model API, Web Audio, Vercel, Claude Code |
 
 ## Testing instructions (for the judges)

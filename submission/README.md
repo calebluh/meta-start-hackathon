@@ -174,7 +174,7 @@ Two things to decide while you paste:
 - [ ] The public link opens in a private window with no login.
 - [ ] `calebluh/meta-start-hackathon` is public, or judges have access, if
       the form asks for source.
-- [x] `calebluh/codebase-diorama` is licensed AGPL-3.0-or-later. The
+- [x] `calebluh/walkthrough` is licensed AGPL-3.0-or-later. The
       competition repo has no licence on purpose: visible to judges, not
       for reuse.
 - [ ] The video is set to public and is under 3:00.

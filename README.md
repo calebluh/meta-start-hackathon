@@ -60,7 +60,7 @@ builds the map and starts this viewer with your own key.
 In Claude Code:
 
 ```sh
-claude plugin marketplace add calebluh/codebase-diorama
+claude plugin marketplace add calebluh/walkthrough
 claude plugin install walkthrough@walkthrough
 ```
 
@@ -83,7 +83,7 @@ only in Claude Code so far.
   codebases: MiroFish, Larder, and "This app", Walkthrough's own source
   mapped by its own plugin. The Devpost text, video script and a submission
   checklist are in [submission/](submission/).
-- **[codebase-diorama](https://github.com/calebluh/codebase-diorama)** is the
+- **[codebase-diorama](https://github.com/calebluh/walkthrough)** is the
   public viewer and the plugin for coding agents, and it is what the plugin installs.
   It has no demo menu and no MiroFish. It opens straight onto your own maps.
 

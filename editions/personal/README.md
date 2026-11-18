@@ -20,13 +20,13 @@ the map and starts the viewer. One skill, packaged for each agent:
 
 | Agent | Install | Then ask |
 | --- | --- | --- |
-| Claude Code | `claude plugin marketplace add calebluh/codebase-diorama` then `claude plugin install walkthrough@walkthrough` | `/walkthrough:map` |
-| Codex and the ChatGPT desktop app | `codex plugin marketplace add calebluh/codebase-diorama`, then install **walkthrough** from the plugins list | "Map this repo into a Walkthrough city" |
-| Cursor | `npx skills add calebluh/codebase-diorama --skill walkthrough -a cursor` | "Map this repo into a Walkthrough city" |
-| Gemini CLI | `gemini extensions install https://github.com/calebluh/codebase-diorama` | "Map this repo into a Walkthrough city" |
-| Antigravity | `npx skills add calebluh/codebase-diorama --skill walkthrough -a antigravity` | "Map this repo into a Walkthrough city" |
-| GitHub Copilot, OpenCode, Windsurf and others | `npx skills add calebluh/codebase-diorama --skill walkthrough` (it finds the agents you have) | "Map this repo into a Walkthrough city" |
-| Anything else that can run a shell | nothing | "Read https://raw.githubusercontent.com/calebluh/codebase-diorama/main/skills/walkthrough/SKILL.md and follow it for this repository." |
+| Claude Code | `claude plugin marketplace add calebluh/walkthrough` then `claude plugin install walkthrough@walkthrough` | `/walkthrough:map` |
+| Codex and the ChatGPT desktop app | `codex plugin marketplace add calebluh/walkthrough`, then install **walkthrough** from the plugins list | "Map this repo into a Walkthrough city" |
+| Cursor | `npx skills add calebluh/walkthrough --skill walkthrough -a cursor` | "Map this repo into a Walkthrough city" |
+| Gemini CLI | `gemini extensions install https://github.com/calebluh/walkthrough` | "Map this repo into a Walkthrough city" |
+| Antigravity | `npx skills add calebluh/walkthrough --skill walkthrough -a antigravity` | "Map this repo into a Walkthrough city" |
+| GitHub Copilot, OpenCode, Windsurf and others | `npx skills add calebluh/walkthrough --skill walkthrough` (it finds the agents you have) | "Map this repo into a Walkthrough city" |
+| Anything else that can run a shell | nothing | "Read https://raw.githubusercontent.com/calebluh/walkthrough/main/skills/walkthrough/SKILL.md and follow it for this repository." |
 
 Add `-g` to an `npx skills add` line to install for every project instead of
 the current one. The agent has to run on your own computer: it uses git and
