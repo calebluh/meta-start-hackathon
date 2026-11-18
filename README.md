@@ -21,96 +21,96 @@
   </a>
 </p>
 
-Joining a codebase is like moving to a city with no map. The knowledge is
-all there, spread over thousands of files, and the only way in is to read.
-People don't learn places by reading. They learn them by walking around and
-asking someone who works there. Walkthrough makes a codebase that place:
-small enough to see whole on a desk, big enough to walk into, and staffed by
-robots you can simply ask.
-
-Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start
-Developer Competition 2026. It runs from a link in the Quest Browser with
-nothing to install. Everything works sitting down, with bare hands or
-controllers: point and pinch, or poke the panels with a fingertip. On Meta
-VR Glasses the desk moves to fit the narrower view, and a look and a pinch
-do the same job.
-
 **Try it:** open [walkthrough.calebluh.com](https://walkthrough.calebluh.com)
-in the Quest Browser (Quest 2, 3 or 3S; mixed reality needs a Quest 3 or 3S).
-Tap a demo, or type any public GitHub repository, such as `pallets/flask`,
-and press **Build city**. About ten seconds later you can walk into it. A link
-like `https://walkthrough.calebluh.com/?repo=facebook/react` opens a city
-directly.
+in the Quest Browser. Tap a demo, or type any public GitHub repository, such
+as `pallets/flask`, and press **Build city**. About ten seconds later you can
+walk into it. A link like `https://walkthrough.calebluh.com/?repo=facebook/react`
+opens a city directly.
+
+## Inspiration
+
+I am a huge hands-on learner. I remember when VR first gained traction, the commercials always showcased virtual cities or diagrams people could step inside to get "hands-on" with their learning. In the 10+ years since seeing those ads, I have graduated college with a degree in IT and spent much of my time in and out of college coding. I thought it would be cool to actually live in the world of your codebase and talk to the "people" who make it work.
 
 ## What it does
 
-<table>
-  <tr>
-    <td width="50%"><img src="docs/images/01-hero.jpg" alt="A codebase as a glowing little city" /></td>
-    <td width="50%"><img src="docs/images/04-desk.jpg" alt="The city on a real desk in mixed reality" /></td>
-  </tr>
-</table>
+Walkthrough transforms your complex, 2D software repository into a living, miniature 3D city on your desk. Instead of scrolling through thousands of lines of spaghetti code, you can physically lean in, pinch the roof off a building (a module), and step inside to talk to the AI "worker robots" managing that code.
 
-- **The city.** Every part of the code is a building, sized by how much code
-  it holds and joined to the parts it talks to. Pinch one and a panel says,
-  in plain English, what it does, which files it holds and what is wrong
-  with it.
-- **Lift the roof.** The building you pinch opens like a doll's house, with
-  the robots who work there inside and a **Step inside** button over them.
-- **The rooms.** Step inside and the building grows around you. Each room is
-  the real-world place that does the same job: payments is a cashier's
-  office, storage is a warehouse, messaging is a post office.
-- **Robots that act.** Ask out loud or pinch a question. A robot answers from
-  the map and from the actual lines of code your question is about, in its
-  own voice. It walks you to another room, plays a flow, or hands you to a
-  colleague who already knows what you asked.
-- **The code itself.** Say "show me the code" and the robot holds up the real
-  function, coloured like an editor, with line numbers. Ask how to fix a
-  warning and it lights the exact line and puts the fix on your notes list.
-- **Flows.** **Play flow** sends a packet of data from building to building
-  along a real path through the code, such as a first order in a shop.
-- **Street view.** The city grows to life size around you. Pinch a glowing
-  disc or **Forward** to walk, **Turn** to turn, and a building to go to its
-  door.
-- **Quiz me.** The robot tests you on its room and corrects a wrong answer on
-  the spot.
-- **The notes room.** Think out loud. The note taker writes your ideas down,
-  looks each one up in the code and ends the note with the file and line to
-  change. **Review this project for me** writes the three to five most urgent
-  tasks.
-- **Mixed reality.** On a Quest 3 or 3S the city lands on your real desk and
-  stays where you left it between visits, held by a spatial anchor.
-- **Your coding agent closes the loop.** With the
-  [plugin](https://github.com/calebluh/walkthrough), the notes are saved in
-  your repository as you say them. Your coding agent works through them, and
-  you watch the city change in front of you.
+The robots don't just read summaries, they are grounded in your actual source code. You can ask a robot why an API is failing, and it will diagnose the health warning, cite specific line numbers, and suggest a fix. If you like the suggestion, you just say "Put that on my fix list," and the robot logs it to a persistent Notes room. When you're done, the Notes room hands you a prioritized work order to copy straight into your coding agent, and with the plugin it is also written to `walkthrough/notes.md` in your project. The file works both ways: tick an item off (`- [x]`), by hand or through the plugin's tools for your coding agent, and your ticks are kept when the headset adds new notes.
+
+Joining a new project means days of reading unfamiliar code. Walkthrough turns that into a seated, hands-first session: you see how the parts fit, ask the robots who run each part, and leave with a work order your coding agent can act on. It fits a recurring moment in every developer's week: "I need to understand this codebase before I change it."
+
+Every room is staffed by a voice-first robot agent that answers from the real code of its part of the app. It reads the lines a question is about, points to the exact line on a code card, hands you off to the robot in another room, and turns your ideas into a work order for your coding agent (Claude Code, Codex, Cursor). Nothing is scripted, the answers come from the code.
 
 ## Gallery
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/images/05-roof.jpg" alt="Pinch a building: its roof lifts to show the robots inside" /></td>
-    <td width="50%"><img src="docs/images/06-room.jpg" alt="Every room is a real-world place with robots" /></td>
+    <td width="50%" valign="top"><img src="docs/images/01-hero.jpg" alt="Step inside your code" /><br /><sub>A software project as a glowing miniature city on your desk. Every building is one part of the code.</sub></td>
+    <td width="50%" valign="top"><img src="docs/images/02-pick.jpg" alt="Any repo becomes a city" /><br /><sub>Pick a demo codebase, or type any public GitHub repository and get a city about ten seconds later.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/images/07-answer.jpg" alt="Ask a robot anything: it answers from the real code" /></td>
-    <td><img src="docs/images/08-line.jpg" alt="It finds the exact line to fix" /></td>
+    <td valign="top"><img src="docs/images/03-hands.jpg" alt="Hands or controllers" /><br /><sub>Everything works with bare hands or controllers: tap a card with a fingertip, point and pinch to pick things.</sub></td>
+    <td valign="top"><img src="docs/images/04-desk.jpg" alt="Your code on your desk" /><br /><sub>In mixed reality the city stands on your real desk.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/images/09-flow.jpg" alt="Follow a request from room to room" /></td>
-    <td><img src="docs/images/11-notes.jpg" alt="Think out loud: the robots take notes" /></td>
+    <td valign="top"><img src="docs/images/05-roof.jpg" alt="Pinch a building, lift the roof" /><br /><sub>Pinch a building and its roof lifts to show the robots working inside, with a plain-English summary beside it.</sub></td>
+    <td valign="top"><img src="docs/images/06-room.jpg" alt="Every room has robots" /><br /><sub>Step inside: each room is the real-world place that does the same job. Payments is a finance office.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/images/12-street.jpg" alt="Walk the city's streets at life size" /></td>
-    <td><img src="docs/images/13-anchor.jpg" alt="Back where you left it: a persistent spatial anchor" /></td>
+    <td valign="top"><img src="docs/images/07-answer.jpg" alt="Ask a robot anything" /><br /><sub>Ask a robot a question by voice or by pinching one from the list; it answers from the actual code.</sub></td>
+    <td valign="top"><img src="docs/images/08-line.jpg" alt="It finds the exact line" /><br /><sub>Ask how to fix a health warning and the robot opens a code card with the exact line lit, then puts the fix on your notes list.</sub></td>
   </tr>
   <tr>
-    <td><img src="docs/images/02-pick.jpg" alt="Any repository becomes a city" /></td>
-    <td><img src="docs/images/15-self.jpg" alt="It even maps its own code" /></td>
+    <td valign="top"><img src="docs/images/09-flow.jpg" alt="Follow a request room to room" /><br /><sub>Follow a request from room to room: a robot hands you on to the colleague who knows the next step.</sub></td>
+    <td valign="top"><img src="docs/images/10-quiz.jpg" alt="They quiz you on the code" /><br /><sub>Say "quiz me" for four questions about the room. A wrong answer is corrected on the spot.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/11-notes.jpg" alt="Think out loud, robots take notes" /><br /><sub>In the notes room, say an idea out loud and the note taker writes it down, word for word or after talking it over with you.</sub></td>
+    <td valign="top"><img src="docs/images/12-street.jpg" alt="Walk its streets" /><br /><sub>Street view puts you in the city at life size, still seated: pinch a disc or Forward to move, a building to go to its door.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/13-anchor.jpg" alt="Back where you left it" /><br /><sub>In mixed reality the headset keeps a spatial anchor, so the city comes back exactly where you left it.</sub></td>
+    <td valign="top"><img src="docs/images/14-mirofish.jpg" alt="Open source on your desk" /><br /><sub>MiroFish, a real open-source project, mapped as a city beside the monitor.</sub></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/images/15-self.jpg" alt="It maps its own code" /><br /><sub>Walkthrough maps its own code too: this is the city built from the app's own repository.</sub></td>
+    <td valign="top"></td>
   </tr>
 </table>
 
-<sub>All images are screenshots of the app running in the IWSDK Quest 3 emulator, with a headline added on top.</sub>
+<sub>All images are screenshots or frames of the app running in the IWSDK Quest 3 emulator, with a headline added on top.</sub>
+
+## How we built it
+
+Built for Meta Quest with the Immersive Web SDK (IWSDK) and WebXR, so it runs in the Quest Browser with nothing to install: on Quest 3 and 3S, and in VR and mixed reality (black-and-white passthrough) on Quest 2.
+
+In mixed reality, Walkthrough uses WebXR plane detection (the browser's access to the headset's scene understanding) to find your desk and set the city on it, then saves a persistent spatial anchor so the city comes back to the same spot next time. This was tested in the IWSDK emulator and in a real room on a Meta Quest 2. Quest 3 hardware testing is next. The entire app is 100% controller-free, relying on bare-hand pinch gestures, hand rays, and UI panels that move to a comfortable reach distance for seated fingertip tapping.
+
+The mapping side is a Claude Code plugin that reads a repository and generates a spatial map of its parts, files and flows, with real code snippets. You can also type any public GitHub repo on the landing page, or pinch one of the one-tap repo chips inside the VR menu, to build a live city in seconds without taking off the headset (repos up to about 110 MB, including React and VS Code).
+
+Inside the headset, the robots run on the Meta Model API (muse-ember-1.0), with serverless endpoints for speech-to-text and the robots' voices. The model answers in about 1.2 seconds, which keeps conversations feeling snappy and alive.
+
+## Challenges we ran into
+
+My biggest challenge was shortening the reply times from the agents. I profiled the pipeline and switched the robots' model to muse-ember-1.0, which cut the model's response time by about 70% (from about 4.2 s to 1.2 s). I also had to keep an open microphone honest, so a robot's own voice is never mistaken for yours.
+
+Getting UI panels to feel right without blocking the miniature city was also a challenge. I built a dynamic reach system where panels move to a comfortable distance for seated fingertip tapping, angled so pinches and taps land reliably.
+
+## Accomplishments that we're proud of
+
+I designed a large, complex architecture visualization tool that can be navigated entirely within a 2-foot seated radius without ever picking up a controller. I am incredibly proud that this tool isn't just a thin wrapper that spits your own code back at you, you can actually interact with the codebase on all levels to understand the "whos", "whats", "whys", and "hows" of the way things work.
+
+## What we learned
+
+Giving code a physical, spatial location helps developers map complex dependencies intuitively. When a robot points to a glowing data pipeline crossing the street to another building, you understand the architecture instantly.
+
+Also, latency is everything. If a spatial agent takes more than 1.5 seconds to respond to a voice command, they stop feeling like a "person" in the room and revert to feeling like a chatbot. Aggressive prompt optimization and fast models are non-negotiable for immersive AI.
+
+## What's next for Walkthrough
+
+I want to close the loop even further. As your local coding agent completes the tasks generated from your VR Notes room, the 3D buildings will visibly morph, rebuild, or glow in real time without you ever having to take off the headset.
+
+I also plan to add asymmetric multiplayer so a senior engineer can jump into the diorama alongside a junior developer to give them a guided tour of a massive enterprise monolith.
 
 ## Things to say to a robot
 
@@ -126,7 +126,7 @@ The robots act on what you ask, so most of a visit can be done by voice:
 Moving, playing a flow, leaving and the quiz also work with no AI key at
 all; the key is only needed to mark a quiz answer said in your own words.
 
-## Try it
+## Run it locally
 
 ```sh
 npm install
@@ -186,7 +186,7 @@ only in Claude Code so far.
 To preview the public edition from this repository, add `VITE_EDITION=personal`
 to `.env.local`.
 
-## How it is built
+## Code layout
 
 - `src/diorama.ts`: the tabletop city, its connections, flows and panels.
 - `src/rooms/`: the walk-in rooms, their themes, props and robot workers.
@@ -204,7 +204,12 @@ to `.env.local`.
 - Demo codebase: [MiroFish](https://github.com/666ghj/MiroFish) (AGPL-3.0),
   mapped from a read-only snapshot. Its logo appears on the map's plaque.
 - Map format: [Floorplan](https://github.com/haydenschmitty/floorplan) (MIT).
-- Robot: "RobotExpressive" by Tomás Laulhé (Quaternius), CC0, via the
-  three.js examples.
-- Props: [Poly Haven](https://polyhaven.com), CC0. See
+- Robot model: "RobotExpressive" by Tomás Laulhé (Quaternius), CC0, via the
+  three.js examples. Props: [Poly Haven](https://polyhaven.com), CC0. See
   `public/models/props/CREDITS.md`.
+- Robot answers and speech-to-text: Meta Model API. Robot voices: OpenAI
+  gpt-4o-mini-tts.
+- Demo video music: "Education Music" by Alec Koff Label, used under its terms
+  for non-monetized YouTube videos. Sound effects: "20 Cinematic Whoosh Sound
+  Effects (No Copyright)" by The Bhavya Shah; boing by ammoclub; "Ooh" by
+  Eccentric Sounds.
