@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Walkthrough</title>
+  <rect width="64" height="64" rx="14" fill="#0d1117"/>
+  <polygon points="32,8 50,17 32,26 14,17" fill="#7ee0ff"/>
+  <polygon points="14,17 32,26 32,48 14,39" fill="#2f6fd0"/>
+  <polygon points="32,26 50,17 50,39 32,48" fill="#1b4590"/>
+  <polygon points="37,28 41,26 41,30 37,32" fill="#7ee0ff" opacity="0.8"/>
+  <polygon points="43,25 47,23 47,27 43,29" fill="#7ee0ff" opacity="0.8"/>
+  <polygon points="37,35 41,33 41,37 37,39" fill="#7ee0ff" opacity="0.5"/>
+  <polygon points="43,32 47,30 47,34 43,36" fill="#7ee0ff" opacity="0.5"/>
+  <polygon points="20,30 27,33.5 27,44 20,40.5" fill="#ffd60a"/>
+  <circle cx="17.5" cy="46" r="2.6" fill="#ffd60a"/>
+  <circle cx="11" cy="49.5" r="2.2" fill="#ffd60a" opacity="0.7"/>
+  <circle cx="5.5" cy="52.5" r="1.8" fill="#ffd60a" opacity="0.4"/>
+</svg>
