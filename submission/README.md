@@ -106,6 +106,18 @@ emulator. This is the most important step left.
      should stay off the info panel. With a controller, push the left stick
      at a building: you should stop about an arm's length short of the wall
      and slide along it, with no panel cut by the wall.
+   - **Robots that read the code, and things you can move (new, 17 Nov
+     night).** In a Larder room ask "what does line 41 do?" after seeing the
+     billing code, or "what happens to an order that is already paid?": the
+     robot should answer from the real lines and hold up the same lines. No
+     robot should say it cannot see the code. In **Notes**, say "billing day
+     should retry a declined card three times": the note taker should say
+     what the retry code does today, and the note should end with
+     [retryDeclined, jobs/src/retry.ts line 20]. Then pinch the small grey
+     bar over the ask panel, over a speech bubble or under the code card,
+     and drag: the thing should follow your hand, keep facing you and stay
+     put. **Recenter** should put everything back. On the ask panel,
+     "Questions" should sit inside its button.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -226,6 +238,33 @@ stuck, undo it alone:
 git revert --no-edit 2e4fdb1
 git push
 ```
+
+### Rolling back the robots reading code, and the grab bars
+
+The robots and the note taker reading real code (if answers get slow or
+strange):
+
+```bash
+git revert --no-edit ebff79f 23bccee
+git push
+```
+
+Then, in `devpost.md`, take the sentences from "The robot reads those same
+lines" to "from your disk" out of "The code itself", the sentences from "It
+looks the idea up" to "go straight there" out of "The notes room", and the
+last sentences of testing steps 6 and 8.
+
+The grab bars on panels, cards and bubbles, and the ask panel's button row
+(if a pinch near a panel starts moving it):
+
+```bash
+git revert --no-edit 64d8d7b
+git push
+```
+
+Then take the bullet "Put things where you want them" and the last sentence
+of testing step 4 out of `devpost.md`. If git reports a conflict in
+`src/rooms/room.ts`, undo the newer change first (the block above).
 
 That brings back the old file card (which could sit across a speech bubble)
 and takes Larder's sample code away. Then take out of `devpost.md` the "Show

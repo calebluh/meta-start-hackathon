@@ -6,10 +6,13 @@ import { projectDirFor } from './notes-file.js';
  * The text of one file of a mapped project, for the code cards.
  *
  * A map made from a project on this computer shows that project's code as it
- * is on disk now: no upload, no GitHub, nothing leaves the machine (only the
- * local dev server has this; the hosted site reads public code from GitHub).
- * It serves nothing but files the map itself lists, inside the folder the map
- * was built from, and never runs them.
+ * is on disk now, with no upload and no GitHub (only the local dev server has
+ * this; the hosted site reads public code from GitHub). The card reads the
+ * file from here, and so does the robot asked about it (code-context.ts):
+ * the lines a question is about then go, with the question, to whichever
+ * model answers for the robots. Nothing but files the map itself lists is
+ * served, only from inside the folder the map was built from, and they are
+ * never run.
  */
 
 /** Files larger than this are not code anyone reads on a card. */

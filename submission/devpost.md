@@ -40,7 +40,9 @@ Paste each part into the matching Devpost field. Everything marked
    **Larder**, the small one, with a fingertip for a first visit. Buttons
    are tapped like a touch screen; things further away are pointed at and
    pinched. To move the city, pinch the grey bar under its buttons and drag.
-   To turn it, pinch and hold one of the glowing pegs at its corners.
+   To turn it, pinch and hold one of the glowing pegs at its corners. Every
+   panel, card and speech bubble has a small bar of its own: pinch it to put
+   that thing where you like.
 5. Follow the card that floats above the city. It teaches one thing at a
    time and takes about three minutes: pinch a building and its roof lifts
    to show its robots, pinch **Step inside** over it, pinch a robot, ask it
@@ -51,7 +53,8 @@ Paste each part into the matching Devpost field. Everything marked
    - "Show me what happens on billing day."
    - "Show me the code." A card of code pops up beside the robot: the whole
      function, coloured like an editor. Name one ("show me the refund
-     endpoint") or say "show me more" to read on.
+     endpoint") or say "show me more" to read on. Then ask about it ("what
+     does line 30 do?"): the robot has read the same lines.
    - "Take me back to the city."
 7. Back at the desk, tap **Street view** to stand in the city at life
    size, still seated. Pinch a glowing disc on the street to move to it, a
@@ -63,7 +66,9 @@ Paste each part into the matching Devpost field. Everything marked
    warning?". It suggests a fix and puts it on your notes list. Then tap
    **Notes** on the desk: the note taker greets you with the robot's fix
    already on the wall. Say an idea of your own and it writes it down,
-   word for word or after talking it over with you.
+   word for word or after talking it over with you. Try "billing day should
+   retry a declined card three times": it reads the retry code, tells you
+   what it does today, and the note ends with the file and function.
 9. Tap **Quiz me** on the question panel, or say "quiz me". The robot asks
    four questions about its room. Tap an answer or say it in your own
    words; a wrong answer is corrected on the spot.
@@ -143,11 +148,16 @@ seconds later you are walking into it.
   statement you named, in an editor's colours with line numbers. Ask about a
   warning and its line is lit. A class too long for the card shows as an
   outline. A function or file too long for it is cut between statements,
-  and "show me more" carries on from there. The page fetches the lines
-  straight from the repository (or, for your own project through the plugin,
-  from your disk) and only draws them on the card. They are not added to
-  what the AI is sent: it works from the map, which carries function names
-  and the few lines round each warning.
+  and "show me more" carries on from there. The robot reads those same lines
+  before it answers, so it tells you what the code actually does, cites the
+  line numbers and bases a fix on them. Ask "what does line 41 do?" or "what
+  happens to an order that is already paid?" and it finds the function that
+  answers, reads it and explains it. The lines come straight from the
+  repository or, for your own project through the plugin, from your disk.
+- **Put things where you want them.** Every panel, card and speech bubble
+  has a small grab bar, like the one under the desk. Pinch it and the thing
+  follows your hand, stays facing you, and stays where you leave it.
+  **Recenter** puts everything back.
 - **The quiz.** Pinch **Quiz me** and the robot turns the tables: it tests
   you on its own room. What is this room's job, where does the work go next,
   which file lives here, what is the warning about. The room's notes are put
@@ -183,9 +193,13 @@ seconds later you are walking into it.
   cannot be reached, the warning itself still goes on the list.
 - **The notes room.** Tap **Notes** and step into a room for thinking out
   loud. Say an idea and the note taker writes it down, either word for word
-  or after talking it over with you in a sentence or two. "Scratch that"
-  takes it back, "read them back" reads the list. The robots' fixes land on
-  the same list, pinned to the wall.
+  or after talking it over with you in a sentence or two. It looks the idea
+  up in the code first: say "let people pause for a week" and it answers "I
+  had a look: that is pausePlan, and it already takes an until date", then
+  ends the note with the place to change, such as [pausePlan,
+  api/src/orders/subscriptions.ts line 129], so a coding agent can go
+  straight there. "Scratch that" takes it back, "read them back" reads the
+  list. The robots' fixes land on the same list, pinned to the wall.
 - **A review, and a work order to leave with.** One tap on **Review this
   project for me** and the note taker does the job a new joiner would ask a
   senior for: it goes through the warnings, the longest files, the part
