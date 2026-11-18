@@ -243,6 +243,87 @@
       #repo-note.bad {
         color: #ff9b8f;
       }
+      #workorder {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        width: 100%;
+        padding-top: 10px;
+        border-top: 1px solid rgba(126, 224, 201, 0.2);
+        text-align: left;
+      }
+      #workorder[hidden] {
+        display: none;
+      }
+      #workorder-title {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 700;
+        color: #f0f3f6;
+        text-align: center;
+      }
+      #workorder-list {
+        margin: 0;
+        padding-left: 22px;
+        font-size: 14px;
+        line-height: 1.4;
+        color: #c9d1d9;
+        max-height: 170px;
+        overflow-y: auto;
+      }
+      #workorder-list .more {
+        list-style: none;
+        margin-left: -22px;
+        color: #8b949e;
+      }
+      .workorder-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 10px;
+      }
+      .dock #workorder-copy,
+      #workorder-issue {
+        display: inline-flex;
+        align-items: center;
+        min-height: 52px;
+        padding: 0 22px;
+        border-radius: 999px;
+        font-size: 17px;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+      }
+      #workorder-issue {
+        background: #7ee0c9;
+        color: #06241d;
+      }
+      #workorder-issue[hidden] {
+        display: none;
+      }
+      .dock #workorder-copy {
+        background: #222c3a;
+        color: #f0f3f6;
+      }
+      #workorder-note {
+        margin: 0;
+        min-height: 1.2em;
+        font-size: 14px;
+        color: #7ee0c9;
+        text-align: center;
+      }
+      #workorder-text {
+        width: 100%;
+        height: 110px;
+        font: 13px/1.4 ui-monospace, Consolas, monospace;
+        color: #f0f3f6;
+        background: #161d27;
+        border: 1px solid rgba(126, 224, 201, 0.4);
+        border-radius: 10px;
+      }
+      #workorder-text[hidden] {
+        display: none;
+      }
       #landing-note {
         margin: 0;
         font-size: 15px;
@@ -291,6 +372,16 @@
           </div>
           <p id="repo-note" aria-live="polite"></p>
         </form>
+        <div id="workorder" hidden>
+          <p id="workorder-title"></p>
+          <ol id="workorder-list"></ol>
+          <div class="workorder-row">
+            <a id="workorder-issue" target="_blank" rel="noopener" hidden>Open as a GitHub issue</a>
+            <button id="workorder-copy" type="button">Copy for your coding agent</button>
+          </div>
+          <p id="workorder-note" aria-live="polite"></p>
+          <textarea id="workorder-text" readonly hidden></textarea>
+        </div>
         <p id="landing-more">
           <a href="https://github.com/calebluh/codebase-diorama" target="_blank" rel="noopener">Map your own code with the Claude Code plugin</a>
         </p>

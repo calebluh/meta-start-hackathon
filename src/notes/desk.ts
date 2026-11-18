@@ -11,6 +11,8 @@ export interface NotesDeskEvents {
   /** The newest note was taken off (undefined: there was none). */
   onUndo(removed: Note | undefined): void;
   onRead(): void;
+  /** The visitor asked for the project to be reviewed. */
+  onReview(): void;
   onMic(): void;
   onDone(): void;
   /** The notes changed in any way. */
@@ -62,6 +64,7 @@ export class NotesDesk {
     on('btn-notes-mode', () => this.setMode(this.mode === 'exact' ? 'talk' : 'exact'));
     on('btn-notes-undo', () => this.events.onUndo(this.undo()));
     on('btn-notes-read', () => this.events.onRead());
+    on('btn-notes-review', () => this.events.onReview());
     on('btn-notes-mic', () => this.events.onMic());
     on('btn-notes-done', () => this.events.onDone());
   }
@@ -133,6 +136,10 @@ export class NotesDesk {
     this.text('notes-live', text ? `"${text}"` : idle);
   }
 
+  setReviewLabel(label: string): void {
+    this.text('notes-review-label', label);
+  }
+
   setMicLabel(label: string): void {
     this.text('notes-mic-label', label);
   }
@@ -175,7 +182,7 @@ export class NotesDesk {
 
   private renderStatus(): void {
     const count = this.notes.length === 1 ? '1 note' : `${this.notes.length} notes`;
-    this.text('notes-status', this.savedTo ? `${count} | saved to ${this.savedTo}` : `${count} | kept on this device`);
+    this.text('notes-status', this.savedTo ? `${count} | saved to ${this.savedTo}` : `${count} | on the page when you leave VR`);
   }
 
   private text(id: string, value: string): void {

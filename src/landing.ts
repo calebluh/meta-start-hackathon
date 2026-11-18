@@ -7,6 +7,7 @@ import { MAPS } from './maps/index.js';
 import { buildRepoCity, restoreRepoMap } from './maps/repo.js';
 import type { GraphData } from './maps/types.js';
 import { chooseDemo } from './state.js';
+import { setupWorkOrder } from './workorder.js';
 
 /**
  * The flat web page around the 3D view: a title while the app loads, then one
@@ -92,6 +93,7 @@ export async function landingReady(world: World): Promise<void> {
   }
 
   setupRepoForm();
+  setupWorkOrder(world);
   root.classList.remove('loading');
   root.classList.add('ready');
 

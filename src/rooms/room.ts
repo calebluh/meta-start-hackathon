@@ -31,7 +31,7 @@ import { canRecord } from '../agent/recorder.js';
 import { asksToLeave, leavesRoom, plainRequest, suggestedQuestions, type ChatTurn } from '../agent/prompt.js';
 import { NotesDesk } from '../notes/desk.js';
 import { MAX_SAID, noteCommand, type Note, type NoteMode, NOTES_IN_PROMPT, NOTES_NODE, NOTES_ROOM, readBack } from '../notes/scribe.js';
-import { appendNote, talkOver } from '../notes/store.js';
+import { appendNote, reviewProject, talkOver } from '../notes/store.js';
 import { answerOrder, asksForQuiz, asksToStopQuiz, heardAnswer, quizRound, type QuizQuestion } from '../agent/quiz.js';
 import { Carryable, Pipe, Worker } from '../diorama-components.js';
 import { resolveRef } from '../layout.js';
@@ -323,6 +323,7 @@ export class RoomSystem extends createSystem({
       onRead: () => {
         if (this.talking && !this.waiting) void this.say(this.talking, readBack(this.notesDesk.notes), this.titleFor(this.talking));
       },
+      onReview: () => void this.reviewProject(),
       onMic: () => this.toggleMic(),
       onDone: () => {
         this.endConversation();
@@ -1027,6 +1028,45 @@ export class RoomSystem extends createSystem({
     this.history = this.history.slice(-6);
     // The next idea, if one was said meanwhile, once this reply has been heard.
     void this.say(w, reply.say || 'Noted.', this.titleFor(w)).then(() => this.takeNextNote());
+  }
+
+  /**
+   * "Review this project for me": the note taker goes through the project's
+   * warnings and biggest files and writes a work order on the wall, one item
+   * at a time, most urgent first.
+   */
+  private async reviewProject(): Promise<void> {
+    const w = this.talking;
+    const desk = this.notesDesk;
+    if (!w || this.waiting || this.builtNode !== NOTES_ROOM) return;
+    this.waiting = true;
+    const talk = this.conversation;
+    const idle = 'Review this project for me';
+    desk.setReviewLabel('Reviewing...');
+    void this.say(w, 'Give me a moment. I am going through the warnings, the biggest files and what leans on what.', this.titleFor(w));
+    const started = performance.now();
+    const review = await reviewProject(app.mapId);
+    // Let the opening line be heard before the list starts to appear.
+    await new Promise((r) => setTimeout(r, Math.max(0, 2600 - (performance.now() - started))));
+    desk.setReviewLabel(idle);
+    if (talk !== this.conversation) return;
+    if (!review) {
+      this.waiting = false;
+      void this.say(w, 'I could not reach the reviewer just now. Try again in a moment.', this.titleFor(w, ' (offline)'));
+      return;
+    }
+    const before = desk.notes.length;
+    for (const item of review.items) {
+      if (talk !== this.conversation) return;
+      desk.add(item.text, 'talk');
+      this.noteWritten(w, '');
+      await new Promise((r) => setTimeout(r, 900));
+    }
+    if (talk !== this.conversation) return;
+    this.waiting = false;
+    const added = desk.notes.length - before;
+    const say = added === 0 && review.items.length > 0 ? 'I went through it again. Everything I found is already on your list.' : review.say;
+    void this.say(w, say, this.titleFor(w)).then(() => this.takeNextNote());
   }
 
   /** An idea said while the last was being thought over: taken now, so nothing said is lost. */

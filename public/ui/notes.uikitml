@@ -81,6 +81,12 @@
       <span id="note-2" class="note">...</span>
     </div>
     <span id="notes-status" class="status">Kept on this device.</span>
+    <Button id="btn-notes-review" class="wide">
+      <ButtonIcon>
+        <ClipboardCheck></ClipboardCheck>
+      </ButtonIcon>
+      <ButtonLabel id="notes-review-label">Review this project for me</ButtonLabel>
+    </Button>
     <Button id="btn-notes-mode" class="wide">
       <ButtonIcon>
         <PenLine></PenLine>

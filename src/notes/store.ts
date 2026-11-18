@@ -80,6 +80,24 @@ export function appendNote(mapId: string, graph: GraphData, text: string, part?:
   void saveToProject(mapId, notesMarkdown(graph, notes));
 }
 
+/** A work order for the project, written by the server from its map (server/review.ts). Null when it cannot be reached. */
+export async function reviewProject(mapId: string): Promise<{ say: string; items: { text: string; part?: string }[] } | null> {
+  try {
+    const response = await fetch('/api/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mapId, review: true, ...repoMapFields(mapId) }),
+      signal: AbortSignal.timeout(15000),
+    });
+    const json = (await response.json()) as { say?: string; items?: { text: string; part?: string }[]; error?: string };
+    if (!response.ok || typeof json.say !== 'string' || !Array.isArray(json.items)) throw new Error(json.error ?? `HTTP ${response.status}`);
+    return { say: json.say, items: json.items.filter((i) => i && typeof i.text === 'string').slice(0, 5) };
+  } catch (e) {
+    console.warn('[notes] could not review:', (e as Error).message);
+    return null;
+  }
+}
+
 /**
  * Talks one idea over with the note taker. Null when it cannot be reached
  * (no server, no key, too slow): the caller then writes the words down as said.
