@@ -360,9 +360,12 @@ export class GuideSystem extends createSystem({
     this.setSkipPressable(!hidden);
     this.world.camera.getWorldPosition(this.head);
     if (workspace && !hidden) {
-      this.holder.position.copy(app.mode === 'room' ? ROOM_ANCHOR : CARD_ANCHOR);
+      // In a room, and at life size in the streets, the card sits low and close, just
+      // behind the buttons: out there a building's wall is often nearer than the far edge of the desk.
+      const near = app.mode === 'room' || app.street;
+      this.holder.position.copy(near ? ROOM_ANCHOR : CARD_ANCHOR);
       workspace.localToWorld(this.holder.position);
-      this.holder.scale.setScalar(app.mode === 'room' ? ROOM_SCALE : 1);
+      this.holder.scale.setScalar(near ? ROOM_SCALE : 1);
       this.holder.lookAt(this.head);
     }
 

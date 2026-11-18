@@ -133,8 +133,26 @@ const TALK_ARC_NARROW = 0.06;
 const CHARS_PER_SECOND = 16;
 /** A ready answer waits at most this long for the "let me check" line to finish. */
 const ACK_GRACE_MS = 1500;
-/** Where a file card showing code floats, in the room: up and to the left, clear of the robot and its speech bubble. */
-const CODE_CARD = new Vector3(-0.62, 1.55, -1.0);
+/** How wide a robot's speech bubble is, in metres. */
+const SPEECH_WIDTH = 1.2;
+/**
+ * A file or code card stands this far from the visitor's head (metres): well
+ * inside the ring the robots keep clear of, so nothing in the room can cut
+ * through it, and at the distance a headset focuses best.
+ */
+const CARD_DISTANCE = 1.3;
+/** The gap between a card and the speech bubble beside it, as seen from the head (radians). */
+const CARD_GAP = 0.035;
+/**
+ * A robot standing further right than this (radians) gets its card on its
+ * left. Otherwise the card goes on the right, where each line of code starts
+ * on the side nearest the robot.
+ */
+const CARD_FLIP = 0.07;
+/** The foot of the sign on the far wall, in metres: above the labels over the tubes. */
+const SIGN_FOOT = 2.2;
+/** A file card with no code to show: this wide, in metres. */
+const FILE_CARD_WIDTH = 0.8;
 /** The shortest time a flow step's note stays up, even if the voice was cut off. */
 const MIN_NOTE_SECONDS = 2.5;
 /**
@@ -463,22 +481,25 @@ export class RoomSystem extends createSystem({
 
     // The room's own files on plaques round the side and back walls, biggest first.
     const files = app.graph.files.filter((f) => f.n === nodeId).sort((a, b) => b.loc - a.loc).slice(0, 6);
-    const plaqueAngles = [118, -118, 145, -145, 172, -172];
+    // Behind the outermost tubes (which reach 118 degrees round with their labels)
+    // and clear of each other: three a side, a hand's width apart.
+    const plaqueAngles = [127, -127, 148, -148, 169, -169];
     files.forEach((f, i) => {
       const a = (plaqueAngles[i] * Math.PI) / 180;
-      const plaque = new Bubble(1.6, theme.accent, 4);
+      const plaque = new Bubble(1.5, theme.accent, 4);
       plaque.setText(`${f.d} (${f.loc} lines)`, f.name);
-      plaque.mesh.position.set(Math.sin(a) * (ROOM_RADIUS - 0.3), 1.7, -Math.cos(a) * (ROOM_RADIUS - 0.3));
+      this.hang(plaque.mesh, a, ROOM_RADIUS - 0.3, 1.7);
       group.add(plaque.mesh);
       this.bubbles.push(plaque);
     });
 
     // Room sign on the far wall, straight ahead.
-    const sign = new Bubble(2.2, theme.accent);
+    const sign = new Bubble(2.2, theme.accent, 5);
     const signTitle = `${notesRoom ? app.graph.project.name : node.label} · ${theme.place}`;
-    sign.setText(node.summary, signTitle);
     this.sign = { bubble: sign, text: node.summary, title: signTitle };
-    sign.mesh.position.set(0, 2.55, -(ROOM_RADIUS - 0.12));
+    // 2.2 m of flat card against a round wall: far enough in that its corners stay in front of it.
+    this.hang(sign.mesh, 0, ROOM_RADIUS - 0.2, SIGN_FOOT);
+    this.writeSign(node.summary);
     group.add(sign.mesh);
     this.bubbles.push(sign);
 
@@ -487,7 +508,7 @@ export class RoomSystem extends createSystem({
       this.notePlaques = [-27, 27, -46, 46].map((degrees) => {
         const a = (degrees * Math.PI) / 180;
         const plaque = new Bubble(1.5, theme.accent, 5);
-        plaque.mesh.position.set(Math.sin(a) * (ROOM_RADIUS - 0.3), 2.3, -Math.cos(a) * (ROOM_RADIUS - 0.3));
+        this.hang(plaque.mesh, a, ROOM_RADIUS - 0.3, 2.3);
         group.add(plaque.mesh);
         this.bubbles.push(plaque);
         return plaque;
@@ -498,7 +519,8 @@ export class RoomSystem extends createSystem({
     const logoUrl = app.graph.project.logo;
     if (logoUrl) {
       const logo = new Mesh(new PlaneGeometry(0.55, 0.55), new MeshBasicMaterial({ transparent: true }));
-      logo.position.set(-1.6, 2.55, -(ROOM_RADIUS - 0.14));
+      // On the wall to the left of the sign, between a pilaster and a window.
+      this.hang(logo, (-20.2 * Math.PI) / 180, ROOM_RADIUS - 0.15, 2.55);
       group.add(logo);
       void AssetManager.loadTexture(`${import.meta.env.BASE_URL}${logoUrl}`, `logo:${logoUrl}`).then((texture) => {
         texture.colorSpace = SRGBColorSpace;
@@ -579,7 +601,7 @@ export class RoomSystem extends createSystem({
       group.add(hole);
       const label = new Bubble(0.9, targetTheme.accent);
       label.setText(`to ${target.label}`, targetTheme.place);
-      label.mesh.position.set(mouth.x * 0.97, 1.95, mouth.z * 0.97);
+      this.hang(label.mesh, a, PORTAL_RADIUS * 0.97, 1.95);
       group.add(label.mesh);
       this.bubbles.push(label);
       const landing = new Vector3(Math.sin(a) * (PORTAL_RADIUS - 0.9), 0, -Math.cos(a) * (PORTAL_RADIUS - 0.9));
@@ -638,7 +660,7 @@ export class RoomSystem extends createSystem({
       const item = ignoreRays(makeItem(theme.item, palette));
       item.visible = false;
       rig.hands.add(item);
-      const bubble = new Bubble(1.2, theme.accent, 10);
+      const bubble = new Bubble(SPEECH_WIDTH, theme.accent, 10);
       bubble.mesh.position.set(0, 1.55, 0);
       rig.root.add(bubble.mesh);
       this.bubbles.push(bubble);
@@ -707,6 +729,24 @@ export class RoomSystem extends createSystem({
     if (handoff?.toRoom === nodeId) this.startConversation(this.workers[1], handoff);
     // The notes room is for talking: the note taker comes straight over.
     if (notesRoom) this.startConversation(this.workers[1]);
+  }
+
+  /**
+   * Hangs a card flat on the round wall at `angle`, facing the middle of the
+   * room. A card on the wall does not turn to follow the visitor's head:
+   * turned or tipped, a flat card's corners go through a curved wall.
+   */
+  private hang(card: Object3D, angle: number, radius: number, height: number): void {
+    card.position.set(Math.sin(angle) * radius, height, -Math.cos(angle) * radius);
+    card.rotation.set(0, -angle, 0);
+    card.userData.onWall = true;
+  }
+
+  /** Writes on the far wall's sign. It grows upwards from its foot, so a long one never reaches down over the tube labels. */
+  private writeSign(text: string): void {
+    if (!this.sign) return;
+    this.sign.bubble.setText(text, this.sign.title);
+    this.sign.bubble.mesh.position.y = SIGN_FOOT + this.sign.bubble.mesh.scale.y / 2;
   }
 
   private teardown(): void {
@@ -1163,7 +1203,7 @@ export class RoomSystem extends createSystem({
     this.quiz = { questions, index: 0, score: 0, missed: [], order: [0, 1, 2], marking: false, round: this.quizRounds };
     this.setAskText('quiz-label', 'Stop the quiz');
     // Closed book: the wall sign and the info card would give the answers away.
-    this.sign?.bubble.setText('Quiz in progress.', this.sign.title);
+    this.writeSign('Quiz in progress.');
     setQuiz(true);
     const count = questions.length === 1 ? 'One question' : `${questions.length} questions`;
     this.askQuizQuestion(`Quiz time. ${count} about this room. ${pressWord()} an answer, or say it. `);
@@ -1304,7 +1344,7 @@ export class RoomSystem extends createSystem({
     if (!this.quiz) return;
     this.quiz = null;
     this.waiting = false;
-    this.sign?.bubble.setText(this.sign.text, this.sign.title);
+    if (this.sign) this.writeSign(this.sign.text);
     setQuiz(false);
     if (!this.talking) return;
     this.showAskHeader(this.talking);
@@ -1462,15 +1502,11 @@ export class RoomSystem extends createSystem({
       said,
     );
     const code = issue?.excerpt ? codeBlock(issue.excerpt) : undefined;
-    const card = new Bubble(0.7, this.theme.accent, code ? 3 : 8);
-    if (code && issue) {
-      // The flagged lines: just the file and the warning in words above them, so the card stays clear of the robot.
-      card.setText(`Line ${issue.locations?.[0]?.line ?? '?'}: ${issue.title}. (${file.p})`, `File: ${file.name}`, code);
-      card.mesh.position.set(CODE_CARD.x, CODE_CARD.y, CODE_CARD.z);
-    } else {
-      card.setText(`${file.d} (${file.loc} lines, ${file.p})`, `File: ${file.name}`);
-      card.mesh.position.set(-0.32, 1.42, -1.15); // up and left of centre, clear of the side panels
-    }
+    const card = new Bubble(FILE_CARD_WIDTH, this.theme.accent, code ? 3 : 8);
+    // The flagged lines: just the file and the warning in words above them.
+    if (code && issue) card.setText(`Line ${issue.locations?.[0]?.line ?? '?'}: ${issue.title}. (${file.p})`, `File: ${file.name}`, code);
+    else card.setText(`${file.d} (${file.loc} lines, ${file.p})`, `File: ${file.name}`);
+    this.placeCard(card.mesh);
     this.roomGroup.add(card.mesh);
     this.bubbles.push(card);
     this.fileCard = card;
@@ -1480,14 +1516,42 @@ export class RoomSystem extends createSystem({
       void fetchCodeWindow(graph, file, said).then((found) => {
         if (!found || this.fileCard !== card || app.graph !== graph || !this.roomGroup || !this.theme) return;
         this.hideFileCard();
-        const withCode = new Bubble(0.7, this.theme.accent, 3);
+        const withCode = new Bubble(FILE_CARD_WIDTH, this.theme.accent, 3);
         withCode.setText(`Line ${found.line} of ${file.p}`, `File: ${file.name}`, found.code);
-        withCode.mesh.position.set(CODE_CARD.x, CODE_CARD.y, CODE_CARD.z);
+        this.placeCard(withCode.mesh);
         this.roomGroup.add(withCode.mesh);
         this.bubbles.push(withCode);
         this.fileCard = withCode;
       });
     }
+  }
+
+  /**
+   * Stands a card beside the speech bubble of the robot being talked to,
+   * never across it: the bubble's edge, a small gap, then the card, measured
+   * from where the visitor's head is now. The card's foot is at eye level,
+   * above the panels to either side.
+   */
+  private placeCard(card: Object3D): void {
+    const group = this.roomGroup;
+    if (!group) return;
+    const head = group.worldToLocal(this.world.camera.getWorldPosition(this.tmp));
+    let robot = 0;
+    let bubble = 0;
+    const w = this.talking;
+    if (w) {
+      // Where the robot stands to talk, or is still walking to.
+      const walk = w.queue.find((t) => t.kind === 'walk');
+      const at = walk?.kind === 'walk' ? walk.to : w.rig.root.position;
+      const dx = at.x - head.x;
+      const dz = at.z - head.z;
+      robot = Math.atan2(dx, -dz);
+      bubble = Math.atan2(SPEECH_WIDTH / 2, Math.hypot(dx, dz));
+    }
+    const half = Math.atan2(card.scale.x / 2, CARD_DISTANCE);
+    const side = robot > CARD_FLIP ? -1 : 1;
+    const angle = robot + side * (bubble + CARD_GAP + half);
+    card.position.set(head.x + Math.sin(angle) * CARD_DISTANCE, head.y + card.scale.y / 2, head.z - Math.cos(angle) * CARD_DISTANCE);
   }
 
   private hideFileCard(): void {
@@ -1872,7 +1936,8 @@ export class RoomSystem extends createSystem({
     this.world.camera.getWorldDirection(this.headForward);
     this.headUp.set(0, 1, 0).applyQuaternion(this.world.camera.getWorldQuaternion(this.headQuat));
     setListener(this.head, this.headForward, this.headUp);
-    for (const b of this.bubbles) if (b.mesh.visible) b.mesh.lookAt(this.head);
+    // Floating bubbles turn to face the visitor; cards hung on the wall stay flat against it.
+    for (const b of this.bubbles) if (b.mesh.visible && !b.mesh.userData.onWall) b.mesh.lookAt(this.head);
 
     for (const w of this.workers) this.updateWorker(w, delta);
     this.separateWorkers();

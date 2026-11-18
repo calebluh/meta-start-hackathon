@@ -111,9 +111,11 @@ const WAYPOINT_COLOR = '#7ee0ff';
 /** The Turn buttons float this far out to either side, low, and this far below the eyes (metres). */
 const TURN_BUTTON_OUT = 0.55;
 const TURN_BUTTON_DROP = 0.18;
-const TURN_BUTTON_ANGLE = 0.95;
+const TURN_BUTTON_ANGLE = 1.0;
 /** The Turn buttons come round again only when the head turns this far (radians) from where they were placed. */
 const TURN_BUTTON_FOLLOW = 1.6;
+/** With the head within this (radians) of the way the desk faces, the Turn buttons are placed by the desk, not the head. */
+const TURN_BUTTON_SNAP = 1.0;
 const UP = new Vector3(0, 1, 0);
 /**
  * The city is turned and resized with four pegs at its corners, never by
@@ -532,6 +534,7 @@ export class DioramaSystem extends createSystem({
   private streetExtrasShown = false;
   private headQuat = new Quaternion();
   private headEuler = new Euler();
+  private deskEuler = new Euler();
 
   // The dive into a building (see transition.ts). The board scales up about
   // the building's base while that base slides under the viewer.
@@ -2251,6 +2254,14 @@ export class DioramaSystem extends createSystem({
     if (replace) {
       this.turnAnchorAt = this.streetMovedAt;
       this.turnAnchorYaw = this.headEuler.y;
+      // Facing roughly the way the desk does, the buttons line up with the desk instead of
+      // the head: they then stand just outside the info panel, never across its corner.
+      this.root.object3D!.parent!.getWorldQuaternion(this.headQuat);
+      const desk = this.deskEuler.setFromQuaternion(this.headQuat, 'YXZ').y;
+      let off = this.turnAnchorYaw - desk;
+      while (off > Math.PI) off -= Math.PI * 2;
+      while (off < -Math.PI) off += Math.PI * 2;
+      if (Math.abs(off) < TURN_BUTTON_SNAP) this.turnAnchorYaw = desk;
     }
     for (const b of this.turnButtons) {
       if (replace) {
