@@ -49,6 +49,9 @@ Paste each part into the matching Devpost field. Everything marked
    - "What happens in this room?"
    - "Take me to the kitchen."
    - "Show me what happens on billing day."
+   - "Show me the code." A card of code pops up beside the robot: the whole
+     function, coloured like an editor. Name one ("show me the refund
+     endpoint") or say "show me more" to read on.
    - "Take me back to the city."
 7. Back at the desk, tap **Street view** to stand in the city at life
    size, still seated. Pinch a glowing disc on the street to move to it, a
@@ -131,10 +134,18 @@ seconds later you are walking into it.
   like. It answers from a map of the code in its room (what each file is
   for, what it talks to, the flows through it), in its own voice, and
   it acts on what you ask: it walks you to another room, plays a flow,
-  points at the pipe that leads next door, hands you a card about a file, or
+  points at the pipe that leads next door, holds up the code you ask for, or
   takes you back to the city. When it sends you on, it names the colleague
   who will help, and that robot comes out of the pipe to meet you, already
   knowing what you asked.
+- **The code itself.** Say "show me the code" and the robot holds up a card
+  beside its speech bubble with the real lines: the whole function, class or
+  statement you named, never a slice cut off mid-thought, in an editor's
+  colours with line numbers. Ask about a warning and its line is lit. A
+  class too long for the card shows as an outline; for a long file, "show me
+  more" carries on from where the card stopped. The lines are read straight
+  from the repository (or, for your own project through the plugin, from
+  your disk) and shown only on the card: the AI never sees them.
 - **The quiz.** Pinch **Quiz me** and the robot turns the tables: it tests
   you on its own room. What is this room's job, where does the work go next,
   which file lives here, what is the warning about. The room's notes are put
@@ -166,8 +177,8 @@ seconds later you are walking into it.
   concrete fix from what it knows about its room, names the files, and puts
   the fix on your notes list. In the demo maps, which were built from the
   code, the robots cite the function names and the warning's line from the
-  code itself, and hand you a card with the flagged lines. If the AI cannot
-  be reached, the warning itself still goes on the list.
+  code itself, and hold up the code with the flagged line lit. If the AI
+  cannot be reached, the warning itself still goes on the list.
 - **The notes room.** Tap **Notes** and step into a room for thinking out
   loud. Say an idea and the note taker writes it down, either word for word
   or after talking it over with you in a sentence or two. "Scratch that"
@@ -198,7 +209,8 @@ seconds later you are walking into it.
   that plugin.
 
 The public link opens on three codebases: MiroFish (an open-source
-prediction engine), Larder (a small meal-kit shop) and this app itself.
+prediction engine), Larder (a small made-up meal-kit shop, with sample code
+written to match its map) and this app itself.
 
 ### How it was built
 

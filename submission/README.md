@@ -92,6 +92,18 @@ emulator. This is the most important step left.
      review, appear in `walkthrough/notes.md` as you make them, grouped by
      part with a count on top. The folder ignores itself, so `git status`
      should not list it. Then ask the agent to work through your notes.
+   - **Code cards, and bubbles that keep clear (new, 17 Nov late evening).**
+     In Larder, step into any room, pinch a robot and say "show me the
+     code". A card of code should pop up to the right of the robot's speech
+     bubble, coloured like an editor, touching nothing; the room's info
+     panel steps aside while it is up and comes back after. In Endpoints say
+     "show me the refund endpoint": the handler, with line 88 lit. On a long
+     file say "show me more". Check the code is big enough to read in your
+     headset and tell Claude if it is not (one number sets its size). Then
+     look at the sign on the far wall and the plaques behind you: flat on
+     the wall, no corner sunk into it, none overlapping. In Street view the
+     tour card should sit low, just behind the buttons, and the Turn buttons
+     should stay off the info panel.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -194,6 +206,20 @@ git push
 
 Then take out of `devpost.md` testing step 12 and the bullet "A review, and
 a work order to leave with".
+
+### Rolling back the code cards and the bubble placement
+
+Both commits touch the same room code, so undo them together, newest first:
+
+```bash
+git revert --no-edit c020c5c 937e3ef
+git push
+```
+
+That brings back the old file card (which could sit across a speech bubble)
+and takes Larder's sample code away. Then take out of `devpost.md` the "Show
+me the code" line in testing step 6, the bullet "The code itself", and the
+words "with sample code written to match its map".
 
 ### Rolling back the walkthrough/ folder
 
