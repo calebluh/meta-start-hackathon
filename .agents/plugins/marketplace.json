@@ -1,8 +1,8 @@
 {
-  "name": "codebase-diorama",
+  "name": "walkthrough",
   "plugins": [
     {
-      "name": "codebase-diorama",
+      "name": "walkthrough",
       "source": {
         "source": "local",
         "path": "./plugins/codebase-diorama"

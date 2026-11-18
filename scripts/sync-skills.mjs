@@ -2,17 +2,17 @@
 /**
  * Keeps the two copies of the mapping skill in step.
  *
- *   node scripts/sync-skills.mjs          write skills/codebase-diorama/
+ *   node scripts/sync-skills.mjs          write skills/walkthrough/
  *   node scripts/sync-skills.mjs --check  fail if it is out of date
  *
  * The skill is written once, in plugins/codebase-diorama/skills/map/. That is
  * where plugin systems find it (Claude Code, Codex and ChatGPT, Cursor), and
- * they put the plugin's name in front of it: /codebase-diorama:map.
+ * they put the plugin's name in front of it: /walkthrough:map.
  *
  * Agents that install bare skills (Gemini CLI extensions, `npx skills add`
  * for Antigravity, GitHub Copilot, OpenCode and the rest) have no plugin name
  * to put in front, and a skill called just "map" would say nothing. For them
- * this script writes the same skill to skills/codebase-diorama/, with its
+ * this script writes the same skill to skills/walkthrough/, with its
  * `name` changed to match that folder as the Agent Skills format requires.
  */
 import fs from 'node:fs';
@@ -21,8 +21,8 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = path.join(ROOT, 'plugins', 'codebase-diorama', 'skills', 'map');
-const TARGET = path.join(ROOT, 'skills', 'codebase-diorama');
-const NAME = 'codebase-diorama';
+const TARGET = path.join(ROOT, 'skills', 'walkthrough');
+const NAME = 'walkthrough';
 
 /** Every file under `dir`, as '/'-separated paths relative to it. */
 function list(dir, base = dir) {

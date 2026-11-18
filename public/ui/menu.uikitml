@@ -193,7 +193,7 @@
 </style>
 <Panel class="root">
   <div class="content">
-    <span class="eyebrow">CODEBASE DIORAMA</span>
+    <span class="eyebrow">WALKTHROUGH</span>
     <span class="title">Step inside a codebase</span>
     <span class="lead">Each demo is a real software project built as a little city. Walk into any part and talk with the robots who run it.</span>
     <div class="cards">

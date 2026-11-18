@@ -2,7 +2,7 @@ import { larder } from './larder.js';
 import type { GraphData } from './types.js';
 
 /**
- * Maps made by the Codebase Diorama Claude skill land in ./custom/<id>.json
+ * Maps made by the Walkthrough Claude skill land in ./custom/<id>.json
  * and are picked up here. Vite resolves the glob at build time; outside Vite
  * (a Vercel function) there are none.
  */

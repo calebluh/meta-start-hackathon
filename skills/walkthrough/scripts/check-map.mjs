@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Checks a built Codebase Diorama map (src/maps/custom/<id>.json) for the
+// Checks a built Walkthrough map (src/maps/custom/<id>.json) for the
 // mistakes the viewer would otherwise hide: flow steps that point at nothing,
 // parts or files without descriptions, empty rooms, and maps too small or too
 // big to tour. Prints each problem, then "ok" or a count.

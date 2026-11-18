@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Writes the public Codebase Diorama viewer (github.com/calebluh/codebase-diorama)
+ * Writes the public Walkthrough viewer (github.com/calebluh/codebase-diorama)
  * from this hackathon repository into a checkout of the public repo.
  *
  *   node scripts/export-personal.mjs ../codebase-diorama

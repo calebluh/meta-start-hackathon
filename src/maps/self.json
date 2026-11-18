@@ -1,8 +1,8 @@
 {
  "schema": "floorplan/graph@1",
  "project": {
-  "name": "Codebase Diorama",
-  "summary": "Codebase Diorama turns a software project into a miniature city on a desk in virtual reality, for anyone curious about how a piece of software fits together. You pinch a building to see what that part of the code does, step inside it to find a themed room staffed by robots, and ask them questions out loud. A Claude Code plugin can build the same kind of city from your own code."
+  "name": "Walkthrough",
+  "summary": "Walkthrough turns a software project into a miniature city on a desk in virtual reality, for anyone curious about how a piece of software fits together. You pinch a building to see what that part of the code does, step inside it to find a themed room staffed by robots, and ask them questions out loud. A Claude Code plugin can build the same kind of city from your own code."
  },
  "source": {
   "repo": "https://github.com/calebluh/meta-start-hackathon",

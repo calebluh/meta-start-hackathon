@@ -3,7 +3,7 @@
 // Every file is claimed by an explicit path in a leaf part; the four parents own no files.
 
 export default {
-  name: 'Codebase Diorama',
+  name: 'Walkthrough',
   summary: 'A virtual reality app that shows a software project as a miniature city on a desk, with rooms you can step into and robots you can ask.',
   source: {
     repo: 'https://github.com/calebluh/meta-start-hackathon',

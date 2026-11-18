@@ -19,7 +19,7 @@
 </head>
 <body>
 <main>
-  <h1>Your screen in the diorama</h1>
+  <h1>Your screen in Walkthrough</h1>
   <p>Pick a window (your terminal or editor reads best) or the whole screen. It appears on a monitor behind the city in the headset, so you can watch your coding agent work without taking the headset off. View only: keep typing here. Nothing leaves this computer and your local network.</p>
   <button id="go">Share a window</button>
   <label><input type="checkbox" id="sharp"> Sharper text (more data, for a small font)</label>
@@ -105,7 +105,7 @@ async function start() {
     else timer = setInterval(frame, 200);
   });
   socket.addEventListener('message', (e) => {
-    try { const m = JSON.parse(e.data); if (typeof m.watchers === 'number') say(m.watchers ? 'Sharing. Look behind the city in the headset.' : 'Sharing, but no headset is watching yet: open the diorama on the headset from this same server.'); } catch {}
+    try { const m = JSON.parse(e.data); if (typeof m.watchers === 'number') say(m.watchers ? 'Sharing. Look behind the city in the headset.' : 'Sharing, but no headset is watching yet: open Walkthrough on the headset from this same server.'); } catch {}
   });
   socket.addEventListener('close', (e) => {
     if (stream) { say(e.reason || 'The dev server closed the connection.'); stop(); }

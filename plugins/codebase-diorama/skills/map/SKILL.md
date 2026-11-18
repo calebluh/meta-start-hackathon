@@ -1,11 +1,11 @@
 ---
 name: map
-description: Turn a codebase into a walk-in VR diorama (Codebase Diorama for Meta Quest). Use when the user asks to map, visualize, tour or "step inside" a repository in VR or on a Quest, to build a Codebase Diorama map, or runs /codebase-diorama:map. Analyzes the repo read-only, writes a map of its parts, flows and files in plain English, then runs the viewer locally so robots in each room can answer questions about the code. Needs a shell with git and Node 20+ on the user's own machine.
+description: Turn a codebase into a walk-in VR diorama (Walkthrough for Meta Quest). Use when the user asks to map, visualize, tour or "step inside" a repository in VR or on a Quest, to build a Walkthrough map, or runs /walkthrough:map. Analyzes the repo read-only, writes a map of its parts, flows and files in plain English, then runs the viewer locally so robots in each room can answer questions about the code. Needs a shell with git and Node 20+ on the user's own machine.
 ---
 
-# Codebase Diorama: map a repo
+# Walkthrough: map a repo
 
-Codebase Diorama shows a codebase as a little city on a desk in VR. Each part
+Walkthrough shows a codebase as a little city on a desk in VR. Each part
 of the code is a building; step inside one and it becomes a themed room where
 robot workers run that part and answer questions about it, powered by the
 user's own Meta Model API key. Packets travel between rooms along the code's

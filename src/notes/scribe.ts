@@ -164,7 +164,7 @@ export function notesMarkdown(graph: GraphData, notes: Note[]): string {
   const lines = [
     `# Notes: ${graph.project.name}`,
     '',
-    'Ideas spoken in Codebase Diorama, oldest first. Times are UTC.',
+    'Ideas spoken in Walkthrough, oldest first. Times are UTC.',
     '',
     ...notes.map((n) => {
       const tags = [n.part, n.how === 'exact' ? 'word for word' : 'talked over', stamp(n.at)].filter(Boolean).join(', ');

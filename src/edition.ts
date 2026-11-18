@@ -3,7 +3,7 @@
  *
  * - `hackathon` (default): the competition build. It opens on a start menu of
  *   demo codebases, including MiroFish.
- * - `personal`: what the Codebase Diorama Claude plugin sets up on someone's
+ * - `personal`: what the Walkthrough Claude plugin sets up on someone's
  *   machine (VITE_EDITION=personal in .env.local). No menu and no MiroFish:
  *   it opens straight onto their own maps.
  *

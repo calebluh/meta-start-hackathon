@@ -1,14 +1,14 @@
 {
-  "name": "codebase-diorama",
+  "name": "walkthrough",
   "owner": {
     "name": "Caleb"
   },
   "metadata": {
-    "description": "Codebase Diorama: step inside your codebase in VR."
+    "description": "Walkthrough: step inside your codebase in VR."
   },
   "plugins": [
     {
-      "name": "codebase-diorama",
+      "name": "walkthrough",
       "source": "plugins/codebase-diorama",
       "description": "Map any repo into a walk-in VR diorama for Meta Quest, with robots that explain the code."
     }

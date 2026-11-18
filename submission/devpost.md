@@ -1,4 +1,4 @@
-# Devpost entry: Codebase Diorama
+# Devpost entry: Walkthrough
 
 Paste each part into the matching Devpost field. Everything marked
 `[FILL IN ...]` needs you before submitting; nothing else does.
@@ -7,8 +7,8 @@ Paste each part into the matching Devpost field. Everything marked
 
 | Field | Value |
 | --- | --- |
-| Project name | Codebase Diorama |
-| Tagline | Step inside a codebase. Software becomes a little city on your desk: pinch a building, walk in, and ask the robots who run it how it works. Hands and voice only. |
+| Project name | Walkthrough |
+| Tagline | Take a walk through any codebase. Software becomes a little city on your desk: pinch a building, walk in, and ask the robots who run it how it works. Hands and voice only. |
 | Track | Productivity |
 | Division | New Experience |
 | Special prize (if the form asks for one) | Best Agentic Interaction |
@@ -95,7 +95,7 @@ simply ask.
 
 ### What it does
 
-Codebase Diorama turns a real software project into a little city on your
+Walkthrough turns a real software project into a little city on your
 desk. Any public GitHub repository: type its name on the page, and about ten
 seconds later you are walking into it.
 
@@ -186,7 +186,7 @@ seconds later you are walking into it.
   computer (the Claude Code plugin sets it up), the list is saved into your
   repository as it is said: a checklist in `walkthrough/notes.md`, in a
   folder that also holds the map and keeps itself out of git. Ask your coding agent to work through your
-  diorama notes: it checks each one against the real code, makes the
+  walkthrough notes: it checks each one against the real code, makes the
   change, ticks the line and updates the map.
 - **Your screen and a live city.** In that same local setup, open `/share`
   on the computer and its screen appears on a monitor behind the city, so
@@ -194,7 +194,7 @@ seconds later you are walking into it.
   agent updates the map, the city changes in front of you, still in VR, and
   the parts that changed glow.
 - **Your own code.** A Claude Code plugin maps any repository into a city.
-  The third demo, **This app**, is the diorama's own source code, mapped by
+  The third demo, **This app**, is Walkthrough's own source code, mapped by
   that plugin.
 
 The public link opens on three codebases: MiroFish (an open-source

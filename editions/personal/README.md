@@ -1,4 +1,4 @@
-# Codebase Diorama
+# Walkthrough
 
 Step inside your codebase. Your project becomes a little city on your desk in
 VR: every part of the code is a building, and you can walk into any of them.
@@ -20,13 +20,13 @@ the map and starts the viewer. One skill, packaged for each agent:
 
 | Agent | Install | Then ask |
 | --- | --- | --- |
-| Claude Code | `claude plugin marketplace add calebluh/codebase-diorama` then `claude plugin install codebase-diorama@codebase-diorama` | `/codebase-diorama:map` |
-| Codex and the ChatGPT desktop app | `codex plugin marketplace add calebluh/codebase-diorama`, then install **codebase-diorama** from the plugins list | "Map this repo into a Codebase Diorama" |
-| Cursor | `npx skills add calebluh/codebase-diorama --skill codebase-diorama -a cursor` | "Map this repo into a Codebase Diorama" |
-| Gemini CLI | `gemini extensions install https://github.com/calebluh/codebase-diorama` | "Map this repo into a Codebase Diorama" |
-| Antigravity | `npx skills add calebluh/codebase-diorama --skill codebase-diorama -a antigravity` | "Map this repo into a Codebase Diorama" |
-| GitHub Copilot, OpenCode, Windsurf and others | `npx skills add calebluh/codebase-diorama --skill codebase-diorama` (it finds the agents you have) | "Map this repo into a Codebase Diorama" |
-| Anything else that can run a shell | nothing | "Read https://raw.githubusercontent.com/calebluh/codebase-diorama/main/skills/codebase-diorama/SKILL.md and follow it for this repository." |
+| Claude Code | `claude plugin marketplace add calebluh/codebase-diorama` then `claude plugin install walkthrough@walkthrough` | `/walkthrough:map` |
+| Codex and the ChatGPT desktop app | `codex plugin marketplace add calebluh/codebase-diorama`, then install **walkthrough** from the plugins list | "Map this repo into a Walkthrough city" |
+| Cursor | `npx skills add calebluh/codebase-diorama --skill walkthrough -a cursor` | "Map this repo into a Walkthrough city" |
+| Gemini CLI | `gemini extensions install https://github.com/calebluh/codebase-diorama` | "Map this repo into a Walkthrough city" |
+| Antigravity | `npx skills add calebluh/codebase-diorama --skill walkthrough -a antigravity` | "Map this repo into a Walkthrough city" |
+| GitHub Copilot, OpenCode, Windsurf and others | `npx skills add calebluh/codebase-diorama --skill walkthrough` (it finds the agents you have) | "Map this repo into a Walkthrough city" |
+| Anything else that can run a shell | nothing | "Read https://raw.githubusercontent.com/calebluh/codebase-diorama/main/skills/walkthrough/SKILL.md and follow it for this repository." |
 
 Add `-g` to an `npx skills add` line to install for every project instead of
 the current one. The agent has to run on your own computer: it uses git and
@@ -34,7 +34,7 @@ Node there, and the headset reaches the viewer over your Wi-Fi.
 
 The skill is written once, in
 [`plugins/codebase-diorama/skills/map`](plugins/codebase-diorama/skills/map),
-and copied to [`skills/codebase-diorama`](skills/codebase-diorama) for agents
+and copied to [`skills/walkthrough`](skills/walkthrough) for agents
 that install bare skills (`node scripts/sync-skills.mjs`).
 
 ## Keys
@@ -92,7 +92,7 @@ you make one, a small sample shop called Larder is shown.
 
 Copyright (C) 2026 Caleb Luh.
 
-Codebase Diorama is free software under the
+Walkthrough is free software under the
 [GNU Affero General Public License v3.0](LICENSE) or any later version. You
 can use, change and share it. If you share a changed version, or run one as a
 service other people use over a network, you must make your changed source

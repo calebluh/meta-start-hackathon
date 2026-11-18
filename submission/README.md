@@ -1,4 +1,4 @@
-# Submitting Codebase Diorama
+# Submitting Walkthrough
 
 Entries close **Wednesday 18 November 2026 at 12:00 PM Pacific**. After that
 the app and the Devpost page must not change, and the link must stay up and
@@ -212,7 +212,7 @@ where you left it", the "Remembering the spot" bullet, the last clause of
 "Passthrough with a purpose" ("and it is anchored there..."), and "WebXR
 Anchors (persistent)" under Built with. In `video-script.md`, put back the
 2:32 row: Menu, the "This app" card, then its city. Voice-over: "It maps any
-repository. This one is the diorama's own source code."
+repository. This one is Walkthrough's own source code."
 
 If mixed reality starts but the city does not come back to its spot, try
 once more after a few seconds in the room (the headset can be slow to find an

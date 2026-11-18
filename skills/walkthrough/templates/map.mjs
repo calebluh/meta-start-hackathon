@@ -1,4 +1,4 @@
-// Codebase Diorama map definition for <Project>. See references/map-format.md.
+// Walkthrough map definition for <Project>. See references/map-format.md.
 // Parts are listed most-specific first: each file goes to the first part whose
 // globs match.
 

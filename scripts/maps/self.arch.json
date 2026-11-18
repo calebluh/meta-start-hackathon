@@ -1,5 +1,5 @@
 {
-  "projectSummary": "Codebase Diorama turns a software project into a miniature city on a desk in virtual reality, for anyone curious about how a piece of software fits together. You pinch a building to see what that part of the code does, step inside it to find a themed room staffed by robots, and ask them questions out loud. A Claude Code plugin can build the same kind of city from your own code.",
+  "projectSummary": "Walkthrough turns a software project into a miniature city on a desk in virtual reality, for anyone curious about how a piece of software fits together. You pinch a building to see what that part of the code does, step inside it to find a themed room staffed by robots, and ask them questions out loud. A Claude Code plugin can build the same kind of city from your own code.",
   "nodeSummaries": {
     "table": "The desk you stand at: the miniature city of the code, the cards and buttons around it, and the welcome that starts each visit.",
     "table.city": "The little city on the desk. Every part of the code is a building sized by how much code it holds, lights travel between buildings that work together, and warning beacons mark known trouble. It also remembers what you have picked and which journey is playing, and the card beside the desk reports each building's facts.",

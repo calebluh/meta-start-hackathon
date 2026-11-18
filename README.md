@@ -1,4 +1,4 @@
-# Codebase Diorama
+# Walkthrough
 
 Step inside a codebase. A real software project becomes a little city on
 your desk in VR: every part of the code is a building, and you can walk into
@@ -52,7 +52,7 @@ map.
 
 ## Map your own codebase with your coding agent
 
-The `codebase-diorama` plugin teaches a coding agent to map any repository. It
+The `walkthrough` plugin teaches a coding agent to map any repository. It
 reads the repo without running it and names its parts in plain English. It
 describes every file, traces the main flows and notes real issues. Then it
 builds the map and starts this viewer with your own key.
@@ -61,13 +61,13 @@ In Claude Code:
 
 ```sh
 claude plugin marketplace add calebluh/codebase-diorama
-claude plugin install codebase-diorama@codebase-diorama
+claude plugin install walkthrough@walkthrough
 ```
 
 Then, inside the repository you want to see, ask Claude Code:
 
 ```text
-/codebase-diorama:map
+/walkthrough:map
 ```
 
 The same skill is packaged for Codex and the ChatGPT desktop app, Cursor,
@@ -80,7 +80,7 @@ only in Claude Code so far.
 
 - **This one, [meta-start-hackathon](https://github.com/calebluh/meta-start-hackathon),**
   is the competition build. It opens on a start menu of three demo
-  codebases: MiroFish, Larder, and "This app", the diorama's own source
+  codebases: MiroFish, Larder, and "This app", Walkthrough's own source
   mapped by its own plugin. The Devpost text, video script and a submission
   checklist are in [submission/](submission/).
 - **[codebase-diorama](https://github.com/calebluh/codebase-diorama)** is the
