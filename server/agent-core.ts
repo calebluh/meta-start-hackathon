@@ -6,6 +6,7 @@ import {
   leavesRoom,
   parseReply,
   plainRequest,
+  saysItNoted,
   spokenRoom,
   systemPrompt,
   validateActions,
@@ -42,9 +43,24 @@ const DEFAULT_MODEL = 'muse-ember-1.0';
 const UPSTREAM_TIMEOUT_MS = 14_000;
 /** A spoken answer shorter than this, with nowhere to go, is treated as unfinished. */
 const THIN_ANSWER = 90;
-/** "I'll pull up that section so you can see it": with the code already given, an answer this short that only promises to show it says nothing yet. */
-const PROMISES_CODE = /\b(?:I(?:'|’)ll|I will|let me|I(?:'|’)m going to)\s+(?:just\s+)?(?:pull|show|walk|bring|hold|put|open|grab|get)\b/i;
+/**
+ * "I'll pull up that section so you can see it", "I'll draft a guard for it":
+ * with the code already given, an answer this short that says what the robot
+ * is about to do has not said anything yet. Asking again costs a second or
+ * two, so any such promise counts, whatever its verb.
+ */
+const PROMISES_CODE = /\b(?:I(?:'|’)ll|I will|let me|I(?:'|’)m going to|I am going to)\b/i;
 const PROMISE_ONLY = 170;
+/**
+ * What each tool call is answered with when the model stopped after a line.
+ * It often makes its next call (the note, after the card) before it says its
+ * piece, so the tool conversation is carried on for up to this many turns:
+ * in 24 trials on 18 Nov 2026 one more turn finished all 8 answers to a
+ * plain "show me the code" but only 1 of 16 where a note was also due, and
+ * a second turn finished all 24, each turn taking about a second.
+ */
+const SAY_IT = 'Done. Now say your full answer to the visitor, in two to four sentences: the answer itself, not what you are about to do.';
+const MORE_TURNS = 2;
 /** Do not start a second request with less time than this left. */
 const MIN_SECOND_TRY_MS = 3_500;
 /** Marking a quiz answer is one short reply; the visitor is waiting for a yes or no. */
@@ -207,6 +223,16 @@ export async function talkOver(req: ScribeRequest, apiKey: string | undefined, m
   return parsed;
 }
 
+/**
+ * A note made from the robot's spoken words says where the work is when the
+ * words did not name the file: "... [web/src/config.ts line 12]", the way the
+ * note taker ends its notes.
+ */
+function placed(note: string, path: string, line: number): string {
+  const name = path.split('/').pop() ?? path;
+  return note.includes(name) ? note : `${note} [${path} line ${line}]`;
+}
+
 export async function askAgent(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
   if (!apiKey) throw new AgentError(503, 'MODEL_API_KEY is not set on the server');
   const graph = MAPS[req.mapId];
@@ -214,7 +240,8 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // Not when the visitor plainly asked to go somewhere or to watch a flow: that is not a question about code.
   const moving = plainRequest(graph, req.nodeId, req.question);
   const code = moving ? null : await codeFor(graph, req.mapId, req.nodeId, req.question, req.history).catch(() => null);
-  const prompt = systemPrompt(graph, req.nodeId, req.persona);
+  // With lines in hand the robot gets the rules for someone reading code, whatever the map lists for its room.
+  const prompt = systemPrompt(graph, req.nodeId, req.persona, code !== null);
   const messages = [
     { role: 'system', content: code ? `${prompt}\n\n${code.note}` : prompt },
     ...(req.history ?? []),
@@ -231,25 +258,32 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // answers with a single throwaway line. Give it one more turn to finish.
   const left = UPSTREAM_TIMEOUT_MS - (Date.now() - started);
   // The same when it was given code to read and only promises to show it ("I'll pull that up for you").
-  const said = parseReply(text).answer;
-  const thin = said.length < THIN_ANSWER || (code !== null && said.length < PROMISE_ONLY && PROMISES_CODE.test(said));
+  const unfinished = (answer: string): boolean => answer.length < THIN_ANSWER || (code !== null && answer.length < PROMISE_ONLY && PROMISES_CODE.test(answer));
+  const thin = unfinished(parseReply(text).answer);
   if (!actions.some(leavesRoom) && thin && left > MIN_SECOND_TRY_MS) {
     try {
       if (first.raw.tool_calls?.length) {
-        const more = await complete(
-          [
-            ...messages,
-            { role: 'assistant', content: first.raw.content ?? '', tool_calls: first.raw.tool_calls },
-            ...first.raw.tool_calls.map((c) => ({ role: 'tool', tool_call_id: c.id ?? '', content: 'Done. Now say your full answer to the visitor.' })),
-          ],
-          apiKey,
-          model,
-          left,
-        );
-        // The second turn usually says everything; keep the first line only
-        // when the second is itself short.
-        text = parseReply(more.text).answer.length >= THIN_ANSWER ? more.text : `${parseReply(text).answer} ${more.text}`.trim();
-        actions = validateActions(graph, req.nodeId, [...calls, ...more.calls]);
+        const thread: unknown[] = [...messages];
+        let last = first;
+        let all = calls;
+        for (let turn = 0; turn < MORE_TURNS && last.raw.tool_calls?.length; turn += 1) {
+          const budget = UPSTREAM_TIMEOUT_MS - (Date.now() - started);
+          if (budget <= MIN_SECOND_TRY_MS) break;
+          thread.push({ role: 'assistant', content: last.raw.content ?? '', tool_calls: last.raw.tool_calls });
+          for (const c of last.raw.tool_calls) thread.push({ role: 'tool', tool_call_id: c.id ?? '', content: SAY_IT });
+          last = await complete(thread, apiKey, model, budget);
+          all = [...all, ...last.calls];
+          actions = validateActions(graph, req.nodeId, all);
+          const now = parseReply(last.text).answer;
+          // A turn that is a real answer is the reply.
+          if (!unfinished(now)) {
+            text = last.text;
+            break;
+          }
+          // Otherwise, as before: a longer line replaces the first one, a short one is added to it.
+          if (now.length >= THIN_ANSWER) text = last.text;
+          else if (now) text = `${parseReply(text).answer} ${last.text}`.trim();
+        }
       } else {
         const again = await complete(messages, apiKey, model, left);
         if (parseReply(again.text).answer.length > parseReply(text).answer.length) {
@@ -280,10 +314,11 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // safe to drop an opening line that talks about the answer.
   if (!actions.some(leavesRoom)) reply.answer = dropLeadIn(reply.answer);
   // Asked how to fix something, the model gives a fix but rarely calls
-  // add_note (and sometimes says it did). Keep the fix on the notes list.
-  if (asksForFix(req.question) && !actions.some((a) => a.type === 'add_note')) {
+  // add_note (and sometimes says it did). Keep the fix on the notes list,
+  // and keep the robot's word whenever it says a note was written.
+  if ((asksForFix(req.question) || saysItNoted(reply.answer)) && !actions.some((a) => a.type === 'add_note')) {
     const note = fixNote(reply.answer);
-    if (note) actions.push({ type: 'add_note', text: note });
+    if (note) actions.push({ type: 'add_note', text: code ? placed(note, code.path, code.mark ?? code.from) : note });
   }
   // Asked to see code, the model often talks about the lines and opens no
   // card, or opens another file than the one asked for. Show the file the

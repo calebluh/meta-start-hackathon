@@ -115,17 +115,26 @@ function excerptWindow(excerpt: string, radius: number): string {
   return lines.slice(Math.max(0, at - radius), at + radius + 1).join('\n');
 }
 
-export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona): string {
+/**
+ * A worker's standing instructions. `reading` says the real lines of a file
+ * are handed over with this question (server/code-context.ts adds them after
+ * these instructions): the worker then gets the rules for someone with the
+ * code open, whatever the map happens to list for the room. A room whose map
+ * names no functions (a Go or Rust project, a room of config files) reads
+ * code like any other.
+ */
+export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona, reading = false): string {
   const node = graph.nodes.find((n) => n.id === nodeId);
   const facts = roomFacts(graph, nodeId);
   const code = codeFacts(graph, nodeId, ROOM_FACTS_MAX - facts.join('\n').length);
+  const hasCode = reading || code.length > 0;
   return [
     `You are ${persona.name}, a ${persona.role} in the ${persona.place}. You are a worker in an imaginary building where every part of the "${graph.project.name}" codebase is a room, and the workers in each room personify that code. Your room is "${node?.label ?? nodeId}" (room id ${nodeId}).`,
     `The app as a whole: ${graph.project.summary}`,
     '',
     'Facts about your room (the only things you know for certain):',
     ...facts,
-    ...(code.length ? ['', 'From your code itself (only these lines; you have not read the rest of the code):', ...code] : []),
+    ...(code.length ? ['', 'From your code itself:', ...code] : []),
     '',
     'Building directory (room id = name):',
     ...graph.nodes.map((n) => `- ${n.id} = ${n.label}`),
@@ -138,15 +147,17 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '- You have already said hello and given your name and job. Do not do that again, and do not announce what you are about to say ("here is what I do", "I am on it"). Your first sentence is already the answer.',
     '- Use only the facts above for what the code does. If something is not covered, say you do not know and suggest which room to ask.',
     ...(code.length
+      ? ['- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out.']
+      : []),
+    '- When the real lines of a file are given to you at the end of these instructions ("You have ... open in front of you"), you have read them: answer from what they do, and never say you cannot see the code. When the visitor asks about code you were given no lines of, say which file it is in and offer to open it; do not describe lines you have not been given.',
+    ...(hasCode
       ? [
-          '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out.',
-          '- When the real lines of a file are given to you at the end of these instructions ("You have ... open in front of you"), you have read them: answer from what they do, and never say you cannot see the code. Asked about code you were not given, say which file it is in and offer to show it; do not describe lines you have not been given.',
-          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), say your best concrete suggestion in one or two short sentences: the line or function to change and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the full fix (naming the file and line), and tell them it is on their notes list for their coding agent. Keep the whole answer to 2-4 short sentences; the details belong in the note, not in your words.',
-          '- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.',
+          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), say your best concrete suggestion in one or two short sentences: the line or function to change and what to change, reasoned from the facts and the code lines you have. Say in a few words which lines of which file it rests on. Then call add_note with the full fix (naming the file and line), and tell them it is on their notes list for their coding agent. Keep the whole answer to 2-4 short sentences; the details belong in the note, not in your words.',
+          ...(code.length ? ['- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.'] : []),
           '- When the visitor asks to see code, call show_file and say the name of the function or class in your answer: a card beside you then shows its real lines in colour, from its first line (for the rest of a long one the visitor says "show me more"). Say in a sentence or two what it actually does, from the lines you were given. Never say you cannot show the code, and never read code out.',
         ]
       : [
-          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
+          '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it goes by the map of the project, and name the file you would open to check it. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
         ]),
     '- You can act, using your tools, in the same reply as your words. Acting never replaces talking: still give your full 2-4 sentence spoken answer, then act. Never write tool calls as text.',
     '  - go_to_room when the visitor asks to go somewhere or to see another part, or agrees to your suggestion. Say you are sending them over.',
@@ -486,20 +497,76 @@ export function warningFixNote(issue: HealthIssue): string {
 }
 
 /** Sentences that are about the note or the map, not the fix itself. */
-const ABOUT_THE_NOTE = /suggestion from the map|can'?t see the code|cannot see the code|notes? list|coding agent|put (it|that) on|added (it|that)/i;
+const ABOUT_THE_NOTE = /suggestion from the map|can(?:'|’)?t see the code|cannot see the code|notes? list|coding agent|put (it|that) on|added (it|that)/i;
+
+/** Ways a worker says a note was written, or is being written. */
+const NOTING =
+  "(?:I(?:'|’)ve|I have|I(?:'|’)ll|I will|I(?:'|’)m|I am|I)\\s+(?:just |also |now )?(?:put|putting|added|adding|popped|popping|logged|logging|jotted|jotting|written|wrote|writing|saved|saving|left|leaving)\\b";
+
+/** The end of a sentence that only says the note was written: "..., and I've put that on your notes list for your coding agent." */
+const NOTE_TAIL = new RegExp(`(?:\\s*[,;:]|\\s+[-–—])?\\s*(?:and |so |then |which |that )?${NOTING}.*\\b(?:notes?|coding agent)\\b.*$`, 'i');
+
+/** Said in passing about where an idea comes from: ", since I can't see the code itself,". */
+const BASIS_ASIDE =
+  /,?\s*(?:since|as|because|though|although)\s+I\s+(?:can(?:'|’)?t|cannot|can not|haven(?:'|’)?t|have not)\s+(?:actually\s+|really\s+)?(?:see|seen|read|opened?|looked? at)\b[^,.;:!?]*\b(?:code|files?|lines?|source|setup|rest|project)\b[^,.;:!?]*,?/i;
+
+/** "My suggestion from the map is ...": the words about the map go, the suggestion stays. */
+const SUGGESTION_FROM_MAP = /\b(suggestion|idea|guess|thought)\s+from the map(?: of the project)?\b/i;
+
+/** "Going by the map, ...": where an idea comes from, not part of the fix. */
+const BY_THE_MAP = /(?:^|,\s*|\s+)(?:going|judging) by the map(?: of the project)?\b,?|^from the map(?: of the project)?\b,?/i;
+
+/** How a sentence that holds the suggestion itself is worded ("I'd move ...", "My suggestion is ...", "It should ..."). */
+const SUGGESTS = /\b(?:I(?:'|’)d|I would|suggest(?:ion|ions|ed|s)?|recommend(?:ed|s)?|should|ought to|needs? to|instead of|the fix is|best (?:fix|move|bet))\b/i;
+
+/** A robot's note is at most this long (the same as one it writes itself with add_note). */
+const FIX_NOTE_MAX = 300;
+
+/** What is left of a sentence that also talked about the note has to be at least this long to be worth keeping. */
+const MIN_FIX_CLAUSE = 25;
+
+const SAYS_NOTED = new RegExp(`${NOTING}.*\\b(?:notes?|list for your coding agent)\\b|\\bon(?:to)? your notes? list\\b`, 'i');
+const ONLY_OFFERS =
+  /\?\s*$|\b(?:shall|should|can|could|may) I\b|\bwant me to\b|\bwould you like me to\b|\b(?:I(?:'|’)ll|I will|I can|I could)\b[^.!?]*\bif you(?:(?:'|’)d)? (?:like|want|wish)\b/i;
+
+/**
+ * "I've put that on your notes list": the worker says a note was written. An
+ * offer ("shall I put it on your notes list?", "I'll add it if you like") is
+ * not that.
+ */
+export const saysItNoted = (answer: string): boolean => answer.split(/(?<=[.!?])\s+/).some((s) => SAYS_NOTED.test(s) && !ONLY_OFFERS.test(s));
 
 /**
  * The fix in a worker's answer, as a note: the sentences that say what to
- * change, without the ones about the map or the notes list. Null when the
- * answer holds no suggestion (it says it does not know, or is very short).
+ * change, without the words about the map or the notes list. A sentence that
+ * holds both ("I'd move the key to the server - I've put that on your notes
+ * list") keeps its fix. Null when the answer holds no suggestion (it says it
+ * does not know, or is very short).
  */
 export function fixNote(answer: string): string | null {
   // Split only where a stop is followed by a space, so "simulation.py" stays whole.
   const sentences = answer.split(/(?<=[.!?])\s+/);
-  const kept = sentences.map((s) => s.trim()).filter((s) => s && !ABOUT_THE_NOTE.test(s));
+  let kept: string[] = [];
+  for (const sentence of sentences) {
+    const whole = sentence.trim();
+    let s = whole.replace(NOTE_TAIL, '').replace(BASIS_ASIDE, ' ').replace(SUGGESTION_FROM_MAP, '$1').replace(BY_THE_MAP, ' ');
+    s = s
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.;:])/g, '$1')
+      .replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, '');
+    if (!s || ABOUT_THE_NOTE.test(s)) continue;
+    if (s !== whole) {
+      if (s.length < MIN_FIX_CLAUSE) continue;
+      s = s[0].toUpperCase() + s.slice(1);
+      if (!/[.!?]$/.test(s)) s += '.';
+    }
+    kept.push(s);
+  }
+  // Too long for a note: the sentences that make the suggestion matter more than the ones that describe.
+  if (kept.join(' ').length > FIX_NOTE_MAX && kept.some((s) => SUGGESTS.test(s))) kept = kept.filter((s) => SUGGESTS.test(s));
   const text = kept.join(' ').replace(/\s+/g, ' ').trim();
   if (text.length < 40 || /\b(i )?(do not|don'?t) know\b/i.test(text)) return null;
-  return text.length > 300 ? `${text.slice(0, 297).replace(/\s+\S*$/, '')}...` : text;
+  return text.length > FIX_NOTE_MAX ? `${text.slice(0, FIX_NOTE_MAX - 3).replace(/\s+\S*$/, '')}...` : text;
 }
 
 /** Starter questions for a room, before any conversation. */
