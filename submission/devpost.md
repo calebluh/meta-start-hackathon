@@ -143,9 +143,11 @@ seconds later you are walking into it.
   statement you named, never a slice cut off mid-thought, in an editor's
   colours with line numbers. Ask about a warning and its line is lit. A
   class too long for the card shows as an outline; for a long file, "show me
-  more" carries on from where the card stopped. The lines are read straight
-  from the repository (or, for your own project through the plugin, from
-  your disk) and shown only on the card: the AI never sees them.
+  more" carries on from where the card stopped. The page fetches the lines
+  straight from the repository (or, for your own project through the plugin,
+  from your disk) and only draws them on the card. They are not added to
+  what the AI is sent: it works from the map, which carries function names
+  and the few lines round each warning.
 - **The quiz.** Pinch **Quiz me** and the robot turns the tables: it tests
   you on its own room. What is this room's job, where does the work go next,
   which file lives here, what is the warning about. The room's notes are put
