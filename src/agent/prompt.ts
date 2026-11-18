@@ -484,6 +484,18 @@ export const asksForFix = (question: string): boolean =>
     question,
   );
 
+/**
+ * The visitor asked how to make something better: "how would I improve the
+ * billing test?", "how could the graph panel be made faster?", "how would I
+ * make the deploy setup safer?". Not "how would I make a refund?", which asks
+ * how to use the thing. The robot's suggestion goes on the notes list, as a
+ * fix does.
+ */
+export const asksToImprove = (question: string): boolean =>
+  /\bhow (?:do|would|can|should|could|might) (?:i|we|you) (?:go about )?(?:improv|speed(?:ing)? up|harden|secur|refactor|optimi[sz]|tighten|strengthen|simplif|clean(?:ing)? up|tidy)\w*\b|\bhow (?:do|would|can|should|could|might) (?:i|we|you) make\b.{0,60}\b(?:safer|faster|better|simpler|cleaner|quicker|easier|smaller|clearer|more \w+|less \w+)\b|\bhow (?:could|can|should|would|might)\b.{0,60}\bbe (?:made|improved|sped up|simplified|hardened|secured|tightened)\b|\bwhat would you (?:change|improve)\b|\bhow to (?:improve|speed up|harden|secure|refactor|optimi[sz]e|simplify)\b/i.test(
+    question,
+  );
+
 /** The health warning on one of this room's files, if it has one. */
 export function roomWarning(graph: GraphData, nodeId: string): HealthIssue | undefined {
   return (graph.health?.issues ?? []).find((issue) => (issue.locations ?? []).some((loc) => resolveRef(graph, loc.file) === nodeId));
@@ -519,6 +531,9 @@ const BY_THE_MAP = /(?:^|,\s*|\s+)(?:going|judging) by the map(?: of the project
 /** How a sentence that holds the suggestion itself is worded ("I'd move ...", "My suggestion is ...", "It should ..."). */
 const SUGGESTS = /\b(?:I(?:'|’)d|I would|suggest(?:ion|ions|ed|s)?|recommend(?:ed|s)?|should|ought to|needs? to|instead of|the fix is|best (?:fix|move|bet))\b/i;
 
+/** "I'd need to see the script after line 128, so say show me more": asks for more code, and is no part of a fix. */
+const NEEDS_MORE = /\bshow me more\b|\bneed to (?:see|read|look at|open)\b|\bkeep reading\b/i;
+
 /** A robot's note is at most this long (the same as one it writes itself with add_note). */
 const FIX_NOTE_MAX = 300;
 
@@ -541,9 +556,11 @@ export const saysItNoted = (answer: string): boolean => answer.split(/(?<=[.!?])
  * change, without the words about the map or the notes list. A sentence that
  * holds both ("I'd move the key to the server - I've put that on your notes
  * list") keeps its fix. Null when the answer holds no suggestion (it says it
- * does not know, or is very short).
+ * does not know, or is very short), and, with `needsSuggestion`, when no
+ * sentence of it is worded as one: an answer that only describes the code is
+ * not a note.
  */
-export function fixNote(answer: string): string | null {
+export function fixNote(answer: string, needsSuggestion = false): string | null {
   // Split only where a stop is followed by a space, so "simulation.py" stays whole.
   const sentences = answer.split(/(?<=[.!?])\s+/);
   let kept: string[] = [];
@@ -554,7 +571,7 @@ export function fixNote(answer: string): string | null {
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.;:])/g, '$1')
       .replace(/^[\s,;:–—-]+|[\s,;:–—-]+$/g, '');
-    if (!s || ABOUT_THE_NOTE.test(s)) continue;
+    if (!s || ABOUT_THE_NOTE.test(s) || NEEDS_MORE.test(s)) continue;
     if (s !== whole) {
       if (s.length < MIN_FIX_CLAUSE) continue;
       s = s[0].toUpperCase() + s.slice(1);
@@ -562,6 +579,7 @@ export function fixNote(answer: string): string | null {
     }
     kept.push(s);
   }
+  if (needsSuggestion && !kept.some((s) => SUGGESTS.test(s))) return null;
   // Too long for a note: the sentences that make the suggestion matter more than the ones that describe.
   if (kept.join(' ').length > FIX_NOTE_MAX && kept.some((s) => SUGGESTS.test(s))) kept = kept.filter((s) => SUGGESTS.test(s));
   const text = kept.join(' ').replace(/\s+/g, ' ').trim();

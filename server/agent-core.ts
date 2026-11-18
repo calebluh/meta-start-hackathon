@@ -1,6 +1,7 @@
 import {
   AGENT_TOOLS,
   asksForFix,
+  asksToImprove,
   asksToSeeCode,
   fixNote,
   leavesRoom,
@@ -228,9 +229,10 @@ export async function talkOver(req: ScribeRequest, apiKey: string | undefined, m
  * words did not name the file: "... [web/src/config.ts line 12]", the way the
  * note taker ends its notes.
  */
-function placed(note: string, path: string, line: number): string {
-  const name = path.split('/').pop() ?? path;
-  return note.includes(name) ? note : `${note} [${path} line ${line}]`;
+function placed(note: string, code: { path: string; from: number; to: number; mark?: number }): string {
+  const name = code.path.split('/').pop() ?? code.path;
+  if (note.includes(name)) return note;
+  return `${note} [${code.path} ${code.mark ? `line ${code.mark}` : `lines ${code.from}-${code.to}`}]`;
 }
 
 export async function askAgent(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
@@ -313,12 +315,14 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // Promises to move are checked above against the full words; only now is it
   // safe to drop an opening line that talks about the answer.
   if (!actions.some(leavesRoom)) reply.answer = dropLeadIn(reply.answer);
-  // Asked how to fix something, the model gives a fix but rarely calls
-  // add_note (and sometimes says it did). Keep the fix on the notes list,
-  // and keep the robot's word whenever it says a note was written.
-  if ((asksForFix(req.question) || saysItNoted(reply.answer)) && !actions.some((a) => a.type === 'add_note')) {
-    const note = fixNote(reply.answer);
-    if (note) actions.push({ type: 'add_note', text: code ? placed(note, code.path, code.mark ?? code.from) : note });
+  // Asked how to fix or improve something, the model gives a fix but does
+  // not always call add_note (and sometimes says it did). Keep the fix on the
+  // notes list, and keep the robot's word whenever it says a note was written.
+  const promised = asksForFix(req.question) || saysItNoted(reply.answer);
+  if ((promised || asksToImprove(req.question)) && !actions.some((a) => a.type === 'add_note')) {
+    // "How could this be better?" makes a note only when the answer holds a suggestion, not when it just describes the code.
+    const note = fixNote(reply.answer, !promised);
+    if (note) actions.push({ type: 'add_note', text: code ? placed(note, code) : note });
   }
   // Asked to see code, the model often talks about the lines and opens no
   // card, or opens another file than the one asked for. Show the file the
