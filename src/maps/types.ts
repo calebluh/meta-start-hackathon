@@ -97,6 +97,12 @@ export interface GraphData {
   project: { name: string; summary: string; logo?: string };
   /** Our extension: where the map came from, for the on-screen credit. */
   source?: { repo: string; commit: string; license?: string };
+  /**
+   * Our extension, for a sample project that has no repository to read: a
+   * text file of its code (path from the site's root), shown on code cards.
+   * See parseBundle in rooms/code-fetch.ts for its layout.
+   */
+  code?: string;
   nodes: GraphNode[];
   files: GraphFile[];
   links: GraphLink[];

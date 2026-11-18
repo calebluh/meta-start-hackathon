@@ -1,10 +1,21 @@
 import type { GraphData, GraphFile, GraphLink, GraphNode, NodeKind } from './types.js';
+import code from './larder-code.json' with { type: 'json' };
 
 /**
  * Sample map: "Larder", a made-up meal-kit subscription shop, written in the
  * shape Floorplan's build step produces (`floorplan/graph.json`). It stands in
  * for a real scan so judges can open the experience without running anything.
+ *
+ * Its code is sample code too: one text file of excerpts, the main function
+ * or block of each file (public/maps/larder/code.txt), shown on code cards.
+ * What the map itself carries about that code (function names with their
+ * lines, the lines round each warning) is read from it by
+ * scripts/larder-code.mjs into larder-code.json, the way scripts/build-map.mjs
+ * reads a real repository.
  */
+
+const exportsOf: Record<string, string[]> = code.exports;
+const excerptAt: Record<string, string> = code.excerpts;
 
 const node = (
   id: string,
@@ -87,7 +98,7 @@ const fileRows: FileRow[] = [
   ['infra/deploy.yml', 'infra', 'Deploy pipeline', 'Builds and ships the apps on every merge.', 71],
 ];
 
-const files: GraphFile[] = fileRows.map(([p, n, name, d, loc]) => ({ p, n, name, d, loc }));
+const files: GraphFile[] = fileRows.map(([p, n, name, d, loc]) => ({ p, n, name, d, loc, ...(exportsOf[p] ? { exports: exportsOf[p] } : {}) }));
 
 // Fill node stats from the files they own, the way Floorplan's build does.
 for (const n of nodes) {
@@ -142,6 +153,7 @@ export const larder: GraphData = {
     summary:
       'A meal-kit subscription shop: customers fill a weekly box on the website, the server charges them on billing day, and the kitchen packs the boxes.',
   },
+  code: 'maps/larder/code.txt',
   nodes,
   files,
   links,
@@ -182,6 +194,7 @@ export const larder: GraphData = {
         title: 'A secret Stripe key is written into config.ts',
         detail: 'The website ships its settings to every visitor’s browser, so anyone can read this key and charge or refund cards.',
         locations: [{ file: 'web/src/config.ts', line: 12 }],
+        excerpt: excerptAt['web/src/config.ts:12'],
       },
       {
         id: 'unguarded:api/src/routes/admin.ts',
@@ -190,6 +203,7 @@ export const larder: GraphData = {
         title: 'The refund endpoint does not check for a staff login',
         detail: 'POST /admin/refund can be called by anyone who knows the address.',
         locations: [{ file: 'api/src/routes/admin.ts', line: 88 }],
+        excerpt: excerptAt['api/src/routes/admin.ts:88'],
       },
     ],
   },

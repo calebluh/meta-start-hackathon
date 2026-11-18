@@ -142,6 +142,7 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
           '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out. If asked about anything else in the code, say you have only seen those lines.',
           '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), say your best concrete suggestion in one or two short sentences: the line or function to change and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the full fix (naming the file and line), and tell them it is on their notes list for their coding agent. Keep the whole answer to 2-4 short sentences; the details belong in the note, not in your words.',
           '- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.',
+          '- When the visitor asks to see code, call show_file and say the name of the function or class in your answer: a card beside you then shows its real lines, in full and in colour. Say in a sentence or two what it does. Never say you cannot show the code, and never read code out.',
         ]
       : [
           '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
@@ -150,7 +151,7 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '  - go_to_room when the visitor asks to go somewhere or to see another part, or agrees to your suggestion. Say you are sending them over.',
     '  - play_flow when they want to watch how something happens from start to finish.',
     '  - point_to_room when you mention a neighbouring room (never your own).',
-    '  - show_file when you talk about one of your files in detail.',
+    '  - show_file when you talk about one of your files in detail, or the visitor asks to see its code.',
     '  - add_note when you suggest a fix or improvement, or the visitor asks you to remember something.',
     '  - back_to_city when the visitor wants to leave, step outside, or go back to the city, the table or the map. Say goodbye first.',
     '- After your answer, write exactly one more line: FOLLOWUPS: <question> | <question>',
@@ -188,7 +189,8 @@ export const AGENT_TOOLS = [
     type: 'function',
     function: {
       name: 'show_file',
-      description: 'Hand the visitor a card describing one of the files kept in your room.',
+      description:
+        'Hold up a card of code from one of the files kept in your room. The card shows the function or class you name in your words (or the one the visitor asked for), whole.',
       parameters: { type: 'object', properties: { path: { type: 'string', description: 'File path as listed in your room facts' } }, required: ['path'] },
     },
   },
@@ -259,7 +261,20 @@ export const asksToLeave = (question: string): boolean => LEAVE_PATTERNS.some((p
  * asked a question: the robot answers "On it", not "Let me check the
  * ledger". The same tests the server uses to act on such a request.
  */
-export const asksToGo = (question: string): boolean => asksToLeave(question) || GO_PLAIN.test(question) || WATCH.test(question);
+export const asksToGo = (question: string): boolean => asksToLeave(question) || GO_PLAIN.test(question) || (WATCH.test(question) && !asksToSeeCode(question));
+
+/**
+ * "Show me the code", "can I see the lines", "what does line 120 look like",
+ * "how is that function written". Also "show me more", "the rest", "keep
+ * going": the code card carries on from where it stopped.
+ */
+export function asksToSeeCode(question: string): boolean {
+  const thing = '(?:code|lines?|source|file|function|method|class|snippet|implementation|handler|query)';
+  return new RegExp(
+    `\\b(?:show|see|view|look at|open|read|display|pull up|bring up|print)\\b[^.?!]{0,40}\\b${thing}\\b|\\bline \\d+\\b|\\b${thing}\\b[^.?!]{0,30}\\b(?:looks? like|written|implemented)\\b|\\b(?:show|see)\\b[^.?!]{0,20}\\b(?:more|the rest|next (?:part|bit|lines?))\\b|\\b(?:keep going|carry on|scroll down)\\b`,
+    'i',
+  ).test(question);
+}
 
 /** Words that do not tell one room or flow from another. */
 const SMALL_WORDS = new Set(['the', 'and', 'for', 'with', 'from', 'into', 'this', 'that', 'your', 'room']);
@@ -361,7 +376,8 @@ function flowNamed(graph: GraphData, question: string): string | null {
 export function plainRequest(graph: GraphData, nodeId: string, question: string, answer = ''): AgentAction | null {
   if (asksToLeave(question)) return { type: 'back_to_city' };
   const q = question.toLowerCase();
-  if (WATCH.test(q)) {
+  // "Show me the code for billing day" asks to see code, not to watch the Billing day flow.
+  if (WATCH.test(q) && !asksToSeeCode(question)) {
     // "Show me the whole simulation" names a flow only in part; a robot that
     // answers "I'll walk you through the simulation run" names the rest.
     let flowId = flowNamed(graph, q);

@@ -1,0 +1,117 @@
+{
+  "exports": {
+    "web/src/app/layout.tsx": [
+      "RootLayout L14"
+    ],
+    "web/src/lib/api.ts": [
+      "api L19"
+    ],
+    "web/src/config.ts": [
+      "config L4",
+      "BoxSize L24",
+      "apiPath L27"
+    ],
+    "web/src/app/menu/page.tsx": [
+      "MenuPage L22"
+    ],
+    "web/src/app/menu/RecipeCard.tsx": [
+      "RecipeCard L16"
+    ],
+    "web/src/app/menu/BoxTray.tsx": [
+      "BoxTray L31"
+    ],
+    "web/src/app/checkout/page.tsx": [
+      "placeOrder L42"
+    ],
+    "web/src/app/checkout/CardForm.tsx": [
+      "CardForm L24"
+    ],
+    "web/src/app/checkout/confirm/page.tsx": [
+      "ConfirmPage L12"
+    ],
+    "web/src/app/account/page.tsx": [
+      "AccountPage L28"
+    ],
+    "web/src/app/account/SkipWeek.tsx": [
+      "SkipWeek L19"
+    ],
+    "web/src/app/account/PausePlan.tsx": [
+      "PausePlan L17"
+    ],
+    "admin/src/pages/Recipes.tsx": [
+      "saveWeek L53"
+    ],
+    "admin/src/pages/Packing.tsx": [
+      "Packing L33"
+    ],
+    "admin/src/pages/Refunds.tsx": [
+      "refundBox L28"
+    ],
+    "admin/src/api.ts": [
+      "staffApi L13"
+    ],
+    "api/src/server.ts": [
+      "startServer L22"
+    ],
+    "api/src/orders/subscriptions.ts": [
+      "startSubscription L32",
+      "skipWeek L119",
+      "pausePlan L129"
+    ],
+    "api/src/orders/weekly.ts": [
+      "buildWeeklyOrders L28"
+    ],
+    "api/src/orders/pricing.ts": [
+      "boxPrice L19"
+    ],
+    "api/src/payments/stripe.ts": [
+      "chargeBox L45",
+      "refundCharge L97"
+    ],
+    "api/src/payments/refunds.ts": [
+      "refundAmount L23"
+    ],
+    "api/src/email/send.ts": [
+      "sendEmail L15"
+    ],
+    "api/src/email/templates.ts": [
+      "templates L20"
+    ],
+    "api/src/db/schema.ts": [
+      "plans L39"
+    ],
+    "api/src/db/queries.ts": [
+      "activePlansFor L62"
+    ],
+    "jobs/src/billing.ts": [
+      "runBilling L25"
+    ],
+    "jobs/src/retry.ts": [
+      "retryDeclined L20"
+    ],
+    "jobs/src/packing.ts": [
+      "runPacking L23"
+    ],
+    "jobs/src/schedule.ts": [
+      "run L12",
+      "startSchedule L24"
+    ],
+    "shared/src/prices.ts": [
+      "formatMoney L13",
+      "withTax L20"
+    ],
+    "shared/src/dates.ts": [
+      "nextDeliveryDay L22",
+      "isPastCutOff L59"
+    ],
+    "shared/src/types.ts": [
+      "Plan L10",
+      "Box L20",
+      "Order L29"
+    ]
+  },
+  "excerpts": {
+    "web/src/config.ts:12": "  2 // This file is bundled into the page, so everything in it is public.\n  3\n  4 export const config = {\n  5   // Where the main server lives.\n  6   apiUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',\n  7\n  8   // Stripe: the publishable key is meant for the browser.\n  9   stripePublishableKey: 'pk_live_EXAMPLE_ONLY_not_a_real_key',\n 10\n 11   // FIXME: the secret key must never ship to the browser.\n>12   stripeSecretKey: 'sk_live_EXAMPLE_ONLY_not_a_real_key',\n 13\n 14   // Recipe photos are served straight from the bucket.\n 15   photoBaseUrl: 'https://photos.larder.example/recipes',\n 16\n 17   // How many recipes fit in each box size.\n 18   boxSizes: { small: 3, family: 5 },\n 19\n 20   // Orders close this many hours before billing day.\n 21   cutOffHours: 36,\n 22 } as const;",
+    "api/src/routes/admin.ts:88": " 78\n 79 // Next week's recipes, chosen by the kitchen team.\n 80 admin.put('/admin/recipes', requireStaff, async (req, res) => {\n 81   const { week, recipeIds } = req.body as RecipePlan;\n 82   await saveRecipePlan(weekOf(week), recipeIds);\n 83   res.status(204).end();\n 84 });\n 85\n 86 // Refund a box that arrived damaged.\n 87 // FIXME: every other staff endpoint passes requireStaff first.\n>88 admin.post('/admin/refund', async (req, res) => {\n 89   const { orderId, reason } = req.body as RefundRequest;\n 90   const order = await orderById(orderId);\n 91   if (!order) return res.status(404).end();\n 92\n 93   const amount = refundAmount(order, reason);\n 94   const refund = await refundCharge(order.chargeId, amount);\n 95   await recordRefund(order.id, refund.id, amount, reason);\n 96   res.json({ refunded: amount });\n 97 });"
+  }
+}

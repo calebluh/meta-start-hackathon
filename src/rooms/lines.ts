@@ -40,7 +40,7 @@ const BY_THEME: Partial<Record<ThemeId, string[]>> = {
 const GOING = ['Sure, one moment.', 'On it.', 'Right, give me a second.', 'Okay, let me sort that out.'];
 /** Asked about a file: look for the file. */
 const FILE = ['Let me find that file.', 'One sec, pulling up that file.'];
-const FILE_WORDS = /\b(files?|code|function|method|class)\b|\b\w+\.(ts|tsx|js|jsx|py|go|rs|json|md)\b/i;
+const FILE_WORDS = /\b(files?|code|function|method|class)\b|\b\w+\.(ts|tsx|js|jsx|py|go|rs|json|md|yml|yaml|sql|vue)\b/i;
 
 let counter = 0;
 

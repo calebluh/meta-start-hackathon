@@ -117,6 +117,11 @@ World.create(
       '[rooms] ' +
         app.graph.nodes.map((n) => `${n.label} -> ${pickTheme(app.graph, n.id).place}`).join(' | '),
     );
+    // For test scripts: step into any room, and ask the robot being talked to anything.
+    Object.assign(window, {
+      __enter: (id: string) => enterRoom(id),
+      __ask: (question: string) => world.getSystem(RoomSystem)?.debugAskText(question),
+    });
     window.addEventListener('keydown', (e) => {
       if (e.key === 'i') enterRoom(app.flowSteps[app.stepIndex]?.nodeId ?? app.selected ?? 'api.payments');
       if (e.key === 't') leaveRoom();

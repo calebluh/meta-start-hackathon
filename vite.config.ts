@@ -233,6 +233,25 @@ function agentApi(): Plugin {
           }
         });
       });
+      // The code cards of a map made from a project on this computer read that
+      // project's files as they are on disk now (server/code-file.ts): only
+      // files the map lists, and only here; the hosted site has no such endpoint.
+      server.middlewares.use('/api/code', (req, res) => {
+        const query = new URL(req.url ?? '', 'http://localhost').searchParams;
+        void (async () => {
+          try {
+            const { readProjectFile } = (await server.ssrLoadModule('/server/code-file.ts')) as typeof import('./server/code-file');
+            const text = req.method === 'GET' ? await readProjectFile(process.cwd(), query.get('map') ?? '', query.get('path') ?? '') : null;
+            res.statusCode = text === null ? 404 : 200;
+            res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+            res.setHeader('Cache-Control', 'no-store');
+            res.end(text ?? '');
+          } catch {
+            res.statusCode = 404;
+            res.end();
+          }
+        })();
+      });
       server.middlewares.use('/api/transcribe', (req, res) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;
