@@ -245,7 +245,7 @@ The robots and the note taker reading real code (if answers get slow or
 strange):
 
 ```bash
-git revert --no-edit ebff79f 23bccee
+git revert --no-edit 1d30823 ebff79f 23bccee
 git push
 ```
 
