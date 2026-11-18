@@ -103,6 +103,12 @@ const STREET_QUIET_MS = 700;
 /** How far outside a building's front wall the visitor stands, in board units (the middle of the alley). */
 const DOOR_STANDOFF = 0.012;
 const STREET_WALK_SPEED = 2.5;
+/**
+ * Gliding the streets, the visitor is kept this far from a building's walls
+ * (metres, at life size): the panels round the desk reach about that far, and
+ * a wall any nearer would cut through them.
+ */
+const STREET_CLEARANCE = 0.8;
 /** Each turn in street view (a Turn button, or the right stick flicked aside), in radians. */
 const STREET_TURN = Math.PI / 6;
 /** Street view waypoints: discs on the ground at each door, this radius on the board (about 0.4 m at life size). */
@@ -2338,8 +2344,52 @@ export class DioramaSystem extends createSystem({
     const mx = fx * -stick.y + -fz * stick.x;
     const mz = fz * -stick.y + fx * stick.x;
     const obj = this.root.object3D!;
-    obj.position.x -= mx * STREET_WALK_SPEED * delta;
-    obj.position.z -= mz * STREET_WALK_SPEED * delta;
+    // Where the head is on the board, and the step it is asking for, in the board's own space.
+    const yaw = this.boardYaw();
+    const scale = obj.scale.x;
+    this.floorUnderHead(this.streetAt).sub(obj.position).applyAxisAngle(UP, -yaw).divideScalar(scale);
+    const hx = this.streetAt.x;
+    const hz = this.streetAt.z;
+    this.streetTmp.set(mx, 0, mz).multiplyScalar(STREET_WALK_SPEED * delta).applyAxisAngle(UP, -yaw).divideScalar(scale);
+    const dx = this.streetTmp.x;
+    const dz = this.streetTmp.z;
+    // A wall nearer than the desk's panels reach would cut through them: the
+    // visitor glides up to that distance and then along the wall, not into it.
+    // A step that gets no closer is always allowed, so a narrow alley can be
+    // walked down its middle and nobody is ever held where they stand.
+    const crowded = this.crowding(hx, hz);
+    const fits = (x: number, z: number): boolean => this.crowding(x, z) <= crowded + 1e-7;
+    let ax = dx;
+    let az = dz;
+    if (!fits(hx + dx, hz + dz)) {
+      if (Math.abs(dx) >= Math.abs(dz) && fits(hx + dx, hz)) az = 0;
+      else if (fits(hx, hz + dz)) ax = 0;
+      else if (fits(hx + dx, hz)) az = 0;
+      else return;
+    }
+    this.streetTmp.set(ax, 0, az).multiplyScalar(scale).applyAxisAngle(UP, yaw);
+    obj.position.x -= this.streetTmp.x;
+    obj.position.z -= this.streetTmp.z;
+  }
+
+  /**
+   * How far inside a building's keep-clear margin a spot on the board is, in
+   * board units: 0 in the open, more the nearer its wall (or the deeper inside).
+   */
+  private crowding(x: number, z: number): number {
+    const margin = STREET_CLEARANCE / STREET_SCALE;
+    let worst = 0;
+    for (const d of this.layout.districts.values()) {
+      if (!d.isLeaf) continue;
+      const r = d.rect;
+      const inside = Math.min(x - (r.x - margin), r.x + r.w + margin - x, z - (r.z - margin), r.z + r.d + margin - z);
+      if (inside > worst) worst = inside;
+    }
+    for (const s of this.layout.externals.values()) {
+      const inside = s.radius + margin - Math.hypot(x - s.x, z - s.z);
+      if (inside > worst) worst = inside;
+    }
+    return worst;
   }
 
   // --------------------------------------------------------------- frame
