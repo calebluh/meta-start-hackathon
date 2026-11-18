@@ -103,7 +103,9 @@ emulator. This is the most important step left.
      look at the sign on the far wall and the plaques behind you: flat on
      the wall, no corner sunk into it, none overlapping. In Street view the
      tour card should sit low, just behind the buttons, and the Turn buttons
-     should stay off the info panel.
+     should stay off the info panel. With a controller, push the left stick
+     at a building: you should stop about an arm's length short of the wall
+     and slide along it, with no panel cut by the wall.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -209,10 +211,19 @@ a work order to leave with".
 
 ### Rolling back the code cards and the bubble placement
 
-Both commits touch the same room code, so undo them together, newest first:
+The three commits touch the same room code, so undo them together, newest
+first:
 
 ```bash
-git revert --no-edit c020c5c 937e3ef
+git revert --no-edit a4088ba c020c5c 937e3ef
+git push
+```
+
+The wall guard for gliding in Street view is separate. If gliding ever feels
+stuck, undo it alone:
+
+```bash
+git revert --no-edit 2e4fdb1
 git push
 ```
 
