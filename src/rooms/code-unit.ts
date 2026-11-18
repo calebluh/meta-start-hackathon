@@ -286,6 +286,40 @@ function wrap(tokens: Token[], width: number, hang: number): Token[][] {
   return rows;
 }
 
+/**
+ * Where to cut rows that will not all fit: after at most `limit` of them,
+ * and between two statements, never through the middle of one. It looks for
+ * the last statement that starts within the limit, at the shallowest depth
+ * that still keeps most of the rows; a comment goes with the statement
+ * under it. Only when one statement alone outruns the card is it cut inside,
+ * and then between its lines.
+ */
+function statementCut(rows: CodeRow[], limit: number): number {
+  const text = (row: CodeRow): string => row.tokens.map((t) => t.text).join('');
+  const depthOf = (row: CodeRow): number => /^ */.exec(text(row))![0].length;
+  const starts = (row: CodeRow): boolean => row.kind === 'code' && text(row).trim() !== '' && !CLOSER.test(text(row)) && !CARRIES_ON.test(text(row));
+  const comment = (row: CodeRow): boolean => /^\s*(?:\/\/|\/\*|\*|#|--)/.test(text(row));
+  const least = Math.ceil(limit * 0.6);
+  const depths = [...new Set(rows.slice(1, limit + 1).filter(starts).map(depthOf))].sort((a, b) => a - b);
+  for (const depth of depths) {
+    for (let i = Math.min(limit, rows.length - 1); i >= least; i -= 1) {
+      if (!starts(rows[i]) || depthOf(rows[i]) > depth || comment(rows[i])) continue;
+      // The comment above a statement, and the blank row above that, go with it.
+      let cut = i;
+      while (cut > 1) {
+        let above = cut - 1;
+        while (above > 0 && rows[above].kind === 'wrap') above -= 1;
+        if (!comment(rows[above]) && text(rows[above]).trim()) break;
+        cut = above;
+      }
+      if (cut >= least) return cut;
+    }
+  }
+  let cut = Math.min(limit, rows.length);
+  while (cut > 1 && rows[cut]?.kind === 'wrap') cut -= 1;
+  return cut;
+}
+
 export interface Fitted {
   rows: CodeRow[];
   /** The widest row, in characters. */
@@ -403,7 +437,7 @@ export function fit(
     const finalLine = chunk.first + last;
     const markRow = all.findIndex((r) => r.marked);
     if (markRow < limits.maxRows - 2) {
-      rows = all.slice(0, limits.maxRows - 1);
+      rows = all.slice(0, statementCut(all, Math.min(limits.maxRows - 1, all.length)));
       rows.push(fold(`… ${lineWord(finalLine - lastShown(rows))} more`));
     } else {
       const room = limits.maxRows - 3;

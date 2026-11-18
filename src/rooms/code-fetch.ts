@@ -39,7 +39,15 @@ function fetchText(url: string): Promise<string | null> {
   return hit;
 }
 
-const toLines = (text: string): string[] => text.replace(/\r/g, '').replace(/\t/g, '  ').split('\n');
+/** A line longer than this is not written by hand (minified code, a data blob): it is cut, so colouring it never stalls the headset. */
+const MAX_LINE = 400;
+
+const toLines = (text: string): string[] =>
+  text
+    .replace(/\r/g, '')
+    .replace(/\t/g, '  ')
+    .split('\n')
+    .map((line) => (line.length > MAX_LINE ? `${line.slice(0, MAX_LINE)}…` : line));
 
 function rawUrl(graph: GraphData, path: string): string | null {
   const m = /github\.com\/([A-Za-z0-9-]{1,39})\/([A-Za-z0-9._-]{1,100}?)(?:\.git)?\/?$/.exec(graph.source?.repo ?? '');

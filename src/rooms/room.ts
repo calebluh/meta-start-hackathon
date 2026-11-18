@@ -166,8 +166,13 @@ const FILE_CARD_WIDTH = 0.8;
  * lets a full line of code fit in one look.
  */
 const CODE_CHAR = CARD_DISTANCE * Math.tan((0.54 * Math.PI) / 180);
-/** "Show me more", "the rest", "keep going": the next lines of the code already up (not "more about billing"). */
-const ASKS_FOR_MORE = /^(?!.*\b(?:about|another|other|different)\b).*\b(?:more|the rest|next (?:part|bit|lines?|page)|keep going|carry on|continue|further down|scroll)\b/i;
+/**
+ * "Show me more", "let me see the rest", "keep going", or just "more": the
+ * next lines of the code already up. Not "tell me more" or "more about
+ * billing", which are questions for the robot.
+ */
+const ASKS_FOR_MORE =
+  /^(?!.*\b(?:about|another|other|different)\b)(?:.*\b(?:show|see|give)\b[^.?!]{0,20}\b(?:more|the rest|next (?:part|bit|lines?|page))\b|.*\b(?:keep going|carry on|scroll down|read on)\b|\s*(?:more|next|go on|continue)(?: please)?\W*$)/i;
 /** If the code has not come after this long (ms), a card says what the file is for until it does. */
 const CODE_PATIENCE_MS = 900;
 
@@ -1549,7 +1554,12 @@ export class RoomSystem extends createSystem({
     };
     const patience = window.setTimeout(plain, CODE_PATIENCE_MS);
     const source = { mapId: app.mapId, local: import.meta.env.DEV && app.mapId in CUSTOM_MAPS, base: import.meta.env.BASE_URL };
-    void findCode(graph, file, request, source).then((view) => {
+    const found = findCode(graph, file, request, source).catch((error) => {
+      // Code that cannot be read or laid out must never cost the visitor the card.
+      console.warn(`[code] ${file.p}: ${(error as Error)?.message ?? error}`);
+      return null;
+    });
+    void found.then((view) => {
       window.clearTimeout(patience);
       if (!wanted()) return;
       if (!view) {

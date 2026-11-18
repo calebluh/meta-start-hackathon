@@ -140,10 +140,10 @@ seconds later you are walking into it.
   knowing what you asked.
 - **The code itself.** Say "show me the code" and the robot holds up a card
   beside its speech bubble with the real lines: the whole function, class or
-  statement you named, never a slice cut off mid-thought, in an editor's
-  colours with line numbers. Ask about a warning and its line is lit. A
-  class too long for the card shows as an outline; for a long file, "show me
-  more" carries on from where the card stopped. The page fetches the lines
+  statement you named, in an editor's colours with line numbers. Ask about a
+  warning and its line is lit. A class too long for the card shows as an
+  outline. A function or file too long for it is cut between statements,
+  and "show me more" carries on from there. The page fetches the lines
   straight from the repository (or, for your own project through the plugin,
   from your disk) and only draws them on the card. They are not added to
   what the AI is sent: it works from the map, which carries function names
