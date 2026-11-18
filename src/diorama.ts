@@ -116,6 +116,13 @@ const STREET_TURN = Math.PI / 6;
 /** Street view waypoints: discs on the ground at each door, this radius on the board (about 0.4 m at life size). */
 const WAYPOINT_RADIUS = 0.0027;
 const WAYPOINT_COLOR = '#7ee0ff';
+/**
+ * A faint pole of light stands up from each disc (board units: about 1.8 m
+ * tall and 6 cm across at street size). A flat disc a few metres off is seen
+ * edge-on from eye height and all but disappears; the pole shows where it is.
+ */
+const WAYPOINT_POLE_HEIGHT = 0.012;
+const WAYPOINT_POLE_RADIUS = 0.0002;
 /** The Turn buttons float this far out to either side, low, and this far below the eyes (metres). */
 const TURN_BUTTON_OUT = 0.55;
 const TURN_BUTTON_DROP = 0.18;
@@ -542,6 +549,7 @@ export class DioramaSystem extends createSystem({
    * low to either side; and the right stick's last state, for snap turns.
    */
   private waypoints: InstancedMesh | null = null;
+  private waypointPoles: InstancedMesh | null = null;
   private waypointSpots: Vector3[] = [];
   private waypointHit: Vector3 | null = null;
   private turnButtons: { entity: Entity; mesh: Mesh; dir: 1 | -1 | 0 }[] = [];
@@ -2418,6 +2426,19 @@ export class DioramaSystem extends createSystem({
     mesh.visible = false;
     mesh.name = 'street-waypoints';
     group.add(mesh);
+    // The poles: seen only, never pinched (pinching the ground at the disc picks it).
+    const pole = new CylinderGeometry(WAYPOINT_POLE_RADIUS, WAYPOINT_POLE_RADIUS, WAYPOINT_POLE_HEIGHT, 8).translate(0, WAYPOINT_POLE_HEIGHT / 2, 0);
+    const poles = new InstancedMesh(pole, new MeshBasicMaterial({ color: WAYPOINT_COLOR, transparent: true, opacity: 0.35, depthWrite: false }), this.waypointSpots.length);
+    this.waypointSpots.forEach((spot, i) => {
+      this.dotMatrix.makeTranslation(spot.x, spot.y, spot.z);
+      poles.setMatrixAt(i, this.dotMatrix);
+    });
+    poles.instanceMatrix.needsUpdate = true;
+    poles.computeBoundingSphere();
+    poles.visible = false;
+    poles.name = 'street-waypoint-poles';
+    group.add(poles);
+    this.waypointPoles = poles;
     const entity = this.world.createTransformEntity(mesh, { parent: this.root });
     this.entities.push(entity);
     this.waypoints = mesh;
@@ -2450,6 +2471,7 @@ export class DioramaSystem extends createSystem({
     if (shown === this.streetExtrasShown) return;
     this.streetExtrasShown = shown;
     if (this.waypoints) this.waypoints.visible = shown;
+    if (this.waypointPoles) this.waypointPoles.visible = shown;
     // Development: where the nearest discs are, for automated tests to aim at.
     if (import.meta.env.DEV && shown && this.waypoints) {
       const obj = this.root.object3D!;
