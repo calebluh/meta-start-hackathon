@@ -110,7 +110,11 @@ emulator. This is the most important step left.
      night).** In a Larder room ask "what does line 41 do?" after seeing the
      billing code, or "what happens to an order that is already paid?": the
      robot should answer from the real lines and hold up the same lines. No
-     robot should say it cannot see the code. In **Notes**, say "billing day
+     robot should say it cannot see the code, in any room: try Larder's
+     **Deploy setup** ("how would I make the deploy setup safer?"), whose
+     robot should answer from the docker compose file, not "from the map",
+     and whose fix should then be on the wall in **Notes**.
+     In **Notes**, say "billing day
      should retry a declined card three times": the note taker should say
      what the retry code does today, and the note should end with
      [retryDeclined, jobs/src/retry.ts line 20]. Then pinch the small grey
@@ -241,18 +245,35 @@ git push
 
 ### Rolling back the robots reading code, and the grab bars
 
-The robots and the note taker reading real code (if answers get slow or
+Only the last change to the robots (18 Nov, early morning: a robot with the
+lines in hand never says it cannot see the code, finishes its answer, and
+its fixes and ideas for improvement always reach the notes list). Undo it
+alone if answers get slow or odd notes appear:
+
+```bash
+git revert --no-edit 7fde689 b2f9e90
+git push
+```
+
+Then take the last two sentences ("The same goes for notes ... said its
+answer.") out of "Robots that keep their word" in `devpost.md`.
+
+The robots and the note taker reading real code altogether (if answers get
 strange):
 
 ```bash
-git revert --no-edit 1d30823 ebff79f 23bccee
+git revert --no-edit 7fde689 b2f9e90 1d30823 ebff79f 23bccee
 git push
 ```
 
 Then, in `devpost.md`, take the sentences from "The robot reads those same
 lines" to "from your disk" out of "The code itself", the sentences from "It
 looks the idea up" to "go straight there" out of "The notes room", and the
-last sentences of testing steps 6 and 8.
+last sentences of testing steps 6 and 8. Under "How we built it", take
+"; the robots answer from the map and from the lines of code a question is
+about" out of the Map bullet, " and the repository's own files" out of "Any
+repository, on the spot", and the words from ", and adds the lines" to "the
+code it was handed" out of the Robots bullet.
 
 The grab bars on panels, cards and bubbles, and the ask panel's button row
 (if a pinch near a panel starts moving it):

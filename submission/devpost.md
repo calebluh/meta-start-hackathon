@@ -235,8 +235,9 @@ so it runs from a link in the Quest Browser with nothing to install.
 
 - **Map.** A codebase is described by one map file: its parts, how they
   connect, the main flows and any health notes. The Claude Code plugin writes
-  that file by reading a repository without running it. The city, the rooms,
-  the robots' names and jobs, and every answer are generated from the map.
+  that file by reading a repository without running it. The city, the rooms
+  and the robots' names and jobs are generated from the map; the robots
+  answer from the map and from the lines of code a question is about.
 - **City and rooms.** Buildings, rooms and props are built in code from
   simple shapes, with a few CC0 models. Sound effects are synthesized in
   the browser and placed in 3D, so a till rings from where the till stands;
@@ -273,18 +274,25 @@ so it runs from a link in the Quest Browser with nothing to install.
   journeys a request takes, choosing only from the parts it is given; if it
   is slow, the plain city stands. The map is signed by the server, and the
   robots answer about it only when the signature checks out, so their
-  prompts are always built from text the server wrote, never from text a
-  visitor sends.
+  prompts are built from the map the server made and the repository's own
+  files, never from text a visitor sends.
 - **Robots.** Answers come from Meta's Model API. The server writes the
-  prompt itself from the map and the room, so a robot only knows its own
-  room and the directory of the building, and its tools are real actions in
-  the world. Speech recognition streams through Meta's realtime
+  prompt itself from the map and the room, and adds the lines of the file a
+  question is about, marked as a file's text that is never to be taken as
+  instructions. So a robot knows its own room, the directory of the building
+  and the code it was handed, and its tools are real actions in the world.
+  Speech recognition streams through Meta's realtime
   transcription, so your words appear as you say them and a turn ends half a
   second after you stop. API keys stay on the server.
 - **Robots that keep their word.** A fast model sometimes says "I'll send
   you over" and then does nothing. The server reads the visitor's words and
   the robot's spoken answer, and when the request is plain it carries out
   the action itself, so "take me to the kitchen" always takes you there.
+  The same goes for notes: when you ask how to fix or improve something, or
+  a robot says it put a fix on your notes list, the server makes sure the
+  suggestion is there and says which file and lines it is about. And a
+  robot that stops after one line to use a tool is given the turn back
+  until it has said its answer.
 - **Without the AI.** If the model cannot be reached, the robots answer from
   the map instead, and asking to change room, watch a flow or leave still
   works. The quiz is written from the map too: its questions and pinched

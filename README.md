@@ -97,7 +97,8 @@ public edition without exporting, add `VITE_EDITION=personal` to `.env.local`.
 - `src/diorama.ts`: the tabletop city, its connections, flows and panels.
 - `src/rooms/`: the walk-in rooms, their themes, props and robot workers.
 - `src/agent/` and `server/`: the robots' conversations. Prompts are built on
-  the server from the map, so the page never sees an API key.
+  the server from the map and the lines of code a question is about, so the
+  page never sees an API key.
 - `src/guide-system.ts`, `src/menu.ts`, `src/atmosphere.ts`,
   `src/transition.ts`: the guided first visit, the start menu, the
   surroundings and the dive into a building.
