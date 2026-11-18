@@ -1,19 +1,116 @@
-# Walkthrough
+<p align="center">
+  <img src="public/logo-512.png" alt="Walkthrough logo: a city building with its door open and footsteps leading in" width="112" />
+</p>
 
-Step inside a codebase. A real software project becomes a little city on
-your desk in VR: every part of the code is a building, and you can walk into
-any of them. Inside, robot workers run that part of the code. Packets of data
-travel from room to room along the code's real flows. You can point at any
-robot and ask it a question, out loud or with a pinch, and it answers from
-a map of the code: what each file is for, what talks to what, and the flows
-through it. When you think you know a room, pinch **Quiz me**: the
-robot tests you on it and corrects what you get wrong.
+<h1 align="center">Walkthrough</h1>
+
+<p align="center">
+  <strong>Take a walk through any codebase.</strong><br />
+  Software becomes a little city on your desk: pinch a building, walk in, and ask the robots who run it how it works.
+</p>
+
+<p align="center">
+  <a href="https://walkthrough.calebluh.com"><strong>Try it live</strong></a> ·
+  <a href="https://youtu.be/5c6FPnVfjHU"><strong>Watch the demo</strong></a> ·
+  <a href="https://github.com/calebluh/walkthrough"><strong>Plugin for your own code</strong></a>
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/5c6FPnVfjHU">
+    <img src="docs/images/video.jpg" alt="Watch the Walkthrough demo video on YouTube" width="720" />
+  </a>
+</p>
+
+Joining a codebase is like moving to a city with no map. The knowledge is
+all there, spread over thousands of files, and the only way in is to read.
+People don't learn places by reading. They learn them by walking around and
+asking someone who works there. Walkthrough makes a codebase that place:
+small enough to see whole on a desk, big enough to walk into, and staffed by
+robots you can simply ask.
 
 Built with [Meta IWSDK](https://iwsdk.dev) (WebXR) for the Meta VR Start
-Developer Competition. Everything works with bare hands on a Meta Quest,
-sitting down: point and pinch, or poke the panels with a fingertip. On Meta
+Developer Competition 2026. It runs from a link in the Quest Browser with
+nothing to install. Everything works sitting down, with bare hands or
+controllers: point and pinch, or poke the panels with a fingertip. On Meta
 VR Glasses the desk moves to fit the narrower view, and a look and a pinch
 do the same job.
+
+**Try it:** open [walkthrough.calebluh.com](https://walkthrough.calebluh.com)
+in the Quest Browser (Quest 2, 3 or 3S; mixed reality needs a Quest 3 or 3S).
+Tap a demo, or type any public GitHub repository, such as `pallets/flask`,
+and press **Build city**. About ten seconds later you can walk into it. A link
+like `https://walkthrough.calebluh.com/?repo=facebook/react` opens a city
+directly.
+
+## What it does
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/01-hero.jpg" alt="A codebase as a glowing little city" /></td>
+    <td width="50%"><img src="docs/images/04-desk.jpg" alt="The city on a real desk in mixed reality" /></td>
+  </tr>
+</table>
+
+- **The city.** Every part of the code is a building, sized by how much code
+  it holds and joined to the parts it talks to. Pinch one and a panel says,
+  in plain English, what it does, which files it holds and what is wrong
+  with it.
+- **Lift the roof.** The building you pinch opens like a doll's house, with
+  the robots who work there inside and a **Step inside** button over them.
+- **The rooms.** Step inside and the building grows around you. Each room is
+  the real-world place that does the same job: payments is a cashier's
+  office, storage is a warehouse, messaging is a post office.
+- **Robots that act.** Ask out loud or pinch a question. A robot answers from
+  the map and from the actual lines of code your question is about, in its
+  own voice. It walks you to another room, plays a flow, or hands you to a
+  colleague who already knows what you asked.
+- **The code itself.** Say "show me the code" and the robot holds up the real
+  function, coloured like an editor, with line numbers. Ask how to fix a
+  warning and it lights the exact line and puts the fix on your notes list.
+- **Flows.** **Play flow** sends a packet of data from building to building
+  along a real path through the code, such as a first order in a shop.
+- **Street view.** The city grows to life size around you. Pinch a glowing
+  disc or **Forward** to walk, **Turn** to turn, and a building to go to its
+  door.
+- **Quiz me.** The robot tests you on its room and corrects a wrong answer on
+  the spot.
+- **The notes room.** Think out loud. The note taker writes your ideas down,
+  looks each one up in the code and ends the note with the file and line to
+  change. **Review this project for me** writes the three to five most urgent
+  tasks.
+- **Mixed reality.** On a Quest 3 or 3S the city lands on your real desk and
+  stays where you left it between visits, held by a spatial anchor.
+- **Your coding agent closes the loop.** With the
+  [plugin](https://github.com/calebluh/walkthrough), the notes are saved in
+  your repository as you say them. Your coding agent works through them, and
+  you watch the city change in front of you.
+
+## Gallery
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/images/05-roof.jpg" alt="Pinch a building: its roof lifts to show the robots inside" /></td>
+    <td width="50%"><img src="docs/images/06-room.jpg" alt="Every room is a real-world place with robots" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/07-answer.jpg" alt="Ask a robot anything: it answers from the real code" /></td>
+    <td><img src="docs/images/08-line.jpg" alt="It finds the exact line to fix" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/09-flow.jpg" alt="Follow a request from room to room" /></td>
+    <td><img src="docs/images/11-notes.jpg" alt="Think out loud: the robots take notes" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/12-street.jpg" alt="Walk the city's streets at life size" /></td>
+    <td><img src="docs/images/13-anchor.jpg" alt="Back where you left it: a persistent spatial anchor" /></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/02-pick.jpg" alt="Any repository becomes a city" /></td>
+    <td><img src="docs/images/15-self.jpg" alt="It even maps its own code" /></td>
+  </tr>
+</table>
+
+<sub>All images are screenshots of the app running in the IWSDK Quest 3 emulator, with a headline added on top.</sub>
 
 ## Things to say to a robot
 
