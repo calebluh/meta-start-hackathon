@@ -123,6 +123,7 @@ World.create(
     // For test scripts: step into any room, and ask the robot being talked to anything.
     Object.assign(window, {
       __enter: (id: string) => enterRoom(id),
+      __pinchAudit: (reach?: number[], tip?: number) => world.getSystem(DioramaSystem)?.debugPinchAudit(reach, tip),
       __ask: (question: string) => world.getSystem(RoomSystem)?.debugAskText(question),
     });
     window.addEventListener('keydown', (e) => {

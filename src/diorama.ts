@@ -1,6 +1,8 @@
 import {
   AssetManager,
   Box3,
+  type Intersection,
+  Raycaster,
   BoxGeometry,
   CanvasTexture,
   Color,
@@ -142,13 +144,19 @@ const AIM_PEG = 0.04;
 const AIM_TURN = 0.07;
 const AIM_DISC = 0.6;
 /**
- * A hand pinch made at the buttons or panels is meant for them: with the
- * fingertip within this margin of a panel (metres), or the hand's ray
- * passing through a panel padded by UI_PAD, it never picks a building or
- * walks the street, even when the press itself just misses a button.
+ * A hand pinch made at the buttons or panels is meant for them, and never
+ * picks a building or walks the street, even when the press itself just
+ * misses a button. It is meant for a panel when the fingertip touches it
+ * (UI_TOUCH), when the hand's ray meets the panel (padded by UI_PAD, or
+ * UI_PAD_BUSY when a building lies further along) before any building, or,
+ * with no building on the ray, when the fingertip is within UI_MARGIN.
+ * The toolbar runs along the city's front edge, so a hand pinching a
+ * front-row building hovers just over it: nearness alone must not decide.
  */
+const UI_TOUCH = 0.025;
 const UI_MARGIN = 0.1;
 const UI_PAD = 0.03;
+const UI_PAD_BUSY = 0.01;
 const UI_REACH = 0.35;
 /** Panels a stray pinch must not pass through to the city. */
 const UI_PANELS = ['controls-panel', 'inspector-panel', 'ask-panel', 'notes-panel', 'menu-panel'];
@@ -535,6 +543,13 @@ export class DioramaSystem extends createSystem({
   private uiBox = new Box3();
   private uiBoxPart = new Box3();
   private uiRay = new Ray();
+  private uiRayLocal = new Ray();
+  private uiWhy = '';
+  private uiTipLocal = new Vector3();
+  private uiHit = new Vector3();
+  private uiScale = new Vector3();
+  private uiInverse = new Matrix4();
+  private uiToPanel = new Matrix4();
   private inspectorShifted = false;
   private stickTurned = false;
   private streetExtrasShown = false;
@@ -771,30 +786,211 @@ export class DioramaSystem extends createSystem({
   private nearUi(hand: 'left' | 'right'): boolean {
     this.player.indexTipSpaces[hand].getWorldPosition(this.nearTip);
     this.handRay(hand);
+    return this.uiAt() !== null;
+  }
+
+  /** The panel the fingertip (nearTip) is at, or the ray (aimOrigin, aimDir) reaches into, or null. */
+  private uiAt(): string | null {
+    // How far along the ray the first building is (see UI_TOUCH for the rules). In
+    // street view the city is life size and a ray nearly always meets a building,
+    // so there a panel keeps the whole margin, as if no building were on the ray.
+    const buildingAlong = app.street || this.streetShown ? Infinity : this.buildingDistanceOnRay();
+    for (const id of UI_PANELS) {
+      const panel = this.world.getSceneObject(id);
+      if (!panel?.visible) continue;
+      // The panel's own (tilted) box, in its local space: a world-aligned box
+      // around a tilted panel is far larger than the panel.
+      this.panelBox(panel);
+      if (this.uiBox.isEmpty()) continue;
+      panel.getWorldScale(this.uiScale);
+      const scale = Math.max(this.uiScale.x, this.uiScale.y, this.uiScale.z, 1e-6);
+      this.uiInverse.copy(panel.matrixWorld).invert();
+      this.uiRayLocal.set(this.aimOrigin, this.aimDir).applyMatrix4(this.uiInverse);
+      this.uiTipLocal.copy(this.nearTip).applyMatrix4(this.uiInverse);
+      const tipToPanel = this.uiBox.distanceToPoint(this.uiTipLocal) * scale;
+      // Fingers on the panel, or near it with no building on the ray: a press that just missed a button.
+      if (tipToPanel < UI_TOUCH || (tipToPanel < UI_MARGIN && buildingAlong === Infinity)) {
+        if (import.meta.env.DEV) this.uiWhy = `tip ${tipToPanel.toFixed(3)}`;
+        return id;
+      }
+      // The ray meets the panel before any building, with the hand reaching towards it.
+      // (Aiming past a panel from further back, at the street, is not.)
+      this.uiBox.expandByScalar((buildingAlong === Infinity ? UI_PAD : UI_PAD_BUSY) / scale);
+      if (tipToPanel < UI_REACH && this.uiRayLocal.intersectBox(this.uiBox, this.uiHit)) {
+        this.uiHit.applyMatrix4(panel.matrixWorld);
+        if (this.uiHit.distanceTo(this.aimOrigin) < buildingAlong) {
+          if (import.meta.env.DEV) this.uiWhy = `ray ${this.uiHit.distanceTo(this.aimOrigin).toFixed(3)} < building ${buildingAlong.toFixed(3)} (tip ${tipToPanel.toFixed(3)})`;
+          return id;
+        }
+      }
+    }
+    return null;
+  }
+
+  /** How far along the ray (aimOrigin, aimDir) the first building or tower is (metres; not the plinths), or Infinity. */
+  private buildingDistanceOnRay(): number {
     this.uiRay.set(this.aimOrigin, this.aimDir);
+    let best = Infinity;
+    for (const site of this.sitesById.values()) {
+      if (!site.mesh.visible) continue;
+      if (this.layout.districts.has(site.id) && !site.lot) continue; // a plinth, not a building
+      const geometry = site.mesh.geometry;
+      if (!geometry.boundingBox) geometry.computeBoundingBox();
+      this.uiBoxPart.copy(geometry.boundingBox!).applyMatrix4(site.mesh.matrixWorld).expandByScalar(HIT_PAD_SIDE);
+      if (!this.uiRay.intersectBox(this.uiBoxPart, this.uiHit)) continue;
+      best = Math.min(best, this.uiHit.distanceTo(this.aimOrigin));
+    }
+    return best;
+  }
+
+  /**
+   * Development only: what a hand pinch aimed at each building would do, from
+   * seated hand poses held `reach` metres short of it. For each building and
+   * hand: 'pick' (the ray's first interactable is that building, and the
+   * pinch is not taken by the panels), or why not.
+   */
+  debugPinchAudit(reach = [0.12, 0.2, 0.3], fingertip = 0.07): Record<string, unknown> {
+    const head = new Vector3();
+    this.player.head.getWorldPosition(head);
+    const ray = new Raycaster();
+    const hits: Intersection[] = [];
+    const rows: Record<string, string>[] = [];
+    const tally: Record<string, number> = {};
+    const owner = (o: Object3D | null): string | null => {
+      for (let p = o; p; p = p.parent) {
+        if (!p.visible) return null;
+        for (const [id, s] of this.sitesById) if (s.mesh === p) return `building:${id}`;
+        for (const peg of this.pegs) if (peg.mesh === p) return 'peg';
+        if (this.chip?.object3D === p) return 'step-inside';
+        for (const id of UI_PANELS) if (this.world.getSceneObject(id) === p) return `panel:${id}`;
+      }
+      return null;
+    };
+    const roots: Object3D[] = [this.root.object3D!, ...this.pegs.map((p) => p.mesh)];
+    if (this.chip?.object3D) roots.push(this.chip.object3D);
+    for (const id of UI_PANELS) {
+      const o = this.world.getSceneObject(id);
+      if (o) roots.push(o);
+    }
+    for (const site of this.sitesById.values()) {
+      if (this.layout.districts.has(site.id) && !site.lot) continue;
+      if (!site.mesh.visible) continue;
+      const box = new Box3().setFromObject(site.mesh, true);
+      const target = box.getCenter(new Vector3());
+      target.y = box.max.y - 0.005; // the roof
+      const row: Record<string, string> = { id: site.id, at: target.toArray().map((v) => v.toFixed(3)).join(',') };
+      for (const hand of HANDS) {
+        const shoulder = head.clone().add(new Vector3(hand === 'left' ? -0.18 : 0.18, -0.28, 0.05));
+        for (const r of reach) {
+          const dir = target.clone().sub(shoulder).normalize();
+          const origin = target.clone().addScaledVector(dir, -r);
+          this.aimOrigin.copy(origin);
+          this.aimDir.copy(dir);
+          this.nearTip.copy(origin).addScaledVector(dir, fingertip);
+          hits.length = 0;
+          ray.set(origin, dir);
+          ray.intersectObjects(roots, true, hits);
+          let first: string | null = null;
+          for (const h of hits) {
+            first = owner(h.object);
+            if (first) break;
+          }
+          const ui = this.uiAt();
+          let pegAim = false;
+          for (const peg of this.pegsShown ? this.pegs : []) {
+            peg.mesh.getWorldPosition(this.aimPoint);
+            this.aimPoint.y += PEG_HEIGHT / 2;
+            if (this.rayDistance(this.aimPoint) < AIM_PEG) pegAim = true;
+          }
+          let verdict: string;
+          if (pegAim) verdict = 'taken-by-peg';
+          else if (ui) verdict = `eaten-by:${ui} ${this.uiWhy}`;
+          else if (first === `building:${site.id}`) verdict = 'pick';
+          else verdict = `ray-hits:${first ?? 'nothing'}`;
+          row[`${hand[0]}${r}`] = verdict;
+          const key = verdict.startsWith('ray-hits:building') ? 'ray-hits:other-building' : verdict.split(' ')[0];
+          tally[key] = (tally[key] ?? 0) + 1;
+        }
+      }
+      rows.push(row);
+    }
+    // The other way round: pinches aimed at points across each panel must stay with the panel.
+    const panels: Record<string, string> = {};
     for (const id of UI_PANELS) {
       const panel = this.world.getSceneObject(id);
       if (!panel?.visible) continue;
       this.panelBox(panel);
       if (this.uiBox.isEmpty()) continue;
-      this.uiBox.expandByScalar(UI_PAD);
-      // Through a panel the hand is reaching towards: a press that just missed a
-      // button. (Aiming past a panel from further back, at the street, is not.)
-      if (this.uiRay.intersectsBox(this.uiBox) && this.uiBox.distanceToPoint(this.nearTip) < UI_REACH) return true;
-      this.uiBox.expandByScalar(UI_MARGIN - UI_PAD);
-      if (this.uiBox.containsPoint(this.nearTip)) return true;
+      const box = this.uiBox.clone();
+      const toWorld = panel.matrixWorld.clone();
+      let kept = 0;
+      let total = 0;
+      const missed: string[] = [];
+      for (const fx of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+        for (const fy of [0.25, 0.5, 0.75]) {
+          const target = new Vector3(
+            box.min.x + fx * (box.max.x - box.min.x),
+            box.min.y + fy * (box.max.y - box.min.y),
+            box.max.z,
+          ).applyMatrix4(toWorld);
+          for (const hand of HANDS) {
+            const shoulder = head.clone().add(new Vector3(hand === 'left' ? -0.18 : 0.18, -0.28, 0.05));
+            for (const r of reach) {
+              const dir = target.clone().sub(shoulder).normalize();
+              this.aimOrigin.copy(target).addScaledVector(dir, -r);
+              this.aimDir.copy(dir);
+              this.nearTip.copy(this.aimOrigin).addScaledVector(dir, fingertip);
+              total++;
+              let pegAim = false;
+              for (const peg of this.pegsShown ? this.pegs : []) {
+                peg.mesh.getWorldPosition(this.aimPoint);
+                this.aimPoint.y += PEG_HEIGHT / 2;
+                if (this.rayDistance(this.aimPoint) < AIM_PEG) pegAim = true;
+              }
+              if (pegAim) {
+                missed.push(`peg:${fx},${fy},${hand[0]}${r}`);
+                continue;
+              }
+              if (this.uiAt() === id) kept++;
+              else missed.push(`${fx},${fy},${hand[0]}${r}`);
+            }
+          }
+        }
+      }
+      panels[id] = `${kept}/${total}${missed.length ? ' missed ' + missed.slice(0, 8).join(' ') : ''}`;
     }
-    return false;
+    // Pinches pointed at each corner peg must still take it.
+    const pegs: Record<string, string> = {};
+    for (const peg of this.pegsShown ? this.pegs : []) {
+      const target = peg.mesh.getWorldPosition(new Vector3());
+      target.y += PEG_HEIGHT / 2;
+      let kept = 0;
+      let total = 0;
+      for (const hand of HANDS) {
+        const shoulder = head.clone().add(new Vector3(hand === 'left' ? -0.18 : 0.18, -0.28, 0.05));
+        for (const r of reach) {
+          const dir = target.clone().sub(shoulder).normalize();
+          this.aimOrigin.copy(target).addScaledVector(dir, -r);
+          this.aimDir.copy(dir);
+          total++;
+          if (this.rayDistance(target) < AIM_PEG) kept++;
+        }
+      }
+      pegs[peg.mesh.name] = `${kept}/${total}`;
+    }
+    return { head: head.toArray().map((v) => +v.toFixed(2)), tally, panels, pegs, rows };
   }
 
   /**
-   * A panel's bounds, into uiBox, from its ordinary meshes. Box3.setFromObject
-   * throws on the UI library's text meshes (they have no bounding box it can
-   * read), so those are skipped: the panel's background covers its area.
+   * A panel's bounds, into uiBox, in the panel's own space, from its ordinary
+   * meshes. Box3.setFromObject throws on the UI library's text meshes (they
+   * have no bounding box it can read), so those are skipped: the panel's
+   * background covers its area.
    */
   private panelBox(panel: Object3D): void {
     this.uiBox.makeEmpty();
     panel.updateWorldMatrix(true, true);
+    this.uiInverse.copy(panel.matrixWorld).invert();
     panel.traverseVisible((o) => {
       const mesh = o as Mesh & { isMesh?: boolean; isInstancedMesh?: boolean };
       if (!mesh.isMesh || mesh.isInstancedMesh) return;
@@ -802,7 +998,8 @@ export class DioramaSystem extends createSystem({
       if (!geometry?.attributes?.position) return;
       if (!geometry.boundingBox) geometry.computeBoundingBox();
       if (!geometry.boundingBox) return;
-      this.uiBoxPart.copy(geometry.boundingBox).applyMatrix4(mesh.matrixWorld);
+      this.uiToPanel.multiplyMatrices(this.uiInverse, mesh.matrixWorld);
+      this.uiBoxPart.copy(geometry.boundingBox).applyMatrix4(this.uiToPanel);
       this.uiBox.union(this.uiBoxPart);
     });
   }
