@@ -158,7 +158,7 @@ rollback).
 If the repo box misbehaves, undo it alone (the anchor stays):
 
 ```bash
-git revert --no-edit 3e11a70 a54cf48 5df1dbb 88b3290 a985c1b a50d624
+git revert --no-edit c9cd343 3e11a70 a54cf48 5df1dbb 88b3290 a985c1b a50d624
 git push
 ```
 
