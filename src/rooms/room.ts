@@ -51,6 +51,7 @@ import { makePropDecor, makePropStation, propsForTheme } from './stations.js';
 import { makeDecor, makeItem, makePalette, makeStation, pickTheme, type Theme } from './themes.js';
 import { type Mood, RobotCharacter } from './character.js';
 import { Bubble, codeBlock, warningTalkedAbout } from './worker.js';
+import { fetchCodeWindow } from './code-fetch.js';
 
 const ROOM_RADIUS = 5.2;
 const WALL_HEIGHT = 3.4;
@@ -1433,6 +1434,20 @@ export class RoomSystem extends createSystem({
     this.roomGroup.add(card.mesh);
     this.bubbles.push(card);
     this.fileCard = card;
+    // No warning lines in the map: fetch the real lines from GitHub and swap them in.
+    if (!code) {
+      const graph = app.graph;
+      void fetchCodeWindow(graph, file, said).then((found) => {
+        if (!found || this.fileCard !== card || app.graph !== graph || !this.roomGroup || !this.theme) return;
+        this.hideFileCard();
+        const withCode = new Bubble(0.7, this.theme.accent, 3);
+        withCode.setText(`Line ${found.line} of ${file.p}`, `File: ${file.name}`, found.code);
+        withCode.mesh.position.set(CODE_CARD.x, CODE_CARD.y, CODE_CARD.z);
+        this.roomGroup.add(withCode.mesh);
+        this.bubbles.push(withCode);
+        this.fileCard = withCode;
+      });
+    }
   }
 
   private hideFileCard(): void {

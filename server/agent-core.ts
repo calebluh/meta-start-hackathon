@@ -15,6 +15,7 @@ import {
 import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
 import { admitRepoMap } from './repo-map.js';
+import type { GraphData } from '../src/maps/types.js';
 import { MAX_NOTE, MAX_SAID, NOTES_IN_PROMPT, parseScribe, scribePrompt, type ScribeReply } from '../src/notes/scribe.js';
 import { createLimiter } from './rate-limit.js';
 
@@ -265,7 +266,27 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
     const note = fixNote(reply.answer);
     if (note) actions.push({ type: 'add_note', text: note });
   }
+  // Asked to see code, the model often talks about the lines and opens no
+  // card. Open the file it named (or the room's biggest) so the lines show.
+  if (asksToSeeCode(req.question) && !actions.some((a) => a.type === 'show_file')) {
+    const path = codeFileFor(graph, req.nodeId, reply.answer);
+    if (path) actions.push({ type: 'show_file', path });
+  }
   return { ...reply, actions };
+}
+
+/** "Show me the code", "can I see the lines", "what does line 120 look like". */
+export function asksToSeeCode(question: string): boolean {
+  return /\b(show|see|look at|open|read|display|pull up)\b[^.?!]{0,40}\b(code|lines?|source|file|function|class|implementation)\b|\bline \d+\b/i.test(question);
+}
+
+/** The room's file the answer is about: one it names by path or base name, else the biggest. */
+function codeFileFor(graph: GraphData, nodeId: string, answer: string): string | null {
+  const own = graph.files.filter((f) => f.n === nodeId || graph.nodes.find((n) => n.id === f.n)?.parent === nodeId);
+  if (own.length === 0) return null;
+  const said = answer.toLowerCase();
+  const named = own.find((f) => said.includes(f.p.toLowerCase())) ?? own.find((f) => said.includes((f.p.split('/').pop() ?? '').toLowerCase()));
+  return (named ?? [...own].sort((a, b) => b.loc - a.loc)[0]).p;
 }
 
 /**

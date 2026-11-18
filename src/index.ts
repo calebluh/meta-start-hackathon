@@ -132,6 +132,7 @@ World.create(
       if (e.key === 'q') world.getSystem(RoomSystem)?.debugAsk(0);
       if (e.key === 'e') world.getSystem(RoomSystem)?.debugAsk(2);
       if (e.key === 'g') world.getSystem(RoomSystem)?.debugAskText('Can you take me to billing day?');
+      if (e.key === 'c') world.getSystem(RoomSystem)?.debugAskText('Show me the code of your main file, the lines that matter most.');
       // 1-9: jump straight into rooms of different kinds.
       const rooms = app.graph.nodes.filter((n) => !app.graph.nodes.some((c) => c.parent === n.id)).map((n) => n.id);
       const digit = Number(e.key);

@@ -619,7 +619,7 @@ function plainMap(owner: string, name: string, commit: string, infos: FileInfo[]
       name: label(name, 40) || 'Repository',
       summary: clean(`${name} on GitHub: ${infos.length.toLocaleString('en-US')} files and ${totalLoc.toLocaleString('en-US')} lines, mostly ${topLang(infos)}.`, 300),
     },
-    source: { repo: `github.com/${owner}/${name}`, commit: commit.slice(0, 7) || 'HEAD' },
+    source: { repo: `github.com/${owner}/${name}`, commit: commit || 'HEAD' },
     nodes,
     files,
     links,
