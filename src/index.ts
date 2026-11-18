@@ -14,6 +14,7 @@ import { isPaused, onPause, setPaused } from './pause.js';
 import { dive } from './transition.js';
 import { AtmosphereSystem } from './atmosphere.js';
 import { GuideSystem } from './guide-system.js';
+import { GripSystem } from './grips.js';
 import { landingFailed, landingReady } from './landing.js';
 import { MenuSystem } from './menu.js';
 import { restartGuide } from './guide.js';
@@ -43,6 +44,8 @@ World.create(
   world.registerSystem(DioramaSystem);
   world.registerSystem(RoomSystem);
   world.registerSystem(GuideSystem);
+  // After the systems that place panels, cards and bubbles: it puts a grab bar on each.
+  world.registerSystem(GripSystem);
   world.registerSystem(AtmosphereSystem);
   world.registerSystem(MenuSystem);
   world.registerSystem(DesktopControlsSystem);

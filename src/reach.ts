@@ -32,6 +32,28 @@ const WITHIN_REACH: Record<string, Pose> = {
 };
 
 const authored = new Map<string, { position: Vector3; quaternion: Quaternion; scale: Vector3 }>();
+/**
+ * Panels the visitor has dragged somewhere of their own choosing (by its grab
+ * bar, see grips.ts), and where, in the desk's space. Such a panel stays
+ * there, whatever placement is asked for, until Recenter forgets it.
+ */
+const moved = new Map<string, Vector3>();
+
+/** The visitor put a panel somewhere: `position` is in the desk's space. */
+export function movePanel(world: World, id: string, position: Vector3): void {
+  const at = moved.get(id) ?? new Vector3();
+  moved.set(id, at.copy(position));
+  world.getSceneObject<Object3D>(id)?.position.copy(at);
+}
+
+export const panelMoved = (id: string): boolean => moved.has(id);
+
+/** Puts a moved panel (or, with no id, all of them) back where the app stands it. */
+export function forgetPanelMoves(world: World, id?: string): void {
+  if (id) moved.delete(id);
+  else moved.clear();
+  setPanelsWithinReach(world, lastNear);
+}
 /** Extra sideways offset for the info panel (the notes room moves it right), and the last placement asked for. */
 let inspectorShift = 0;
 let lastNear = false;
@@ -55,6 +77,14 @@ export function setPanelsWithinReach(world: World, near: boolean): void {
       authored.set(id, home);
     }
     const shift = id === 'inspector-panel' ? inspectorShift : 0;
+    const own = moved.get(id);
+    if (own) {
+      // Where the visitor put it; grips.ts keeps it turned to them. Only its size follows the placement.
+      panel.position.copy(own);
+      if (near && pose.scale !== undefined) panel.scale.setScalar(pose.scale);
+      else panel.scale.copy(home.scale);
+      continue;
+    }
     if (!near) {
       panel.position.copy(home.position);
       panel.position.x += shift;

@@ -1,6 +1,9 @@
 <!--
   Conversation panel, shown while talking to a worker. While the mic is on
-  the question list folds away (Questions opens it), so the room stays in view. Designed for a scene
+  the question list folds away (Questions opens it), so the room stays in view.
+  The three buttons along the foot share one 298px row: each keeps the width
+  of its own words (a squeezed button lets a one-word label spill out of it),
+  so their labels are short and only the microphone carries an icon. Designed for a scene
   scale of 0.1 (1px = 1 mm). Every question is a big button so it can be
   asked with a pinch; the microphone button only appears where the browser
   supports speech recognition. During a quiz the same buttons hold the three
@@ -43,12 +46,18 @@
 
   .row {
     flex-direction: row;
-    gap: 8px;
+    gap: 6px;
   }
 
   .list {
     flex-direction: column;
     gap: 8px;
+  }
+
+  .pill {
+    flex-shrink: 0;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 </style>
 <Panel class="root">
@@ -88,22 +97,16 @@
     </Button>
     </div>
     <div class="row">
-      <Button id="btn-expand">
-        <ButtonIcon>
-          <List></List>
-        </ButtonIcon>
+      <Button id="btn-expand" class="pill">
         <ButtonLabel id="expand-label">Questions</ButtonLabel>
       </Button>
-      <Button id="btn-mic">
+      <Button id="btn-mic" class="pill">
         <ButtonIcon>
           <Mic></Mic>
         </ButtonIcon>
-        <ButtonLabel id="mic-label">Ask out loud</ButtonLabel>
+        <ButtonLabel id="mic-label">Just talk</ButtonLabel>
       </Button>
-      <Button id="btn-done">
-        <ButtonIcon>
-          <X></X>
-        </ButtonIcon>
+      <Button id="btn-done" class="pill">
         <ButtonLabel>Done</ButtonLabel>
       </Button>
     </div>

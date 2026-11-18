@@ -24,6 +24,7 @@ import { resolveRef } from './layout.js';
 import type { GraphData } from './maps/types.js';
 import { ignoreRays } from './rays.js';
 import { Bubble } from './rooms/worker.js';
+import { addMovable } from './grips.js';
 import { app } from './state.js';
 import { NOTES_ROOM } from './notes/scribe.js';
 import { HACKATHON } from './edition.js';
@@ -221,11 +222,37 @@ export class GuideSystem extends createSystem({
   private head = new Vector3();
   private point = new Vector3();
   private box = new Box3();
+  /** How far the visitor has moved the card from each of its two places (the desk's space). */
+  private nudgeNear = new Vector3();
+  private nudgeFar = new Vector3();
 
   init(): void {
     this.holder.name = 'guide';
     this.holder.add(this.card.mesh);
     this.card.mesh.position.x = 0.025;
+    // The card can be put anywhere: its bar is over it (its Skip button and the desk's buttons are under it).
+    this.cleanupFuncs.push(
+      addMovable({
+        id: 'tour',
+        side: 1,
+        target: () => (this.card.mesh.visible ? this.holder : null),
+        edge: (out) => {
+          this.card.mesh.localToWorld(out.set(0, 0.5, 0));
+          return true;
+        },
+        moveTo: (world) => {
+          const workspace = this.world.getSceneObject('workspace');
+          if (!workspace) return;
+          const near = app.mode === 'room' || app.street;
+          workspace.worldToLocal(this.point.copy(world));
+          (near ? this.nudgeNear : this.nudgeFar).copy(this.point).sub(near ? ROOM_ANCHOR : CARD_ANCHOR);
+        },
+        reset: () => {
+          this.nudgeNear.set(0, 0, 0);
+          this.nudgeFar.set(0, 0, 0);
+        },
+      }),
+    );
 
     // The pinch: a thumb and a fingertip that meet, with a ring on contact.
     const tipMaterial = new MeshBasicMaterial({ color: '#ffffff' });
@@ -363,7 +390,8 @@ export class GuideSystem extends createSystem({
       // In a room, and at life size in the streets, the card sits low and close, just
       // behind the buttons: out there a building's wall is often nearer than the far edge of the desk.
       const near = app.mode === 'room' || app.street;
-      this.holder.position.copy(near ? ROOM_ANCHOR : CARD_ANCHOR);
+      // Plus wherever the visitor has dragged it to (see grips.ts): each of its two places keeps its own.
+      this.holder.position.copy(near ? ROOM_ANCHOR : CARD_ANCHOR).add(near ? this.nudgeNear : this.nudgeFar);
       workspace.localToWorld(this.holder.position);
       this.holder.scale.setScalar(near ? ROOM_SCALE : 1);
       this.holder.lookAt(this.head);

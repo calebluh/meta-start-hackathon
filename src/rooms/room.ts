@@ -40,6 +40,7 @@ import { guideNote } from '../guide.js';
 import { isPaused, onPause, whenResumed } from '../pause.js';
 import { placement, pressWord } from '../placement.js';
 import { setPanelShown } from '../panels.js';
+import { addMovable } from '../grips.js';
 import { app, currentStep, enterRoom, type Handoff, leaveRoom, nextStep, onChange, setQuiz, startFlow, stopFlow } from '../state.js';
 import { arrive, blip, click, pop, setListener, startAmbience, stopAmbience, whoosh } from '../audio/sound.js';
 import { addCeiling, addFloorMarkings, addPilasters, addWindows, makeSwirl, Trail } from './dressing.js';
@@ -136,8 +137,9 @@ const TALK_ARC_NARROW = 0.06;
 const CHARS_PER_SECOND = 16;
 /** A ready answer waits at most this long for the "let me check" line to finish. */
 const ACK_GRACE_MS = 1500;
-/** How wide a robot's speech bubble is, in metres. */
+/** How wide a robot's speech bubble is, in metres, and how high over the robot's feet its middle hangs. */
 const SPEECH_WIDTH = 1.2;
+const BUBBLE_HEIGHT = 1.55;
 /**
  * A file or code card stands this far from the visitor's head (metres): well
  * inside the ring the robots keep clear of, so nothing in the room can cut
@@ -317,6 +319,10 @@ export class RoomSystem extends createSystem({
   private lastCode: { path: string; shownTo: number } | null = null;
   /** The room's info panel is put away while a card stands in its place. */
   private inspectorAside = false;
+  /** Where the visitor has put the speech bubble of the robot they are talking to, and the card it holds up (the room's space), if they moved them. */
+  private bubbleSpot: Vector3 | null = null;
+  private cardSpot: Vector3 | null = null;
+  private cardWidth = 0;
   /** The notes room: the project's notes and their panel, and the newest notes pinned to the far wall. */
   private notesDesk!: NotesDesk;
   private notePlaques: Bubble[] = [];
@@ -371,6 +377,42 @@ export class RoomSystem extends createSystem({
     this.world.createTransformEntity(this.fade, { persistent: true });
     this.cleanupFuncs.push(onChange(() => this.onStateChange()));
     this.wireAskPanel();
+    // The speech bubble of the robot being talked to, and the card it holds up, can
+    // be put where the visitor likes (grips.ts). The bubble's bar is over it, clear
+    // of the robot's head; the card's is under it.
+    this.cleanupFuncs.push(
+      addMovable({
+        id: 'speech',
+        side: 1,
+        target: () => (this.talking?.bubble.mesh.visible ? this.talking.bubble.mesh : null),
+        edge: (out) => {
+          this.talking?.bubble.mesh.localToWorld(out.set(0, 0.5, 0));
+          return !!this.talking;
+        },
+        moveTo: (world) => {
+          if (this.roomGroup) this.bubbleSpot = this.roomGroup.worldToLocal((this.bubbleSpot ?? new Vector3()).copy(world));
+        },
+        reset: () => this.freeBubble(),
+      }),
+      addMovable({
+        id: 'card',
+        side: -1,
+        target: () => this.fileCard?.mesh ?? null,
+        edge: (out) => {
+          this.fileCard?.mesh.localToWorld(out.set(0, -0.5, 0));
+          return !!this.fileCard;
+        },
+        moveTo: (world) => {
+          if (!this.roomGroup || !this.fileCard) return;
+          this.cardSpot = this.roomGroup.worldToLocal((this.cardSpot ?? new Vector3()).copy(world));
+          this.fileCard.mesh.position.copy(this.cardSpot);
+        },
+        reset: () => {
+          this.cardSpot = null;
+          if (this.fileCard) this.placeCard(this.fileCard.mesh, this.cardWidth);
+        },
+      }),
+    );
     this.notesDesk = new NotesDesk(this.world, {
       onMode: (mode) => this.announceMode(mode),
       onUndo: (removed) => this.noteUndone(removed),
@@ -697,7 +739,7 @@ export class RoomSystem extends createSystem({
       item.visible = false;
       rig.hands.add(item);
       const bubble = new Bubble(SPEECH_WIDTH, theme.accent, 10);
-      bubble.mesh.position.set(0, 1.55, 0);
+      bubble.mesh.position.set(0, BUBBLE_HEIGHT, 0);
       rig.root.add(bubble.mesh);
       this.bubbles.push(bubble);
       return {
@@ -1577,7 +1619,10 @@ export class RoomSystem extends createSystem({
   /** Puts a card up beside the robot's bubble, with a small sound. */
   private holdUp(card: FileCard, width: number, height: number): void {
     if (!this.roomGroup) return;
-    this.placeCard(card.mesh, width);
+    this.cardWidth = width;
+    // Where the visitor put the last card, if they moved it; else beside the robot's bubble.
+    if (this.cardSpot) card.mesh.position.copy(this.cardSpot);
+    else this.placeCard(card.mesh, width);
     this.roomGroup.add(card.mesh);
     this.fileCard = card;
     // The room's info panel stands where the card goes, and can be tall: it steps aside while the card is up.
@@ -1658,7 +1703,8 @@ export class RoomSystem extends createSystem({
   }
 
   private updateMicLabel(): void {
-    const label = this.micOff || !this.mic?.active ? 'Mic off' : 'Mic on - just talk';
+    // Short enough to share a row with Questions and Done (see ask.uikitml).
+    const label = this.micOff || !this.mic?.active ? 'Mic off' : 'Just talk';
     this.setAskText('mic-label', label);
     this.notesDesk?.setMicLabel(this.micOff || !this.mic?.active ? 'Mic off' : 'Mic on');
     this.layoutAsk();
@@ -1713,11 +1759,20 @@ export class RoomSystem extends createSystem({
     this.heard(text);
   }
 
+  /** The speech bubble goes back over its robot's head. */
+  private freeBubble(): void {
+    this.bubbleSpot = null;
+    this.talking?.bubble.mesh.position.set(0, BUBBLE_HEIGHT, 0);
+  }
+
   private endConversation(): void {
     this.closeQuiz();
     stopSpeaking();
     this.hideFileCard();
     this.lastCode = null;
+    // What the visitor moved was for this talk: the next one starts with everything in its own place.
+    this.cardSpot = null;
+    this.freeBubble();
     this.mic?.stop();
     this.updateMicLabel();
     this.showAskPanel(false);
@@ -2012,6 +2067,12 @@ export class RoomSystem extends createSystem({
     this.world.camera.getWorldDirection(this.headForward);
     this.headUp.set(0, 1, 0).applyQuaternion(this.world.camera.getWorldQuaternion(this.headQuat));
     setListener(this.head, this.headForward, this.headUp);
+    // A speech bubble the visitor has moved stays where they put it in the room, though its robot turns under it.
+    if (this.bubbleSpot && this.talking) {
+      const robot = this.talking.rig.root;
+      robot.updateWorldMatrix(true, false);
+      this.talking.bubble.mesh.position.copy(robot.worldToLocal(this.roomGroup.localToWorld(this.tmp.copy(this.bubbleSpot))));
+    }
     // Floating bubbles turn to face the visitor; cards hung on the wall stay flat against it.
     for (const b of this.bubbles) if (b.mesh.visible && !b.mesh.userData.onWall) b.mesh.lookAt(this.head);
     if (this.fileCard) {
