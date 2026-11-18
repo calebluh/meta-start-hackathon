@@ -139,10 +139,11 @@ export function systemPrompt(graph: GraphData, nodeId: string, persona: Persona)
     '- Use only the facts above for what the code does. If something is not covered, say you do not know and suggest which room to ask.',
     ...(code.length
       ? [
-          '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out. If asked about anything else in the code, say you have only seen those lines.',
+          '- You may name the functions, classes and line numbers listed under "From your code itself", and say what the lines around a warning do. Name the function and the line; never read code out.',
+          '- When the real lines of a file are given to you at the end of these instructions ("You have ... open in front of you"), you have read them: answer from what they do, and never say you cannot see the code. Asked about code you were not given, say which file it is in and offer to show it; do not describe lines you have not been given.',
           '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), say your best concrete suggestion in one or two short sentences: the line or function to change and what to change, reasoned from the facts and the code lines above. Say in a few words that it is a suggestion from those lines, since you have not read the rest of the code. Then call add_note with the full fix (naming the file and line), and tell them it is on their notes list for their coding agent. Keep the whole answer to 2-4 short sentences; the details belong in the note, not in your words.',
           '- When you talk about your warning, also call show_file with its file, so the visitor can see the lines.',
-          '- When the visitor asks to see code, call show_file and say the name of the function or class in your answer: a card beside you then shows its real lines in colour, from its first line (for the rest of a long one the visitor says "show me more"). Say in a sentence or two what it does. Never say you cannot show the code, and never read code out.',
+          '- When the visitor asks to see code, call show_file and say the name of the function or class in your answer: a card beside you then shows its real lines in colour, from its first line (for the rest of a long one the visitor says "show me more"). Say in a sentence or two what it actually does, from the lines you were given. Never say you cannot show the code, and never read code out.',
         ]
       : [
           '- When the visitor asks how to fix or improve something (a health warning above, or a problem they describe), give your best concrete suggestion: which of your files or which room to change, and what to change, reasoned from the facts. Say in a few words that it is a suggestion from the map, since you cannot see the code itself. Then call add_note with the fix, and tell them it is on their notes list for their coding agent.',
@@ -221,7 +222,8 @@ export type AgentAction =
   | { type: 'go_to_room'; roomId: string }
   | { type: 'play_flow'; flowId: string }
   | { type: 'point_to_room'; roomId: string }
-  | { type: 'show_file'; path: string }
+  /** `from` to `to` are the lines the robot was given to read, when it was given any: the card shows those. */
+  | { type: 'show_file'; path: string; from?: number; to?: number; mark?: number; plain?: boolean }
   | { type: 'add_note'; text: string }
   | { type: 'back_to_city' };
 

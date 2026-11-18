@@ -1,29 +1,5 @@
 import { CanvasTexture, Mesh, MeshBasicMaterial, PlaneGeometry, SRGBColorSpace } from '@iwsdk/core';
 import { ignoreRays } from '../rays.js';
-import type { HealthIssue } from '../maps/types.js';
-
-/**
- * Of a file's warnings, the one a robot's words are about: its line number
- * said ("line 499"), or else the most names from its flagged line said
- * ("parallel_profile_count"). The first when nothing matches.
- */
-export function warningTalkedAbout(issues: HealthIssue[], said: string): HealthIssue | undefined {
-  if (issues.length < 2) return issues[0];
-  const words = new Set((said.toLowerCase().match(/[a-z0-9_]+/g) ?? []).filter((x) => x.length > 3 || /^\d+$/.test(x)));
-  let best = issues[0];
-  let bestScore = 0;
-  for (const issue of issues) {
-    const line = issue.locations?.[0]?.line;
-    const flagged = issue.excerpt?.split('\n').find((l) => l.startsWith('>')) ?? '';
-    const names = (flagged.toLowerCase().replace(/^>\s*\d+/, '').match(/[a-z_][a-z0-9_]{3,}/g) ?? []).filter((n) => words.has(n));
-    const score = (line && words.has(String(line)) ? 10 : 0) + names.length;
-    if (score > bestScore) {
-      bestScore = score;
-      best = issue;
-    }
-  }
-  return best;
-}
 
 /**
  * A speech bubble on a canvas texture. `setText` redraws it; the plane keeps

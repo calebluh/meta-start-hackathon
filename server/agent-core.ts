@@ -15,6 +15,7 @@ import {
 } from '../src/agent/prompt.js';
 import { gradingPrompt, parseVerdict, quizFor } from '../src/agent/quiz.js';
 import { MAPS } from '../src/maps/index.js';
+import { codeFor, fileNamedIn, roomFiles } from './code-context.js';
 import { admitRepoMap } from './repo-map.js';
 import { findings, parseReview, plainReview, reviewPrompt, type ReviewReply } from './review.js';
 import type { GraphData } from '../src/maps/types.js';
@@ -41,6 +42,9 @@ const DEFAULT_MODEL = 'muse-ember-1.0';
 const UPSTREAM_TIMEOUT_MS = 14_000;
 /** A spoken answer shorter than this, with nowhere to go, is treated as unfinished. */
 const THIN_ANSWER = 90;
+/** "I'll pull up that section so you can see it": with the code already given, an answer this short that only promises to show it says nothing yet. */
+const PROMISES_CODE = /\b(?:I(?:'|’)ll|I will|let me|I(?:'|’)m going to)\s+(?:just\s+)?(?:pull|show|walk|bring|hold|put|open|grab|get)\b/i;
+const PROMISE_ONLY = 170;
 /** Do not start a second request with less time than this left. */
 const MIN_SECOND_TRY_MS = 3_500;
 /** Marking a quiz answer is one short reply; the visitor is waiting for a yes or no. */
@@ -203,8 +207,13 @@ export async function talkOver(req: ScribeRequest, apiKey: string | undefined, m
 export async function askAgent(req: AgentRequest, apiKey: string | undefined, model = DEFAULT_MODEL): Promise<AgentReply> {
   if (!apiKey) throw new AgentError(503, 'MODEL_API_KEY is not set on the server');
   const graph = MAPS[req.mapId];
+  // A question about code: the robot is handed the real lines to read (see code-context.ts).
+  // Not when the visitor plainly asked to go somewhere or to watch a flow: that is not a question about code.
+  const moving = plainRequest(graph, req.nodeId, req.question);
+  const code = moving ? null : await codeFor(graph, req.mapId, req.nodeId, req.question, req.history).catch(() => null);
+  const prompt = systemPrompt(graph, req.nodeId, req.persona);
   const messages = [
-    { role: 'system', content: systemPrompt(graph, req.nodeId, req.persona) },
+    { role: 'system', content: code ? `${prompt}\n\n${code.note}` : prompt },
     ...(req.history ?? []),
     { role: 'user', content: req.question },
   ];
@@ -218,7 +227,10 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // and stops, waiting to hear how the tool went before it carries on. Or it
   // answers with a single throwaway line. Give it one more turn to finish.
   const left = UPSTREAM_TIMEOUT_MS - (Date.now() - started);
-  if (!actions.some(leavesRoom) && parseReply(text).answer.length < THIN_ANSWER && left > MIN_SECOND_TRY_MS) {
+  // The same when it was given code to read and only promises to show it ("I'll pull that up for you").
+  const said = parseReply(text).answer;
+  const thin = said.length < THIN_ANSWER || (code !== null && said.length < PROMISE_ONLY && PROMISES_CODE.test(said));
+  if (!actions.some(leavesRoom) && thin && left > MIN_SECOND_TRY_MS) {
     try {
       if (first.raw.tool_calls?.length) {
         const more = await complete(
@@ -273,9 +285,16 @@ export async function askAgent(req: AgentRequest, apiKey: string | undefined, mo
   // Asked to see code, the model often talks about the lines and opens no
   // card, or opens another file than the one asked for. Show the file the
   // visitor named, else the one the answer names, else the room's biggest.
-  if (asksToSeeCode(req.question)) {
-    // "Show me the code for billing day" asks for code, not to watch the Billing day flow.
-    actions = actions.filter((a) => a.type !== 'play_flow');
+  // "Show me the code for billing day" asks for code, not to watch the Billing day flow.
+  if (asksToSeeCode(req.question)) actions = actions.filter((a) => a.type !== 'play_flow');
+  // On the way out of the room there is nobody left to hold a card up.
+  if (actions.some(leavesRoom)) actions = actions.filter((a) => a.type !== 'show_file');
+  if (code && !actions.some(leavesRoom)) {
+    // The robot was given lines to read: the card shows those same lines, so the two are never about different code.
+    actions = actions.filter((a) => a.type !== 'show_file');
+    actions.push({ type: 'show_file', path: code.path, from: code.from, to: code.to, mark: code.mark, plain: code.plain });
+  } else if (asksToSeeCode(req.question)) {
+    // No lines could be had: at least the card of the file that was asked about.
     const asked = fileNamedIn(graph, req.nodeId, req.question);
     const shown = actions.find((a) => a.type === 'show_file');
     if (shown?.type === 'show_file') {
@@ -312,37 +331,6 @@ export async function reviewProject(graph: GraphData, apiKey: string | undefined
 }
 
 
-/** The files kept in a room (and in the rooms inside it). */
-function roomFiles(graph: GraphData, nodeId: string): GraphData['files'] {
-  return graph.files.filter((f) => f.n === nodeId || graph.nodes.find((n) => n.id === f.n)?.parent === nodeId);
-}
-
-/**
- * The room's file that `text` names: by its path, its file name, its
- * plain-English name ("Stripe calls"), or a function or class in it
- * ("runBilling", or said aloud, "run billing").
- */
-function fileNamedIn(graph: GraphData, nodeId: string, text: string): string | null {
-  const own = roomFiles(graph, nodeId);
-  const said = text.toLowerCase();
-  const has = (name: string): boolean => name.length > 3 && new RegExp(`(?<![\\w$])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w$])`).test(said);
-  const aloud = (name: string): string =>
-    name
-      .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-      .replace(/[_-]+/g, ' ')
-      .toLowerCase();
-  const named =
-    own.find((f) => said.includes(f.p.toLowerCase())) ??
-    own.find((f) => has((f.p.split('/').pop() ?? '').toLowerCase())) ??
-    own.find((f) => has(f.name.toLowerCase())) ??
-    own.find((f) =>
-      (f.exports ?? []).some((e) => {
-        const name = e.replace(/ L\d+$/, '');
-        return has(name.toLowerCase()) || (aloud(name).includes(' ') && has(aloud(name)));
-      }),
-    );
-  return named?.p ?? null;
-}
 
 /**
  * An opening sentence that announces the answer instead of giving it: "I'm on

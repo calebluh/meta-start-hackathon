@@ -1,6 +1,7 @@
 // Reads the sample project's code (public/maps/larder/code.txt) and writes what
 // the Larder map carries about it: each file's function and class names with
-// their lines, and the lines round each warning (src/maps/larder-code.json).
+// their lines, and the lines round each warning (src/maps/larder-code.json);
+// and the code itself as runs of lines for the server (server/larder-source.json).
 // The same facts scripts/build-map.mjs reads from a real repository.
 //
 //   node scripts/larder-code.mjs          refresh the JSON
@@ -13,6 +14,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CODE = path.join(root, 'public', 'maps', 'larder', 'code.txt');
 const MAP = path.join(root, 'src', 'maps', 'larder.ts');
 const OUT = path.join(root, 'src', 'maps', 'larder-code.json');
+/** The same code as runs of lines, for the server: a robot asked about a file is given its lines to read (server/code-context.ts). */
+const SOURCE = path.join(root, 'server', 'larder-source.json');
 /** Lines longer than this wrap on a code card. */
 const WIDE = 70;
 const EXCERPT_RADIUS = 10;
@@ -103,6 +106,7 @@ for (const { file, line } of warnings) {
 }
 
 const out = `${JSON.stringify({ exports: exportsOf, excerpts }, null, 2)}\n`;
+const source = `${JSON.stringify(Object.fromEntries(files), null, 1)}\n`;
 const lines = [...files.values()].flat().reduce((n, c) => n + c.lines.length, 0);
 console.log(`${files.size} files, ${lines} lines of sample code, ${Object.values(exportsOf).flat().length} names, ${Object.keys(excerpts).length} warning excerpts`);
 for (const problem of problems) console.error(`problem: ${problem}`);
@@ -113,12 +117,19 @@ if (process.argv.includes('--check')) {
   } catch {
     // no file yet
   }
-  if (current !== out) {
-    console.error('src/maps/larder-code.json is out of date: run node scripts/larder-code.mjs');
+  let currentSource = '';
+  try {
+    currentSource = readFileSync(SOURCE, 'utf8').replace(/\r/g, '');
+  } catch {
+    // no file yet
+  }
+  if (current !== out || currentSource !== source) {
+    console.error('src/maps/larder-code.json or server/larder-source.json is out of date: run node scripts/larder-code.mjs');
     process.exit(1);
   }
   process.exit(problems.length ? 1 : 0);
 }
 writeFileSync(OUT, out);
-console.log(`wrote ${path.relative(root, OUT)}`);
+writeFileSync(SOURCE, source);
+console.log(`wrote ${path.relative(root, OUT)} and ${path.relative(root, SOURCE)}`);
 process.exit(problems.length ? 1 : 0);

@@ -1,0 +1,1317 @@
+{
+ "web/src/app/layout.tsx": [
+  {
+   "first": 14,
+   "lines": [
+    "export default function RootLayout({ children }: Props) {",
+    "  return (",
+    "    <html lang=\"en\" className={inter.variable}>",
+    "      <body>",
+    "        <Header links={NAV_LINKS} />",
+    "        <main className=\"page\">{children}</main>",
+    "        <Footer year={new Date().getFullYear()} />",
+    "      </body>",
+    "    </html>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/lib/api.ts": [
+  {
+   "first": 18,
+   "lines": [
+    "/** Asks the main server for something, as the logged-in customer. */",
+    "export async function api<T>(path: string, init: Init = {}) {",
+    "  const token = await loginToken();",
+    "  const response = await fetch(apiPath(path), {",
+    "    method: init.method ?? 'GET',",
+    "    headers: {",
+    "      'Content-Type': 'application/json',",
+    "      ...(token ? { Authorization: `Bearer ${token}` } : {}),",
+    "    },",
+    "    body: init.body ? JSON.stringify(init.body) : undefined,",
+    "  });",
+    "",
+    "  if (response.status === 401) {",
+    "    await signOut();",
+    "    throw new ApiError(401, 'Please log in again');",
+    "  }",
+    "  if (!response.ok) {",
+    "    const problem = await response.json().catch(() => ({}));",
+    "    const reason = problem.error ?? 'Server error';",
+    "    throw new ApiError(response.status, reason);",
+    "  }",
+    "  return (await response.json()) as T;",
+    "}"
+   ]
+  }
+ ],
+ "web/src/config.ts": [
+  {
+   "first": 1,
+   "lines": [
+    "// Settings the website needs to talk to the server and to Stripe.",
+    "// This file is bundled into the page, so everything in it is public.",
+    "",
+    "export const config = {",
+    "  // Where the main server lives.",
+    "  apiUrl: process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000',",
+    "",
+    "  // Stripe: the publishable key is meant for the browser.",
+    "  stripePublishableKey: 'pk_live_EXAMPLE_ONLY_not_a_real_key',",
+    "",
+    "  // FIXME: the secret key must never ship to the browser.",
+    "  stripeSecretKey: 'sk_live_EXAMPLE_ONLY_not_a_real_key',",
+    "",
+    "  // Recipe photos are served straight from the bucket.",
+    "  photoBaseUrl: 'https://photos.larder.example/recipes',",
+    "",
+    "  // How many recipes fit in each box size.",
+    "  boxSizes: { small: 3, family: 5 },",
+    "",
+    "  // Orders close this many hours before billing day.",
+    "  cutOffHours: 36,",
+    "} as const;",
+    "",
+    "export type BoxSize = keyof typeof config.boxSizes;",
+    "",
+    "/** The full address of a server endpoint. */",
+    "export function apiPath(path: string): string {",
+    "  const base = config.apiUrl.replace(/\\/$/, '');",
+    "  const tail = path.startsWith('/') ? path : `/${path}`;",
+    "  return `${base}${tail}`;",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/menu/page.tsx": [
+  {
+   "first": 22,
+   "lines": [
+    "export default async function MenuPage() {",
+    "  const { week, recipes } = await api<WeeklyMenu>('/menu');",
+    "  const box = await currentBox();",
+    "",
+    "  return (",
+    "    <section className=\"menu\">",
+    "      <h1>This week: {formatWeek(week)}</h1>",
+    "      <p className=\"hint\">Pick {box.size} recipes for your box.</p>",
+    "      <div className=\"grid\">",
+    "        {recipes.map((recipe) => (",
+    "          <RecipeCard",
+    "            key={recipe.id}",
+    "            recipe={recipe}",
+    "            chosen={box.recipeIds.includes(recipe.id)}",
+    "          />",
+    "        ))}",
+    "      </div>",
+    "      <BoxTray box={box} recipes={recipes} />",
+    "    </section>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/menu/RecipeCard.tsx": [
+  {
+   "first": 16,
+   "lines": [
+    "export function RecipeCard({ recipe, chosen }: RecipeCardProps) {",
+    "  const { add, remove, full } = useBox();",
+    "  const photo = `${config.photoBaseUrl}/${recipe.photo}`;",
+    "",
+    "  return (",
+    "    <article className={chosen ? 'card chosen' : 'card'}>",
+    "      <img src={photo} alt={recipe.name} loading=\"lazy\" />",
+    "      <h2>{recipe.name}</h2>",
+    "      <p className=\"meta\">",
+    "        {recipe.minutes} min · {recipe.diet.join(', ')}",
+    "      </p>",
+    "      {chosen ? (",
+    "        <button onClick={() => remove(recipe.id)}>Remove</button>",
+    "      ) : (",
+    "        <button disabled={full} onClick={() => add(recipe.id)}>",
+    "          Add to box",
+    "        </button>",
+    "      )}",
+    "    </article>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/menu/BoxTray.tsx": [
+  {
+   "first": 31,
+   "lines": [
+    "export function BoxTray({ box, recipes }: BoxTrayProps) {",
+    "  const chosen = recipes.filter((r) => box.recipeIds.includes(r.id));",
+    "  const left = box.size - chosen.length;",
+    "  const price = withTax(box.pricePence, TAX_RATE);",
+    "",
+    "  return (",
+    "    <aside className=\"tray\" aria-live=\"polite\">",
+    "      <h2>Your box</h2>",
+    "      <ul>",
+    "        {chosen.map((recipe) => (",
+    "          <li key={recipe.id}>{recipe.name}</li>",
+    "        ))}",
+    "      </ul>",
+    "      <p>{left > 0 ? `${left} more to pick` : 'Box is full'}</p>",
+    "      <p className=\"price\">{formatMoney(price)} a week</p>",
+    "      <a className=\"button\" href=\"/checkout\" aria-disabled={left > 0}>",
+    "        Go to checkout",
+    "      </a>",
+    "    </aside>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/checkout/page.tsx": [
+  {
+   "first": 41,
+   "lines": [
+    "/** Sends the order to the server once the card has been taken. */",
+    "async function placeOrder(form: CheckoutForm): Promise<Confirmation> {",
+    "  if (!isDeliveryDay(form.deliveryDay)) {",
+    "    throw new FormError('deliveryDay', 'Pick a delivery day');",
+    "  }",
+    "  const order = await api<Confirmation>('/checkout', {",
+    "    method: 'POST',",
+    "    body: {",
+    "      address: form.address,",
+    "      deliveryDay: form.deliveryDay,",
+    "      boxSize: form.boxSize,",
+    "      recipeIds: form.recipeIds,",
+    "      paymentMethodId: form.paymentMethodId,",
+    "    },",
+    "  });",
+    "  redirect(`/checkout/confirm?order=${order.id}`);",
+    "  return order;",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/checkout/CardForm.tsx": [
+  {
+   "first": 24,
+   "lines": [
+    "export function CardForm({ onReady }: CardFormProps) {",
+    "  const stripe = useStripe();",
+    "  const elements = useElements();",
+    "  const [error, setError] = useState<string | null>(null);",
+    "",
+    "  async function pay(event: FormEvent) {",
+    "    event.preventDefault();",
+    "    const card = elements?.getElement(CardElement);",
+    "    if (!stripe || !card) return;",
+    "",
+    "    const result = await stripe.createPaymentMethod({",
+    "      type: 'card',",
+    "      card,",
+    "    });",
+    "    if (result.error) {",
+    "      setError(result.error.message ?? 'Your card was not accepted');",
+    "      return;",
+    "    }",
+    "    onReady(result.paymentMethod.id);",
+    "  }",
+    "",
+    "  return (",
+    "    <form onSubmit={pay}>",
+    "      <CardElement options={CARD_STYLE} />",
+    "      {error && <p className=\"error\">{error}</p>}",
+    "      <button type=\"submit\">Pay and start my plan</button>",
+    "    </form>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/checkout/confirm/page.tsx": [
+  {
+   "first": 12,
+   "lines": [
+    "export default async function ConfirmPage({ searchParams }: Props) {",
+    "  const order = await api<Order>(`/orders/${searchParams.order}`);",
+    "  const day = formatDay(order.deliveryDate);",
+    "",
+    "  return (",
+    "    <section className=\"confirm\">",
+    "      <h1>Thank you. Your first box is booked.</h1>",
+    "      <p>",
+    "        It arrives on <strong>{day}</strong>. We will email you a",
+    "        receipt, and again when the box is on its way.",
+    "      </p>",
+    "      <a className=\"button\" href=\"/account\">",
+    "        See my plan",
+    "      </a>",
+    "    </section>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/account/page.tsx": [
+  {
+   "first": 28,
+   "lines": [
+    "export default async function AccountPage() {",
+    "  const plan = await api<Plan>('/account/plan');",
+    "  const boxes = await api<Box[]>('/account/boxes?upcoming=4');",
+    "",
+    "  return (",
+    "    <section className=\"account\">",
+    "      <h1>Your plan</h1>",
+    "      <PlanSummary plan={plan} />",
+    "      <h2>Coming up</h2>",
+    "      <ul className=\"boxes\">",
+    "        {boxes.map((box) => (",
+    "          <li key={box.weekStart}>",
+    "            <span>{formatWeek(box.weekStart)}</span>",
+    "            <SkipWeek box={box} />",
+    "          </li>",
+    "        ))}",
+    "      </ul>",
+    "      <PausePlan plan={plan} />",
+    "    </section>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/account/SkipWeek.tsx": [
+  {
+   "first": 19,
+   "lines": [
+    "export function SkipWeek({ box }: { box: Box }) {",
+    "  const [skipped, setSkipped] = useState(box.skipped);",
+    "  const [busy, setBusy] = useState(false);",
+    "  const closed = isPastCutOff(box.weekStart);",
+    "",
+    "  async function toggle() {",
+    "    setBusy(true);",
+    "    try {",
+    "      await api('/account/skip', {",
+    "        method: 'POST',",
+    "        body: { weekStart: box.weekStart, skip: !skipped },",
+    "      });",
+    "      setSkipped(!skipped);",
+    "    } finally {",
+    "      setBusy(false);",
+    "    }",
+    "  }",
+    "",
+    "  if (closed) return <span className=\"note\">Being packed</span>;",
+    "  return (",
+    "    <button onClick={toggle} disabled={busy}>",
+    "      {skipped ? 'Un-skip this week' : 'Skip this week'}",
+    "    </button>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "web/src/app/account/PausePlan.tsx": [
+  {
+   "first": 17,
+   "lines": [
+    "export function PausePlan({ plan }: { plan: Plan }) {",
+    "  const [until, setUntil] = useState(plan.pausedUntil ?? '');",
+    "  const [saved, setSaved] = useState(false);",
+    "",
+    "  async function pause(event: FormEvent) {",
+    "    event.preventDefault();",
+    "    await api('/account/pause', { method: 'POST', body: { until } });",
+    "    setSaved(true);",
+    "  }",
+    "",
+    "  return (",
+    "    <form className=\"pause\" onSubmit={pause}>",
+    "      <label htmlFor=\"until\">Pause deliveries until</label>",
+    "      <input",
+    "        id=\"until\"",
+    "        type=\"date\"",
+    "        min={nextDeliveryDay(new Date(), plan.deliveryDay)}",
+    "        value={until}",
+    "        onChange={(e) => setUntil(e.target.value)}",
+    "      />",
+    "      <button type=\"submit\">Pause my plan</button>",
+    "      {saved && <p className=\"note\">Paused. No boxes until then.</p>}",
+    "    </form>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "admin/src/pages/Recipes.tsx": [
+  {
+   "first": 52,
+   "lines": [
+    "/** Saves the kitchen's picks for a week, photos first. */",
+    "async function saveWeek(week: string, picks: RecipeDraft[]) {",
+    "  for (const pick of picks) {",
+    "    if (!pick.newPhoto) continue;",
+    "    const { uploadUrl, name } = await staffApi<Upload>(",
+    "      `/admin/photos?recipe=${pick.id}`,",
+    "    );",
+    "    await fetch(uploadUrl, { method: 'PUT', body: pick.newPhoto });",
+    "    pick.photo = name;",
+    "  }",
+    "  await staffApi('/admin/recipes', {",
+    "    method: 'PUT',",
+    "    body: { week, recipeIds: picks.map((p) => p.id) },",
+    "  });",
+    "}"
+   ]
+  }
+ ],
+ "admin/src/pages/Packing.tsx": [
+  {
+   "first": 33,
+   "lines": [
+    "export function Packing() {",
+    "  const [week, setWeek] = useState(thisWeek());",
+    "  const [lists, setLists] = useState<PackingList[]>([]);",
+    "",
+    "  useEffect(() => {",
+    "    staffApi<PackingReply>(`/admin/packing?week=${week}`)",
+    "      .then((reply) => setLists(reply.lists));",
+    "  }, [week]);",
+    "",
+    "  return (",
+    "    <section>",
+    "      <WeekPicker value={week} onChange={setWeek} />",
+    "      {lists.map((list) => (",
+    "        <PackingSheet key={list.route} list={list} />",
+    "      ))}",
+    "      <button onClick={() => window.print()}>Print all</button>",
+    "    </section>",
+    "  );",
+    "}"
+   ]
+  }
+ ],
+ "admin/src/pages/Refunds.tsx": [
+  {
+   "first": 27,
+   "lines": [
+    "/** Refunds one box and shows the kitchen what was paid back. */",
+    "async function refundBox(orderId: string, reason: RefundReason) {",
+    "  const sure = window.confirm('Refund this box to the customer?');",
+    "  if (!sure) return null;",
+    "",
+    "  const reply = await staffApi<Refunded>('/admin/refund', {",
+    "    method: 'POST',",
+    "    body: { orderId, reason },",
+    "  });",
+    "  toast(`Refunded ${formatMoney(reply.refunded)}`);",
+    "  return reply.refunded;",
+    "}"
+   ]
+  }
+ ],
+ "admin/src/api.ts": [
+  {
+   "first": 12,
+   "lines": [
+    "/** Asks the main server for something, as a member of staff. */",
+    "export async function staffApi<T>(path: string, init: Init = {}) {",
+    "  const session = await staffSession();",
+    "  if (!session) throw new Error('Staff login needed');",
+    "",
+    "  const response = await fetch(`${SERVER}${path}`, {",
+    "    method: init.method ?? 'GET',",
+    "    headers: {",
+    "      'Content-Type': 'application/json',",
+    "      'X-Staff-Token': session.token,",
+    "    },",
+    "    body: init.body ? JSON.stringify(init.body) : undefined,",
+    "  });",
+    "  if (!response.ok) throw new Error(`Server said ${response.status}`);",
+    "  return response.status === 204 ? (undefined as T) : response.json();",
+    "}"
+   ]
+  }
+ ],
+ "api/src/server.ts": [
+  {
+   "first": 21,
+   "lines": [
+    "/** Starts the server and plugs in every endpoint. */",
+    "export function startServer(port = Number(process.env.PORT ?? 4000)) {",
+    "  const app = express();",
+    "  app.use(cors({ origin: ALLOWED_ORIGINS }));",
+    "",
+    "  // Stripe signs the raw body: its webhook goes before the parser.",
+    "  app.use(webhooks);",
+    "  app.use(express.json());",
+    "",
+    "  app.use(menu);",
+    "  app.use(checkout);",
+    "  app.use(account);",
+    "  app.use(admin);",
+    "",
+    "  app.get('/health', (_req, res) => res.json({ ok: true }));",
+    "  app.use(onError);",
+    "",
+    "  return app.listen(port, () => {",
+    "    console.log(`Larder server listening on ${port}`);",
+    "  });",
+    "}"
+   ]
+  }
+ ],
+ "api/src/routes/menu.ts": [
+  {
+   "first": 14,
+   "lines": [
+    "// GET /menu: this week's recipes, with photos and cook times.",
+    "menu.get('/menu', async (req, res) => {",
+    "  const week = weekOf(String(req.query.week ?? ''));",
+    "  const recipes = await recipesFor(week);",
+    "",
+    "  res.set('Cache-Control', 'public, max-age=300');",
+    "  res.json({",
+    "    week,",
+    "    recipes: recipes.map((recipe) => ({",
+    "      id: recipe.id,",
+    "      name: recipe.name,",
+    "      photo: recipe.photo,",
+    "      minutes: recipe.minutes,",
+    "      diet: recipe.diet,",
+    "    })),",
+    "  });",
+    "});"
+   ]
+  }
+ ],
+ "api/src/routes/checkout.ts": [
+  {
+   "first": 38,
+   "lines": [
+    "// POST /checkout: a first order. Starts the plan, then takes payment.",
+    "checkout.post('/checkout', requireLogin, async (req, res) => {",
+    "  const order = parseCheckout(req.body);",
+    "  const first = nextDeliveryDay(new Date(), order.deliveryDay);",
+    "  if (isPastCutOff(first)) {",
+    "    return res.status(409).json({ error: 'That week has closed' });",
+    "  }",
+    "",
+    "  const plan = await startSubscription(req.customer.id, {",
+    "    boxSize: order.boxSize,",
+    "    deliveryDay: order.deliveryDay,",
+    "    address: order.address,",
+    "  });",
+    "  const charge = await chargeFirstBox(plan, order.paymentMethodId);",
+    "",
+    "  res.status(201).json({",
+    "    id: charge.orderId,",
+    "    planId: plan.id,",
+    "    deliveryDate: first,",
+    "  });",
+    "});"
+   ]
+  }
+ ],
+ "api/src/routes/account.ts": [
+  {
+   "first": 46,
+   "lines": [
+    "// POST /account/skip: skip, or un-skip, one upcoming week.",
+    "account.post('/account/skip', requireLogin, async (req, res) => {",
+    "  const { weekStart, skip } = req.body as SkipRequest;",
+    "  const plan = await planFor(req.customer.id);",
+    "  if (isPastCutOff(weekStart)) {",
+    "    return res.status(409).json({ error: 'That week has closed' });",
+    "  }",
+    "  if (skip) await skipWeek(plan.id, weekStart);",
+    "  else await unskipWeek(plan.id, weekStart);",
+    "  res.json({ weekStart, skipped: skip });",
+    "});",
+    "",
+    "// POST /account/pause: no boxes until a chosen date.",
+    "account.post('/account/pause', requireLogin, async (req, res) => {",
+    "  const until = parseDate(req.body.until);",
+    "  const plan = await planFor(req.customer.id);",
+    "  await pausePlan(plan.id, until);",
+    "  res.json({ pausedUntil: until });",
+    "});"
+   ]
+  }
+ ],
+ "api/src/routes/webhooks.ts": [
+  {
+   "first": 29,
+   "lines": [
+    "// Stripe calls this when a payment goes through or fails.",
+    "webhooks.post('/webhooks/stripe', rawBody, async (req, res) => {",
+    "  const signature = req.get('stripe-signature');",
+    "  const event = verifyStripeEvent(req.body, signature);",
+    "  if (!event) return res.status(400).end();",
+    "",
+    "  const orderId = event.data.object.metadata.orderId;",
+    "  if (event.type === 'payment_intent.succeeded') {",
+    "    const order = await markPaid(orderId);",
+    "    await sendEmail(order.email, 'receipt', {",
+    "      amount: order.pricePence,",
+    "      deliveryDate: order.deliveryDate,",
+    "    });",
+    "  } else if (event.type === 'payment_intent.payment_failed') {",
+    "    const order = await markDeclined(orderId);",
+    "    await sendEmail(order.email, 'cardDeclined', { retryInDays: 2 });",
+    "  }",
+    "  res.json({ received: true });",
+    "});"
+   ]
+  }
+ ],
+ "api/src/routes/admin.ts": [
+  {
+   "first": 72,
+   "lines": [
+    "// What goes in each box this week, for the kitchen to print.",
+    "admin.get('/admin/packing', requireStaff, async (req, res) => {",
+    "  const week = weekOf(String(req.query.week ?? ''));",
+    "  const lists = await packingListsFor(week);",
+    "  res.json({ week, lists });",
+    "});",
+    "",
+    "// Next week's recipes, chosen by the kitchen team.",
+    "admin.put('/admin/recipes', requireStaff, async (req, res) => {",
+    "  const { week, recipeIds } = req.body as RecipePlan;",
+    "  await saveRecipePlan(weekOf(week), recipeIds);",
+    "  res.status(204).end();",
+    "});",
+    "",
+    "// Refund a box that arrived damaged.",
+    "// FIXME: every other staff endpoint passes requireStaff first.",
+    "admin.post('/admin/refund', async (req, res) => {",
+    "  const { orderId, reason } = req.body as RefundRequest;",
+    "  const order = await orderById(orderId);",
+    "  if (!order) return res.status(404).end();",
+    "",
+    "  const amount = refundAmount(order, reason);",
+    "  const refund = await refundCharge(order.chargeId, amount);",
+    "  await recordRefund(order.id, refund.id, amount, reason);",
+    "  res.json({ refunded: amount });",
+    "});"
+   ]
+  }
+ ],
+ "api/src/orders/subscriptions.ts": [
+  {
+   "first": 31,
+   "lines": [
+    "/** Starts a weekly plan for a customer who has just checked out. */",
+    "export async function startSubscription(",
+    "  customerId: string,",
+    "  details: PlanDetails,",
+    "): Promise<Plan> {",
+    "  const existing = await planFor(customerId);",
+    "  if (existing && existing.status === 'active') {",
+    "    throw new OrderError('This customer already has a plan');",
+    "  }",
+    "  return insertPlan({",
+    "    customerId,",
+    "    boxSize: details.boxSize,",
+    "    deliveryDay: details.deliveryDay,",
+    "    address: details.address,",
+    "    status: 'active',",
+    "    startedAt: new Date(),",
+    "  });",
+    "}"
+   ]
+  },
+  {
+   "first": 118,
+   "lines": [
+    "/** Skips one week of a plan: no charge and no box for that week. */",
+    "export async function skipWeek(planId: string, weekStart: string) {",
+    "  const plan = await planById(planId);",
+    "  if (plan.status !== 'active') {",
+    "    throw new OrderError('Only an active plan can skip a week');",
+    "  }",
+    "  // One row per plan and week; skipping twice changes nothing.",
+    "  await insertSkip(planId, weekStart);",
+    "}",
+    "",
+    "/** Stops deliveries until a date, without cancelling the plan. */",
+    "export async function pausePlan(planId: string, until: string) {",
+    "  await updatePlan(planId, { status: 'paused', pausedUntil: until });",
+    "}"
+   ]
+  }
+ ],
+ "api/src/orders/weekly.ts": [
+  {
+   "first": 27,
+   "lines": [
+    "/** Turns every active plan into an order for the week given. */",
+    "export async function buildWeeklyOrders(weekStart: string) {",
+    "  // Skipped and paused weeks are left out by the query itself.",
+    "  const plans = await activePlansFor(weekStart);",
+    "  const orders: Order[] = [];",
+    "",
+    "  for (const plan of plans) {",
+    "    const already = await orderFor(plan.id, weekStart);",
+    "    if (already) {",
+    "      orders.push(already);",
+    "      continue;",
+    "    }",
+    "    orders.push(",
+    "      await insertOrder({",
+    "        planId: plan.id,",
+    "        weekStart,",
+    "        deliveryDate: nextDeliveryDay(weekStart, plan.deliveryDay),",
+    "        pricePence: boxPrice(plan.boxSize, plan.addOns),",
+    "        status: 'due',",
+    "      }),",
+    "    );",
+    "  }",
+    "  return orders;",
+    "}"
+   ]
+  }
+ ],
+ "api/src/orders/pricing.ts": [
+  {
+   "first": 18,
+   "lines": [
+    "/** A box's price in pence, before tax, from its size and add-ons. */",
+    "export function boxPrice(size: BoxSize, addOns: AddOn[] = []) {",
+    "  const base = BASE_PRICE_PENCE[size];",
+    "  const extras = addOns.reduce(",
+    "    (sum, addOn) => sum + ADD_ON_PRICE_PENCE[addOn],",
+    "    0,",
+    "  );",
+    "  // A family box with two or more add-ons gets 10% off the add-ons.",
+    "  const discount = size === 'family' && addOns.length >= 2 ? 0.1 : 0;",
+    "  return Math.round(base + extras * (1 - discount));",
+    "}"
+   ]
+  }
+ ],
+ "api/src/payments/stripe.ts": [
+  {
+   "first": 44,
+   "lines": [
+    "/** Charges one order to the card Stripe holds for its customer. */",
+    "export async function chargeBox(order: Order): Promise<ChargeResult> {",
+    "  const customer = await stripeCustomerFor(order.planId);",
+    "  try {",
+    "    const intent = await stripe.paymentIntents.create({",
+    "      amount: withTax(order.pricePence, TAX_RATE),",
+    "      currency: 'gbp',",
+    "      customer: customer.id,",
+    "      payment_method: customer.defaultCard,",
+    "      off_session: true,",
+    "      confirm: true,",
+    "      metadata: { orderId: order.id },",
+    "    });",
+    "    return { ok: true, chargeId: intent.id };",
+    "  } catch (error) {",
+    "    if (!isCardDeclined(error)) throw error;",
+    "    return { ok: false, reason: 'declined' };",
+    "  }",
+    "}"
+   ]
+  },
+  {
+   "first": 96,
+   "lines": [
+    "/** Gives money back on a charge: all of it, or part. */",
+    "export async function refundCharge(chargeId: string, amount: number) {",
+    "  return stripe.refunds.create({",
+    "    payment_intent: chargeId,",
+    "    amount,",
+    "    reason: 'requested_by_customer',",
+    "  });",
+    "}"
+   ]
+  }
+ ],
+ "api/src/payments/refunds.ts": [
+  {
+   "first": 22,
+   "lines": [
+    "/** How much to give back for a box, in pence, by what went wrong. */",
+    "export function refundAmount(order: Order, reason: RefundReason) {",
+    "  const paid = withTax(order.pricePence, TAX_RATE);",
+    "  switch (reason) {",
+    "    case 'damaged':",
+    "    case 'never_arrived':",
+    "      return paid;",
+    "    case 'late':",
+    "      return Math.round(paid / 2);",
+    "    case 'missing_item':",
+    "      return Math.round(paid / order.recipeCount);",
+    "    default:",
+    "      throw new RefundError(`Unknown reason: ${reason}`);",
+    "  }",
+    "}"
+   ]
+  }
+ ],
+ "api/src/email/send.ts": [
+  {
+   "first": 14,
+   "lines": [
+    "/** Sends one email through Postmark, worded from a template. */",
+    "export async function sendEmail(",
+    "  to: string,",
+    "  template: TemplateName,",
+    "  data: Record<string, unknown>,",
+    ") {",
+    "  const { subject, body } = templates[template](data);",
+    "  const response = await fetch('https://api.postmarkapp.com/email', {",
+    "    method: 'POST',",
+    "    headers: {",
+    "      'Content-Type': 'application/json',",
+    "      'X-Postmark-Server-Token': process.env.POSTMARK_TOKEN ?? '',",
+    "    },",
+    "    body: JSON.stringify({",
+    "      From: 'Larder <hello@larder.example>',",
+    "      To: to,",
+    "      Subject: subject,",
+    "      TextBody: body,",
+    "    }),",
+    "  });",
+    "  if (!response.ok) throw new EmailError(to, response.status);",
+    "}"
+   ]
+  }
+ ],
+ "api/src/email/templates.ts": [
+  {
+   "first": 20,
+   "lines": [
+    "export const templates = {",
+    "  receipt: (data: ReceiptData) => ({",
+    "    subject: 'Your Larder receipt',",
+    "    body: [",
+    "      `Thanks. We charged ${formatMoney(data.amount)} for your box.`,",
+    "      `It arrives on ${formatDay(data.deliveryDate)}.`,",
+    "    ].join('\\n'),",
+    "  }),",
+    "",
+    "  onItsWay: (data: DeliveryData) => ({",
+    "    subject: 'Your box is on its way',",
+    "    body: `Your box left the kitchen and arrives ${data.window}.`,",
+    "  }),",
+    "",
+    "  cardDeclined: (data: DeclinedData) => ({",
+    "    subject: 'We could not charge your card',",
+    "    body: `We will try again in ${data.retryInDays} days.`,",
+    "  }),",
+    "};"
+   ]
+  }
+ ],
+ "api/src/db/schema.ts": [
+  {
+   "first": 38,
+   "lines": [
+    "/** One weekly plan per customer: which box, and which day. */",
+    "export const plans = pgTable('plans', {",
+    "  id: uuid('id').primaryKey().defaultRandom(),",
+    "  customerId: uuid('customer_id')",
+    "    .notNull()",
+    "    .references(() => customers.id),",
+    "  boxSize: text('box_size').$type<BoxSize>().notNull(),",
+    "  deliveryDay: text('delivery_day').$type<Weekday>().notNull(),",
+    "  address: jsonb('address').$type<Address>().notNull(),",
+    "  status: text('status').$type<PlanStatus>().notNull(),",
+    "  pausedUntil: date('paused_until'),",
+    "  startedAt: timestamp('started_at').notNull().defaultNow(),",
+    "});"
+   ]
+  }
+ ],
+ "api/src/db/queries.ts": [
+  {
+   "first": 61,
+   "lines": [
+    "/** Every plan that should get a box in the week given. */",
+    "export async function activePlansFor(weekStart: string) {",
+    "  // A skipped week never reaches billing day or the kitchen.",
+    "  const skipped = db",
+    "    .select({ planId: skips.planId })",
+    "    .from(skips)",
+    "    .where(eq(skips.weekStart, weekStart));",
+    "",
+    "  return db",
+    "    .select()",
+    "    .from(plans)",
+    "    .where(",
+    "      and(",
+    "        ne(plans.status, 'cancelled'),",
+    "        // Paused plans come back once their date has passed.",
+    "        notPausedOn(weekStart),",
+    "        notInArray(plans.id, skipped),",
+    "      ),",
+    "    );",
+    "}"
+   ]
+  }
+ ],
+ "api/src/db/migrations/0007_skips.sql": [
+  {
+   "first": 1,
+   "lines": [
+    "-- 0007: a table for skipped weeks.",
+    "-- A customer may skip any upcoming week from their account page.",
+    "-- Billing day and packing day both leave skipped weeks out.",
+    "",
+    "BEGIN;",
+    "",
+    "CREATE TABLE skips (",
+    "  id          BIGSERIAL PRIMARY KEY,",
+    "  plan_id     UUID NOT NULL REFERENCES plans (id) ON DELETE CASCADE,",
+    "  week_start  DATE NOT NULL,",
+    "  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),",
+    "",
+    "  -- Skipping the same week twice is the same as skipping it once.",
+    "  CONSTRAINT skips_one_per_week UNIQUE (plan_id, week_start)",
+    ");",
+    "",
+    "-- Billing day looks skips up a week at a time.",
+    "CREATE INDEX skips_week_start_idx ON skips (week_start);",
+    "",
+    "-- Weeks skipped before this table existed were kept as a note",
+    "-- on the plan. Move them over, then drop the old column.",
+    "INSERT INTO skips (plan_id, week_start)",
+    "SELECT id, unnest(skipped_weeks)",
+    "FROM plans",
+    "WHERE skipped_weeks IS NOT NULL;",
+    "",
+    "ALTER TABLE plans DROP COLUMN skipped_weeks;",
+    "",
+    "COMMIT;",
+    "",
+    "-- To undo:",
+    "--   ALTER TABLE plans ADD COLUMN skipped_weeks DATE[];",
+    "--   UPDATE plans SET skipped_weeks = ARRAY(",
+    "--     SELECT week_start FROM skips WHERE plan_id = plans.id",
+    "--   );",
+    "--   DROP TABLE skips;",
+    "--",
+    "-- Checked against a copy of production on 2026-03-02:",
+    "-- 4,812 skipped weeks moved, none lost.",
+    "-- Runs in under a second; safe to apply while the site is up.",
+    "-- Applied to production on 2026-03-04."
+   ]
+  }
+ ],
+ "jobs/src/billing.ts": [
+  {
+   "first": 24,
+   "lines": [
+    "/** Billing day: charges every plan that has a box next week. */",
+    "export async function runBilling(now = new Date()): Promise<Tally> {",
+    "  const weekStart = nextWeekStart(now);",
+    "  const orders = await buildWeeklyOrders(weekStart);",
+    "  const tally: Tally = { charged: 0, declined: 0, skipped: 0 };",
+    "",
+    "  for (const order of orders) {",
+    "    if (order.status !== 'due') {",
+    "      tally.skipped += 1; // paid already: never charge twice",
+    "      continue;",
+    "    }",
+    "    const result = await chargeBox(order);",
+    "    if (result.ok) {",
+    "      await markPaid(order.id, result.chargeId);",
+    "      tally.charged += 1;",
+    "    } else {",
+    "      await queueRetry(order.id, addDays(now, RETRY_DAYS));",
+    "      await sendEmail(order.email, 'cardDeclined', RETRY_NOTE);",
+    "      tally.declined += 1;",
+    "    }",
+    "  }",
+    "  return tally;",
+    "}"
+   ]
+  }
+ ],
+ "jobs/src/retry.ts": [
+  {
+   "first": 19,
+   "lines": [
+    "/** Tries declined cards again, two days after they failed. */",
+    "export async function retryDeclined(now = new Date()) {",
+    "  const due = await retriesDueBy(now);",
+    "",
+    "  for (const retry of due) {",
+    "    const order = await orderById(retry.orderId);",
+    "    const result = await chargeBox(order);",
+    "    if (result.ok) {",
+    "      await markPaid(order.id, result.chargeId);",
+    "      await clearRetry(retry.id);",
+    "    } else if (retry.attempts >= MAX_ATTEMPTS) {",
+    "      // Two tries is enough: the box is cancelled for that week.",
+    "      await cancelOrder(order.id, 'card_declined');",
+    "      await clearRetry(retry.id);",
+    "    } else {",
+    "      await bumpRetry(retry.id, addDays(now, 2));",
+    "    }",
+    "  }",
+    "}"
+   ]
+  }
+ ],
+ "jobs/src/packing.ts": [
+  {
+   "first": 22,
+   "lines": [
+    "/** Packing day: groups paid orders into a list for each van route. */",
+    "export async function runPacking(weekStart: string) {",
+    "  const orders = await paidOrdersFor(weekStart);",
+    "  const byRoute = new Map<string, PackingList>();",
+    "",
+    "  for (const order of orders) {",
+    "    const route = routeFor(order.address.postcode);",
+    "    const list = byRoute.get(route) ?? { route, boxes: [] };",
+    "    list.boxes.push({",
+    "      orderId: order.id,",
+    "      name: order.customerName,",
+    "      recipes: await recipeNamesFor(order.id),",
+    "      size: order.boxSize,",
+    "    });",
+    "    byRoute.set(route, list);",
+    "  }",
+    "  await savePackingLists(weekStart, [...byRoute.values()]);",
+    "  return byRoute.size;",
+    "}"
+   ]
+  }
+ ],
+ "jobs/src/schedule.ts": [
+  {
+   "first": 1,
+   "lines": [
+    "// When each weekly run starts. Times are UK time.",
+    "// Started once, by the jobs container, when it boots.",
+    "import { schedule } from 'node-cron';",
+    "import { runBilling } from './billing';",
+    "import { runPacking } from './packing';",
+    "import { retryDeclined } from './retry';",
+    "import { nextWeekStart } from '../../shared/src/dates';",
+    "",
+    "const UK = { timezone: 'Europe/London' };",
+    "",
+    "/** Runs a job and says how it went: no failure goes unseen. */",
+    "async function run(name: string, job: () => Promise<unknown>) {",
+    "  const started = Date.now();",
+    "  try {",
+    "    const result = await job();",
+    "    const seconds = Math.round((Date.now() - started) / 1000);",
+    "    console.log(`[${name}] done in ${seconds}s`, result);",
+    "  } catch (error) {",
+    "    console.error(`[${name}] failed`, error);",
+    "    process.exitCode = 1;",
+    "  }",
+    "}",
+    "",
+    "export function startSchedule() {",
+    "  // Billing day: Thursday, six in the morning.",
+    "  schedule('0 6 * * 4', () => run('billing', runBilling), UK);",
+    "",
+    "  // Declined cards: tried again every morning at seven.",
+    "  schedule('0 7 * * *', () => run('retry', retryDeclined), UK);",
+    "",
+    "  // Packing day: Saturday, five in the morning, for the week ahead.",
+    "  const pack = () => runPacking(nextWeekStart(new Date()));",
+    "  schedule('0 5 * * 6', () => run('packing', pack), UK);",
+    "",
+    "  console.log('Weekly runs scheduled (UK time)');",
+    "}",
+    "",
+    "startSchedule();"
+   ]
+  }
+ ],
+ "shared/src/prices.ts": [
+  {
+   "first": 12,
+   "lines": [
+    "/** Pence as pounds and pence: 1250 becomes \"£12.50\". */",
+    "export function formatMoney(pence: number): string {",
+    "  const pounds = Math.floor(Math.abs(pence) / 100);",
+    "  const rest = String(Math.abs(pence) % 100).padStart(2, '0');",
+    "  return `${pence < 0 ? '-' : ''}£${pounds}.${rest}`;",
+    "}",
+    "",
+    "/** A price with tax added, rounded to the nearest penny. */",
+    "export function withTax(pence: number, rate: number): number {",
+    "  return Math.round(pence * (1 + rate));",
+    "}"
+   ]
+  }
+ ],
+ "shared/src/dates.ts": [
+  {
+   "first": 21,
+   "lines": [
+    "/** The next date a weekday falls on, on or after the date given. */",
+    "export function nextDeliveryDay(from: Date | string, day: Weekday) {",
+    "  const date = new Date(from);",
+    "  const wanted = WEEKDAYS.indexOf(day);",
+    "  const ahead = (wanted - date.getUTCDay() + 7) % 7;",
+    "  date.setUTCDate(date.getUTCDate() + ahead);",
+    "  return date.toISOString().slice(0, 10);",
+    "}"
+   ]
+  },
+  {
+   "first": 58,
+   "lines": [
+    "/** Orders for a week close 36 hours before its billing day. */",
+    "export function isPastCutOff(weekStart: string, now = new Date()) {",
+    "  const billingDay = new Date(weekStart);",
+    "  // Billing day is the Thursday before the week starts.",
+    "  billingDay.setUTCDate(billingDay.getUTCDate() - 4);",
+    "  const cutOff = billingDay.getTime() - CUT_OFF_HOURS * 3600_000;",
+    "  return now.getTime() > cutOff;",
+    "}"
+   ]
+  }
+ ],
+ "shared/src/types.ts": [
+  {
+   "first": 9,
+   "lines": [
+    "/** A customer's weekly plan. */",
+    "export interface Plan {",
+    "  id: string;",
+    "  customerId: string;",
+    "  boxSize: BoxSize;",
+    "  deliveryDay: Weekday;",
+    "  status: 'active' | 'paused' | 'cancelled';",
+    "  pausedUntil: string | null;",
+    "}",
+    "",
+    "/** One week's box for one plan, as the customer sees it. */",
+    "export interface Box {",
+    "  weekStart: string;",
+    "  size: number;",
+    "  recipeIds: string[];",
+    "  pricePence: number;",
+    "  skipped: boolean;",
+    "}",
+    "",
+    "/** What billing day charges and packing day packs. */",
+    "export interface Order {",
+    "  id: string;",
+    "  planId: string;",
+    "  weekStart: string;",
+    "  deliveryDate: string;",
+    "  pricePence: number;",
+    "  status: 'due' | 'paid' | 'declined' | 'cancelled';",
+    "}"
+   ]
+  }
+ ],
+ "tests/billing.test.ts": [
+  {
+   "first": 31,
+   "lines": [
+    "describe('billing day', () => {",
+    "  it('charges each active plan once', async () => {",
+    "    const plan = await seedPlan({ status: 'active' });",
+    "    stripe.willAccept(plan.customerId);",
+    "",
+    "    const first = await runBilling(THURSDAY);",
+    "    const second = await runBilling(THURSDAY);",
+    "",
+    "    expect(first.charged).toBe(1);",
+    "    expect(second.charged).toBe(0);",
+    "    expect(stripe.chargesFor(plan.customerId)).toHaveLength(1);",
+    "  });",
+    "",
+    "  it('queues a declined card to try again in two days', async () => {",
+    "    const plan = await seedPlan({ status: 'active' });",
+    "    stripe.willDecline(plan.customerId);",
+    "",
+    "    const tally = await runBilling(THURSDAY);",
+    "",
+    "    expect(tally.declined).toBe(1);",
+    "    expect(await retriesFor(plan.id)).toEqual([",
+    "      { dueOn: addDays(THURSDAY, 2), attempts: 0 },",
+    "    ]);",
+    "  });",
+    "});"
+   ]
+  }
+ ],
+ "tests/skip.test.ts": [
+  {
+   "first": 24,
+   "lines": [
+    "describe('skipping a week', () => {",
+    "  it('means no charge and no box for that week', async () => {",
+    "    const plan = await seedPlan({ status: 'active' });",
+    "    await skipWeek(plan.id, NEXT_WEEK);",
+    "",
+    "    const tally = await runBilling(THURSDAY);",
+    "    const lists = await runPacking(NEXT_WEEK);",
+    "",
+    "    expect(tally.charged).toBe(0);",
+    "    expect(lists).toBe(0);",
+    "    expect(stripe.chargesFor(plan.customerId)).toEqual([]);",
+    "  });",
+    "",
+    "  it('only skips the week that was asked for', async () => {",
+    "    const plan = await seedPlan({ status: 'active' });",
+    "    await skipWeek(plan.id, NEXT_WEEK);",
+    "",
+    "    const orders = await buildWeeklyOrders(WEEK_AFTER);",
+    "",
+    "    expect(orders.map((o) => o.planId)).toContain(plan.id);",
+    "  });",
+    "});"
+   ]
+  }
+ ],
+ "tests/checkout.test.ts": [
+  {
+   "first": 28,
+   "lines": [
+    "describe('POST /checkout', () => {",
+    "  it('creates a plan and a first charge', async () => {",
+    "    const customer = await seedCustomer();",
+    "    stripe.willAccept(customer.id);",
+    "",
+    "    const reply = await request(app)",
+    "      .post('/checkout')",
+    "      .set('Authorization', `Bearer ${tokenFor(customer)}`)",
+    "      .send({ ...VALID_ORDER, deliveryDay: 'tuesday' });",
+    "",
+    "    expect(reply.status).toBe(201);",
+    "    expect(await planFor(customer.id)).toMatchObject({",
+    "      status: 'active',",
+    "      deliveryDay: 'tuesday',",
+    "    });",
+    "    expect(stripe.chargesFor(customer.id)).toHaveLength(1);",
+    "  });",
+    "",
+    "  it('turns away an order for a week that has closed', async () => {",
+    "    const customer = await seedCustomer();",
+    "    clock.set(AFTER_CUT_OFF);",
+    "",
+    "    const reply = await request(app)",
+    "      .post('/checkout')",
+    "      .send(VALID_ORDER);",
+    "",
+    "    expect(reply.status).toBe(409);",
+    "  });",
+    "});"
+   ]
+  }
+ ],
+ "infra/docker-compose.yml": [
+  {
+   "first": 1,
+   "lines": [
+    "# Runs the server and its database on a laptop:",
+    "#   docker compose -f infra/docker-compose.yml up",
+    "version: \"3.9\"",
+    "",
+    "services:",
+    "  api:",
+    "    build:",
+    "      context: ..",
+    "      dockerfile: api/Dockerfile",
+    "    ports:",
+    "      - \"4000:4000\"",
+    "    environment:",
+    "      DATABASE_URL: postgres://larder:larder@db:5432/larder",
+    "      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}",
+    "      POSTMARK_TOKEN: ${POSTMARK_TOKEN}",
+    "      PHOTO_BUCKET: larder-photos-dev",
+    "    depends_on:",
+    "      db:",
+    "        condition: service_healthy",
+    "    volumes:",
+    "      - ../api/src:/app/api/src",
+    "",
+    "  jobs:",
+    "    build:",
+    "      context: ..",
+    "      dockerfile: jobs/Dockerfile",
+    "    environment:",
+    "      DATABASE_URL: postgres://larder:larder@db:5432/larder",
+    "      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}",
+    "    depends_on:",
+    "      - api",
+    "",
+    "  db:",
+    "    image: postgres:16",
+    "    environment:",
+    "      POSTGRES_USER: larder",
+    "      POSTGRES_PASSWORD: larder",
+    "      POSTGRES_DB: larder",
+    "    healthcheck:",
+    "      test: [\"CMD\", \"pg_isready\", \"-U\", \"larder\"]",
+    "      interval: 5s",
+    "    volumes:",
+    "      - pgdata:/var/lib/postgresql/data",
+    "",
+    "volumes:",
+    "  pgdata: {}"
+   ]
+  }
+ ],
+ "infra/deploy.yml": [
+  {
+   "first": 1,
+   "lines": [
+    "# Builds and ships the apps on every merge to main.",
+    "name: Deploy",
+    "",
+    "on:",
+    "  push:",
+    "    branches: [main]",
+    "",
+    "jobs:",
+    "  test:",
+    "    runs-on: ubuntu-latest",
+    "    services:",
+    "      postgres:",
+    "        image: postgres:16",
+    "        env:",
+    "          POSTGRES_PASSWORD: larder",
+    "        ports: [\"5432:5432\"]",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - uses: actions/setup-node@v4",
+    "        with:",
+    "          node-version: 22",
+    "          cache: npm",
+    "      - run: npm ci",
+    "      - run: npm run migrate",
+    "      - run: npm test",
+    "",
+    "  ship:",
+    "    needs: test",
+    "    runs-on: ubuntu-latest",
+    "    strategy:",
+    "      matrix:",
+    "        app: [web, admin, api, jobs]",
+    "    env:",
+    "      IMAGE: ghcr.io/larder/${{ matrix.app }}:${{ github.sha }}",
+    "    steps:",
+    "      - uses: actions/checkout@v4",
+    "      - name: Build the image",
+    "        run: docker build -f ${{ matrix.app }}/Dockerfile -t $IMAGE .",
+    "      - name: Push it",
+    "        run: docker push $IMAGE",
+    "      - name: Roll it out",
+    "        run: ./infra/rollout.sh ${{ matrix.app }} ${{ github.sha }}",
+    "        env:",
+    "          DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}"
+   ]
+  }
+ ]
+}

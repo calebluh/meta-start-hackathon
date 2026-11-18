@@ -1486,8 +1486,10 @@ export class RoomSystem extends createSystem({
     }
     const file = reply.actions.find((a) => a.type === 'show_file');
     const said = `${reply.answer} ${note?.type === 'add_note' ? note.text : ''}`;
-    if (more) this.showFileCard(more.path, { asked, said, after: more.shownTo });
-    else if (file?.type === 'show_file') this.showFileCard(file.path, { asked, said });
+    // The lines the robot was given to read, when the server says which: the card shows those.
+    const lines = file?.type === 'show_file' && file.from && file.to ? { from: file.from, to: file.to, mark: file.mark, plain: file.plain } : undefined;
+    if (more) this.showFileCard(more.path, { asked, said, after: more.shownTo, lines: file?.type === 'show_file' && file.path === more.path ? lines : undefined });
+    else if (file?.type === 'show_file') this.showFileCard(file.path, { asked, said, lines });
 
     const answer = reply.answer || 'Right this way.';
     const cuts = this.cutIns;
