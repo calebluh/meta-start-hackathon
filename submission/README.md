@@ -84,6 +84,14 @@ emulator. This is the most important step left.
      order", **Open as a GitHub issue** (not for MiroFish) and **Copy for
      your coding agent**. Check the copy button works in the Quest Browser;
      if it cannot reach the clipboard it shows the text to select instead.
+   - **Your own repository through the plugin (new, 17 Nov evening).** This
+     is the product: not the public link. In your repo, run the plugin's map
+     command in your coding agent. It writes the map into a `walkthrough/`
+     folder in that repo (`map.mjs`, `arch.json`, `graph.json`, a README)
+     and starts the viewer. Notes you make in VR, and the note taker's
+     review, appear in `walkthrough/notes.md` as you make them, grouped by
+     part with a count on top. The folder ignores itself, so `git status`
+     should not list it. Then ask the agent to work through your notes.
    - **The roof.** Pinch a building: the roof lifts, small robots stand
      inside, and a **Step inside** button floats over it. Pinch the button.
    - **Reaching for a building.** Put your fingers right on a building and
@@ -186,6 +194,15 @@ git push
 
 Then take out of `devpost.md` testing step 12 and the bullet "A review, and
 a work order to leave with".
+
+### Rolling back the walkthrough/ folder
+
+Local and plugin use only; the public link does not use it.
+
+```bash
+git revert --no-edit b99552e
+git push
+```
 
 ### Rolling back the anchor
 
